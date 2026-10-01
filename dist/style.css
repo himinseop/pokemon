@@ -16,3 +16,39 @@ main{min-height:calc(100vh - 100px);padding-top:34px}.play-grid{display:block;ma
 /* Show the whole board and edit the current player's own row. */
 #high-score{width:min(660px,calc(100vw - 28px));max-height:calc(100dvh - 28px)}.leaderboard-entry{padding:26px 25px 22px;text-align:left;background:white}.leaderboard-entry h2{font-size:23px;margin:0 40px 16px 0}.entry-summary{display:flex;justify-content:space-between;align-items:center;gap:14px;background:#fff6d6;border-radius:12px;padding:14px 16px;margin-bottom:16px}.entry-summary>span{font-size:13px;color:#907440}.entry-summary>strong{font-size:17px;color:#ac7425;white-space:nowrap}.entry-summary strong span{font-size:14px;font-weight:600}.entry-list{overflow:auto;max-height:min(56dvh,520px);border:1px solid #e5eaf1;border-radius:12px;scroll-padding-top:42px}.entry-ranking{border-collapse:separate;border-spacing:0;width:100%;font-size:14px;table-layout:fixed}.entry-ranking th{position:sticky;top:0;z-index:1;background:#f3f6fa;text-align:left;padding:12px;color:#74829a;font-size:12px}.entry-ranking th:first-child{width:73px}.entry-ranking th:last-child{width:95px;text-align:right}.entry-ranking td{padding:12px;border-bottom:1px solid #edf0f5;overflow-wrap:anywhere}.entry-ranking tr:last-child td{border-bottom:0}.entry-ranking td:last-child{text-align:right;font-weight:800}.entry-ranking tr.my-entry td{background:#fff5cd;border-top:1px solid #eed288;border-bottom:1px solid #eed288}.entry-ranking .my-entry td:first-child{font-weight:800;color:#b77d26}.my-tag{display:inline-block;background:#f0b94e;color:#553807;border-radius:4px;font-size:10px;padding:2px 5px;margin-left:6px;vertical-align:middle}.entry-input{display:flex;align-items:center;gap:7px}.leaderboard-entry .entry-input input{padding:9px 10px;font-size:15px;text-align:left;min-width:0;border:1px solid #e5cf8f;background:white;border-radius:8px;font-weight:600}.save-name{border:0;background:#ee5048;color:white;border-radius:8px;width:36px;height:36px;font-size:21px;flex-shrink:0}.save-name:hover{background:#d9423b}.leaderboard-entry #save-message:empty{display:none}.leaderboard-entry #save-message{margin:14px 0 0;font-size:13px}.leaderboard-entry .primary{margin:16px 0 0}.entry-points{color:#de5149}
 @media(max-width:700px){main{padding-top:24px;min-height:calc(100vh - 90px)}main:has(.play-grid)>.intro{margin-bottom:20px}.intro h1{font-size:25px}.leaderboard-entry{padding:23px 14px 18px}.leaderboard-entry h2{font-size:20px;letter-spacing:-.8px}.entry-summary{flex-direction:column;align-items:flex-start;gap:7px;padding:12px 14px}.entry-summary>strong{font-size:18px}.entry-list{max-height:55dvh}.entry-ranking th,.entry-ranking td{padding:10px 8px}.entry-ranking th:first-child{width:52px}.entry-ranking th:last-child{width:73px}.my-tag{display:block;width:max-content;margin:4px 0 0}.leaderboard-entry .entry-input input{font-size:14px;padding:9px 7px}.save-name{width:32px;height:36px}.entry-input{gap:5px}.entry-ranking{font-size:13px}footer{justify-content:flex-start}footer>div{margin-left:34px}.quick-links{margin-top:16px}}
+/* Official Pokédex details and branching evolution families. */
+dialog.dex-detail{width:min(760px,calc(100vw - 32px))}
+.dex-detail .detail-inner{padding:28px 30px 32px}
+.dex-detail .detail-image{height:240px}
+.dex-detail .detail-inner h2{margin-bottom:8px}
+.dex-detail .form-label{margin:0 0 18px;color:#536d95;font-size:16px;font-weight:700}
+.description-versions{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 12px}
+.description-versions button{border:1px solid #dee6f1;border-radius:10px;background:white;color:#61738e;padding:9px 12px;font-size:14px;text-align:left}
+.description-versions button.active{background:#eff5ff;color:#2867c7;border-color:#93b8f0;font-weight:700}
+.dex-detail .dex-description{font-size:16px;color:#46566d;line-height:1.8;white-space:pre-line;margin:12px 0 20px}
+.dex-detail .dex-facts{margin:20px 0 28px;gap:22px;padding:22px;align-items:start}
+.dex-detail .dex-facts dt{font-size:14px;color:#75849a;margin-bottom:8px}
+.dex-detail .dex-facts dd{font-size:16px;line-height:1.5;overflow-wrap:anywhere}
+.dex-facts .type{font-size:14px;padding:4px 9px;margin:0 4px 4px 0}
+.ability-detail+.ability-detail{margin-top:8px}
+.ability-detail summary{cursor:pointer;color:#326dbb}
+.dex-detail .ability-detail p{font-size:14px;line-height:1.7;margin:8px 0;font-weight:400;color:#55677f;white-space:pre-line}
+.related-section{border-top:1px solid #e4eaf3;padding-top:22px;margin-top:25px}
+.related-section h3{font-size:20px;margin:0 0 18px}
+.evolution-stages{display:grid;grid-template-columns:repeat(var(--stages),minmax(0,1fr));gap:16px}
+.evolution-stage{display:flex;flex-direction:column;gap:10px;min-width:0;position:relative}
+.evolution-stage h4{margin:0 0 3px;color:#728198;font-size:14px;font-weight:600;text-align:center}
+.branched-evolution{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
+.branched-evolution .evolution-stage:last-child{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start}
+.branched-evolution .evolution-stage:last-child h4{grid-column:1/-1}
+.related-card{width:100%;min-width:0;background:#f8faff;border:1px solid #e3eaf3;border-radius:15px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.related-card:hover{border-color:#91b5ef;background:#f1f6ff}
+.related-card.current-form{border:2px solid #ec706b;background:#fff6f5}
+.related-card .number{font-size:12px;color:#8090a5}
+.related-card img{width:110px;max-width:100%;height:100px;object-fit:contain;margin:6px 0}
+.related-card strong{font-size:16px;overflow-wrap:anywhere}
+.related-card small{font-size:14px;color:#708199;line-height:1.4;margin:4px 0}
+.related-card>div{margin-top:9px;display:flex;justify-content:center;gap:3px;flex-wrap:wrap}
+.related-card .type{font-size:12px;margin:0;padding:3px 6px}
+.forms-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media(max-width:600px){.dex-detail .detail-inner{padding:22px 18px}.dex-detail .detail-image{height:200px}.dex-detail .dex-facts{padding:17px;gap:18px}.evolution-stages{gap:8px}.related-card{padding:10px 5px}.related-card strong{font-size:14px}.related-card small{font-size:12px}.related-card img{height:85px}.related-card .type{font-size:12px;padding:3px 4px}.forms-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
