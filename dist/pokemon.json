@@ -1,0 +1,2485 @@
+[
+  {
+    "id": 1,
+    "uid": "1",
+    "name": "이상해씨",
+    "types": [
+      "풀",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/1",
+    "height": "0.7m",
+    "weight": "6.9kg",
+    "category": "씨앗포켓몬",
+    "ability": "심록",
+    "description": "태어났을 때부터 등에 이상한 씨앗이 심어져 있으며 몸과 함께 자란다고 한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/000101.png",
+    "image": "assets/001.png"
+  },
+  {
+    "id": 2,
+    "uid": "2",
+    "name": "이상해풀",
+    "types": [
+      "풀",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/2",
+    "height": "1.0m",
+    "weight": "13.0kg",
+    "category": "씨앗포켓몬",
+    "ability": "심록",
+    "description": "꽃봉오리가 등에 붙어 있으며 양분을 잘 흡수하면 커다란 꽃이 핀다고 한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/000201.png",
+    "image": "assets/002.png"
+  },
+  {
+    "id": 3,
+    "uid": "3",
+    "name": "이상해꽃",
+    "types": [
+      "풀",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/3",
+    "height": "2.0m",
+    "weight": "100.0kg",
+    "category": "씨앗포켓몬",
+    "ability": "심록",
+    "description": "비가 내린 다음 날은 등의 꽃향기가 강해진다. 향기에 이끌려 포켓몬이 모여든다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/000301.png",
+    "image": "assets/003.png"
+  },
+  {
+    "id": 4,
+    "uid": "6",
+    "name": "파이리",
+    "types": [
+      "불꽃"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/6",
+    "height": "0.6m",
+    "weight": "8.5kg",
+    "category": "도롱뇽포켓몬",
+    "ability": "맹화",
+    "description": "꼬리의 불꽃은 파이리의 생명력의 상징이다. 건강할 때 왕성하게 불타오른다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/000401.png",
+    "image": "assets/004.png"
+  },
+  {
+    "id": 5,
+    "uid": "7",
+    "name": "리자드",
+    "types": [
+      "불꽃"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/7",
+    "height": "1.1m",
+    "weight": "19.0kg",
+    "category": "화염포켓몬",
+    "ability": "맹화",
+    "description": "꼬리를 휘둘러 상대를 쓰러뜨리고 날카로운 발톱으로 갈기갈기 찢어 버린다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/000501.png",
+    "image": "assets/005.png"
+  },
+  {
+    "id": 6,
+    "uid": "8",
+    "name": "리자몽",
+    "types": [
+      "불꽃",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/8",
+    "height": "1.7m",
+    "weight": "90.5kg",
+    "category": "화염포켓몬",
+    "ability": "맹화",
+    "description": "지상 1400m까지 날개를 사용해 날 수 있다. 고열의 불꽃을 내뿜는다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/000601.png",
+    "image": "assets/006.png"
+  },
+  {
+    "id": 7,
+    "uid": "12",
+    "name": "꼬부기",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/12",
+    "height": "0.5m",
+    "weight": "9.0kg",
+    "category": "꼬마거북포켓몬",
+    "ability": "급류",
+    "description": "등껍질에 숨어 몸을 보호한다. 상대의 빈틈을 놓치지 않고 물을 뿜어내어 반격한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/000701.png",
+    "image": "assets/007.png"
+  },
+  {
+    "id": 8,
+    "uid": "13",
+    "name": "어니부기",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/13",
+    "height": "1.0m",
+    "weight": "22.5kg",
+    "category": "거북포켓몬",
+    "ability": "급류",
+    "description": "딱 하고 머리를 맞을 때 등껍질로 숨어서 피한다. 하지만 꼬리가 살짝 삐져나와 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/000801.png",
+    "image": "assets/008.png"
+  },
+  {
+    "id": 9,
+    "uid": "14",
+    "name": "거북왕",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/14",
+    "height": "1.6m",
+    "weight": "85.5kg",
+    "category": "껍질포켓몬",
+    "ability": "급류",
+    "description": "무거운 몸으로 상대를 덮쳐서 기절시킨다. 위기에 처하면 등껍질에 숨는다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/000901.png",
+    "image": "assets/009.png"
+  },
+  {
+    "id": 10,
+    "uid": "17",
+    "name": "캐터피",
+    "types": [
+      "벌레"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/17",
+    "height": "0.3m",
+    "weight": "2.9kg",
+    "category": "애벌레포켓몬",
+    "ability": "인분",
+    "description": "빨간 더듬이로부터 냄새를 내어 상대를 쫓아 버린다. 탈피를 반복하여 자라난다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/001001.png",
+    "image": "assets/010.png"
+  },
+  {
+    "id": 11,
+    "uid": "18",
+    "name": "단데기",
+    "types": [
+      "벌레"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/18",
+    "height": "0.7m",
+    "weight": "9.9kg",
+    "category": "번데기포켓몬",
+    "ability": "탈피",
+    "description": "강철같이 단단한 껍질로 부드러운 몸을 보호하고 있다. 진화할 때까지 가만히 참고 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/001101.png",
+    "image": "assets/011.png"
+  },
+  {
+    "id": 12,
+    "uid": "19",
+    "name": "버터플",
+    "types": [
+      "벌레",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/19",
+    "height": "1.1m",
+    "weight": "32.0kg",
+    "category": "나비포켓몬",
+    "ability": "복안",
+    "description": "꽃의 꿀을 매우 좋아한다. 약간의 꽃가루만으로 꽃밭이 있는 장소를 찾아낼 수 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/001201.png",
+    "image": "assets/012.png"
+  },
+  {
+    "id": 13,
+    "uid": "21",
+    "name": "뿔충이",
+    "types": [
+      "벌레",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/21",
+    "height": "0.3m",
+    "weight": "3.2kg",
+    "category": "송충이포켓몬",
+    "ability": "인분",
+    "description": "숲이나 풀밭에 많이 서식한다. 머리끝에 5cm 정도의 작고 날카로운 독침을 지니고 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/001301.png",
+    "image": "assets/013.png"
+  },
+  {
+    "id": 14,
+    "uid": "22",
+    "name": "딱충이",
+    "types": [
+      "벌레",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/22",
+    "height": "0.6m",
+    "weight": "10.0kg",
+    "category": "번데기포켓몬",
+    "ability": "탈피",
+    "description": "스스로는 거의 움직일 수 없지만 위험할 때는 단단해져서 몸을 보호하고 있는 것 같다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/001401.png",
+    "image": "assets/014.png"
+  },
+  {
+    "id": 15,
+    "uid": "23",
+    "name": "독침붕",
+    "types": [
+      "벌레",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/23",
+    "height": "1.0m",
+    "weight": "29.5kg",
+    "category": "독벌포켓몬",
+    "ability": "벌레의알림",
+    "description": "떼를 지어 나타나기도 한다. 맹렬한 스피드로 날아다니며 엉덩이의 독침으로 마구 찌른다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/001501.png",
+    "image": "assets/015.png"
+  },
+  {
+    "id": 16,
+    "uid": "25",
+    "name": "구구",
+    "types": [
+      "노말",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/25",
+    "height": "0.3m",
+    "weight": "1.8kg",
+    "category": "아기새포켓몬",
+    "ability": "날카로운눈",
+    "description": "싸움을 좋아하지 않는 얌전한 성격이지만 어설프게 건드리면 강력한 반격을 당하게 된다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/001601.png",
+    "image": "assets/016.png"
+  },
+  {
+    "id": 17,
+    "uid": "26",
+    "name": "피죤",
+    "types": [
+      "노말",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/26",
+    "height": "1.1m",
+    "weight": "30.0kg",
+    "category": "새포켓몬",
+    "ability": "날카로운눈",
+    "description": "넓은 영역을 가지고 있으며 침입한 방해자는 철저하게 쪼아 버린다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/001701.png",
+    "image": "assets/017.png"
+  },
+  {
+    "id": 18,
+    "uid": "27",
+    "name": "피죤투",
+    "types": [
+      "노말",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/27",
+    "height": "1.5m",
+    "weight": "39.5kg",
+    "category": "새포켓몬",
+    "ability": "날카로운눈",
+    "description": "먹이를 찾을 때 수면을 아슬아슬하게 미끄러지듯 날아 잉어킹 등을 낚아챈다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/001801.png",
+    "image": "assets/018.png"
+  },
+  {
+    "id": 19,
+    "uid": "29",
+    "name": "꼬렛",
+    "types": [
+      "노말"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/29",
+    "height": "0.3m",
+    "weight": "3.5kg",
+    "category": "쥐포켓몬",
+    "ability": "도주",
+    "description": "어떤 장소에도 정착하여 살아갈 수 있는 생명력이 있다. 경계심이 매우 강하다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/001901.png",
+    "image": "assets/019.png"
+  },
+  {
+    "id": 20,
+    "uid": "31",
+    "name": "레트라",
+    "types": [
+      "노말"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/31",
+    "height": "0.7m",
+    "weight": "18.5kg",
+    "category": "쥐포켓몬",
+    "ability": "도주",
+    "description": "계속 자라는 앞니를 갈아 내려고 딱딱한 것을 갉는 습성이 있다. 벽돌로 된 벽도 갉아서 부순다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/002001.png",
+    "image": "assets/020.png"
+  },
+  {
+    "id": 21,
+    "uid": "33",
+    "name": "깨비참",
+    "types": [
+      "노말",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/33",
+    "height": "0.3m",
+    "weight": "2.0kg",
+    "category": "아기새포켓몬",
+    "ability": "날카로운눈",
+    "description": "작은 날개를 쉴 새 없이 파닥여 날아오른다. 풀밭에 있는 먹이를 부리로 찾아낸다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/002101.png",
+    "image": "assets/021.png"
+  },
+  {
+    "id": 22,
+    "uid": "34",
+    "name": "깨비드릴조",
+    "types": [
+      "노말",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/34",
+    "height": "1.2m",
+    "weight": "38.0kg",
+    "category": "부리포켓몬",
+    "ability": "날카로운눈",
+    "description": "큰 날개로 온종일 날아다닐 수 있는 체력의 소유자다. 날카로운 부리로 싸운다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/002201.png",
+    "image": "assets/022.png"
+  },
+  {
+    "id": 23,
+    "uid": "35",
+    "name": "아보",
+    "types": [
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/35",
+    "height": "2.0m",
+    "weight": "6.9kg",
+    "category": "뱀포켓몬",
+    "ability": "위협",
+    "description": "성장할수록 점점 길어진다. 밤에는 나뭇가지에 몸을 돌돌 말고 쉰다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/002301.png",
+    "image": "assets/023.png"
+  },
+  {
+    "id": 24,
+    "uid": "36",
+    "name": "아보크",
+    "types": [
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/36",
+    "height": "3.5m",
+    "weight": "65.0kg",
+    "category": "코브라포켓몬",
+    "ability": "위협",
+    "description": "가슴을 펴서 위협할 때 입에서 새는 공기 소리는 으스스해서 상대를 겁먹게 한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/002401.png",
+    "image": "assets/024.png"
+  },
+  {
+    "id": 25,
+    "uid": "37",
+    "name": "피카츄",
+    "types": [
+      "전기"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/37",
+    "height": "0.4m",
+    "weight": "6.0kg",
+    "category": "쥐포켓몬",
+    "ability": "정전기",
+    "description": "뺨의 양쪽에 작은 전기 주머니가 있다. 위기 상황일 때 방전한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/002501.png",
+    "image": "assets/025.png"
+  },
+  {
+    "id": 26,
+    "uid": "39",
+    "name": "라이츄",
+    "types": [
+      "전기"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/39",
+    "height": "0.8m",
+    "weight": "30.0kg",
+    "category": "쥐포켓몬",
+    "ability": "정전기",
+    "description": "전기가 모이면 근육이 자극되어 여느 때보다 공격적이게 된다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/002601.png",
+    "image": "assets/026.png"
+  },
+  {
+    "id": 27,
+    "uid": "43",
+    "name": "모래두지",
+    "types": [
+      "땅"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/43",
+    "height": "0.6m",
+    "weight": "12.0kg",
+    "category": "쥐포켓몬",
+    "ability": "모래숨기",
+    "description": "깊은 구멍을 파서 생활한다. 위험이 닥치면 몸을 말아 상대의 공격을 가만히 견딘다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/002701.png",
+    "image": "assets/027.png"
+  },
+  {
+    "id": 28,
+    "uid": "45",
+    "name": "고지",
+    "types": [
+      "땅"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/45",
+    "height": "1.0m",
+    "weight": "29.5kg",
+    "category": "쥐포켓몬",
+    "ability": "모래숨기",
+    "description": "재빠르게 뛰어다니며 등의 가시와 날카로운 발톱으로 공격하는 것이 특기다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/002801.png",
+    "image": "assets/028.png"
+  },
+  {
+    "id": 29,
+    "uid": "47",
+    "name": "니드런♀",
+    "types": [
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/47",
+    "height": "0.4m",
+    "weight": "7.0kg",
+    "category": "독침포켓몬",
+    "ability": "독가시",
+    "description": "싸움을 좋아하지 않는 성격이다. 독침에서 분비된 독은 한 방울만 맞아도 생명을 빼앗긴다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/002901.png",
+    "image": "assets/029.png"
+  },
+  {
+    "id": 30,
+    "uid": "48",
+    "name": "니드리나",
+    "types": [
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/48",
+    "height": "0.8m",
+    "weight": "20.0kg",
+    "category": "독침포켓몬",
+    "ability": "독가시",
+    "description": "위험을 느끼면 전신의 가시를 곤두세운다. 니드리노에 비해서 가시의 성장이 느리다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/003001.png",
+    "image": "assets/030.png"
+  },
+  {
+    "id": 31,
+    "uid": "49",
+    "name": "니드퀸",
+    "types": [
+      "독",
+      "땅"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/49",
+    "height": "1.3m",
+    "weight": "60.0kg",
+    "category": "드릴포켓몬",
+    "ability": "독가시",
+    "description": "갑옷처럼 단단한 비늘이 전신을 둘러싼다. 둥지의 새끼를 목숨 걸고 지킨다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/003101.png",
+    "image": "assets/031.png"
+  },
+  {
+    "id": 32,
+    "uid": "50",
+    "name": "니드런♂",
+    "types": [
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/50",
+    "height": "0.5m",
+    "weight": "9.0kg",
+    "category": "독침포켓몬",
+    "ability": "독가시",
+    "description": "풀밭 위로 귀만 내놓고 주위의 낌새를 살핀다. 맹독의 뿔로 몸을 보호한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/003201.png",
+    "image": "assets/032.png"
+  },
+  {
+    "id": 33,
+    "uid": "51",
+    "name": "니드리노",
+    "types": [
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/51",
+    "height": "0.9m",
+    "weight": "19.5kg",
+    "category": "독침포켓몬",
+    "ability": "독가시",
+    "description": "기질이 거친 포켓몬이다. 상대를 깊이 찌른 충격으로 뿔에서 맹독이 배어 나온다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/003301.png",
+    "image": "assets/033.png"
+  },
+  {
+    "id": 34,
+    "uid": "52",
+    "name": "니드킹",
+    "types": [
+      "독",
+      "땅"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/52",
+    "height": "1.4m",
+    "weight": "62.0kg",
+    "category": "드릴포켓몬",
+    "ability": "독가시",
+    "description": "꼬리를 한 번 휘두르면 전신주를 성냥개비마냥 두 동강 내 버린다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/003401.png",
+    "image": "assets/034.png"
+  },
+  {
+    "id": 35,
+    "uid": "53",
+    "name": "삐삐",
+    "types": [
+      "페어리"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/53",
+    "height": "0.6m",
+    "weight": "7.5kg",
+    "category": "요정포켓몬",
+    "ability": "헤롱헤롱바디",
+    "description": "등의 날개에 달빛을 모으면 공중에 떠오를 수 있다는 듯하다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/003501.png",
+    "image": "assets/035.png"
+  },
+  {
+    "id": 36,
+    "uid": "54",
+    "name": "픽시",
+    "types": [
+      "페어리"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/54",
+    "height": "1.3m",
+    "weight": "40.0kg",
+    "category": "요정포켓몬",
+    "ability": "헤롱헤롱바디",
+    "description": "요정의 동료로 좀처럼 사람 앞에 나타나지 않는다. 기척을 느끼면 바로 도망가는 듯하다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/003601.png",
+    "image": "assets/036.png"
+  },
+  {
+    "id": 37,
+    "uid": "56",
+    "name": "식스테일",
+    "types": [
+      "불꽃"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/56",
+    "height": "0.6m",
+    "weight": "9.9kg",
+    "category": "여우포켓몬",
+    "ability": "타오르는불꽃",
+    "description": "자신보다 강한 상대에게 공격을 받으면 다친 척을 해서 속이고 그 틈을 타서 도망친다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/003701.png",
+    "image": "assets/037.png"
+  },
+  {
+    "id": 38,
+    "uid": "58",
+    "name": "나인테일",
+    "types": [
+      "불꽃"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/58",
+    "height": "1.1m",
+    "weight": "19.9kg",
+    "category": "여우포켓몬",
+    "ability": "타오르는불꽃",
+    "description": "9개의 꼬리에는 각각 다른 신비한 힘이 숨어 있다고 한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/003801.png",
+    "image": "assets/038.png"
+  },
+  {
+    "id": 39,
+    "uid": "60",
+    "name": "푸린",
+    "types": [
+      "노말",
+      "페어리"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/60",
+    "height": "0.5m",
+    "weight": "5.5kg",
+    "category": "풍선포켓몬",
+    "ability": "헤롱헤롱바디",
+    "description": "동그란 눈동자를 보고 있으면 자지 않고는 견딜 수 없을 정도의 기분 좋은 노래를 부르기 시작한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/003901.png",
+    "image": "assets/039.png"
+  },
+  {
+    "id": 40,
+    "uid": "61",
+    "name": "푸크린",
+    "types": [
+      "노말",
+      "페어리"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/61",
+    "height": "1.0m",
+    "weight": "12.0kg",
+    "category": "풍선포켓몬",
+    "ability": "헤롱헤롱바디",
+    "description": "2마리가 바싹 붙게 되면 서로 털의 감촉이 좋은 건지 떨어지려 하지 않는다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/004001.png",
+    "image": "assets/040.png"
+  },
+  {
+    "id": 41,
+    "uid": "62",
+    "name": "주뱃",
+    "types": [
+      "독",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/62",
+    "height": "0.8m",
+    "weight": "7.5kg",
+    "category": "박쥐포켓몬",
+    "ability": "정신력",
+    "description": "낮에는 동굴에서 자고 있다. 눈이 없어서 초음파로 주변을 확인하면서 날아다닌다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/004101.png",
+    "image": "assets/041.png"
+  },
+  {
+    "id": 42,
+    "uid": "63",
+    "name": "골뱃",
+    "types": [
+      "독",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/63",
+    "height": "1.6m",
+    "weight": "55.0kg",
+    "category": "박쥐포켓몬",
+    "ability": "정신력",
+    "description": "아무리 단단한 피부라도 예리한 송곳니로 뚫어 듬뿍 피를 빤다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/004201.png",
+    "image": "assets/042.png"
+  },
+  {
+    "id": 43,
+    "uid": "64",
+    "name": "뚜벅쵸",
+    "types": [
+      "풀",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/64",
+    "height": "0.5m",
+    "weight": "5.4kg",
+    "category": "잡초포켓몬",
+    "ability": "엽록소",
+    "description": "별명은 걸어 다니는 독초. 밤이 되면 2개의 뿌리로 300m나 걷는다고 한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/004301.png",
+    "image": "assets/043.png"
+  },
+  {
+    "id": 44,
+    "uid": "65",
+    "name": "냄새꼬",
+    "types": [
+      "풀",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/65",
+    "height": "0.8m",
+    "weight": "8.6kg",
+    "category": "잡초포켓몬",
+    "ability": "엽록소",
+    "description": "조금씩 배어 나오는 것은 침이 아니다. 꿀 같은 즙으로 먹잇감을 유인하는 것이다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/004401.png",
+    "image": "assets/044.png"
+  },
+  {
+    "id": 45,
+    "uid": "66",
+    "name": "라플레시아",
+    "types": [
+      "풀",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/66",
+    "height": "1.2m",
+    "weight": "18.6kg",
+    "category": "꽃포켓몬",
+    "ability": "엽록소",
+    "description": "펑 하는 소리와 함께 꽃봉오리가 열리면 알레르기를 일으키는 독 꽃가루가 흩뿌려진다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/004501.png",
+    "image": "assets/045.png"
+  },
+  {
+    "id": 46,
+    "uid": "67",
+    "name": "파라스",
+    "types": [
+      "벌레",
+      "풀"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/67",
+    "height": "0.3m",
+    "weight": "5.4kg",
+    "category": "버섯포켓몬",
+    "ability": "포자",
+    "description": "동충하초라고 불리는 버섯을 등에 기르고 있다. 파라스와 함께 크게 자란다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/004601.png",
+    "image": "assets/046.png"
+  },
+  {
+    "id": 47,
+    "uid": "68",
+    "name": "파라섹트",
+    "types": [
+      "벌레",
+      "풀"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/68",
+    "height": "1.0m",
+    "weight": "29.5kg",
+    "category": "버섯포켓몬",
+    "ability": "포자",
+    "description": "몸보다 큰 버섯이 파라섹트를 조종하고 있다. 독 포자를 여기저기 뿌린다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/004701.png",
+    "image": "assets/047.png"
+  },
+  {
+    "id": 48,
+    "uid": "69",
+    "name": "콘팡",
+    "types": [
+      "벌레",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/69",
+    "height": "1.0m",
+    "weight": "30.0kg",
+    "category": "곤충포켓몬",
+    "ability": "복안",
+    "description": "전신에서 독이 스며 나온다. 어두워지면 밝은 곳에 모인 작은 벌레포켓몬을 잡아먹는다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/004801.png",
+    "image": "assets/048.png"
+  },
+  {
+    "id": 49,
+    "uid": "70",
+    "name": "도나리",
+    "types": [
+      "벌레",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/70",
+    "height": "1.5m",
+    "weight": "12.5kg",
+    "category": "독나방포켓몬",
+    "ability": "인분",
+    "description": "날개에 가루가 묻어 있어 팔락팔락 날갯짓을 할 때마다 맹독 가루를 흩뿌린다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/004901.png",
+    "image": "assets/049.png"
+  },
+  {
+    "id": 50,
+    "uid": "71",
+    "name": "디그다",
+    "types": [
+      "땅"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/71",
+    "height": "0.2m",
+    "weight": "0.8kg",
+    "category": "두더지포켓몬",
+    "ability": "모래숨기",
+    "description": "지하 1m 정도를 파고들어 가서 나무뿌리 등을 씹어 먹고 산다. 가끔 지상으로 얼굴을 내민다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/005001.png",
+    "image": "assets/050.png"
+  },
+  {
+    "id": 51,
+    "uid": "73",
+    "name": "닥트리오",
+    "types": [
+      "땅"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/73",
+    "height": "0.7m",
+    "weight": "33.3kg",
+    "category": "두더지포켓몬",
+    "ability": "모래숨기",
+    "description": "3개의 머리가 교차하며 움직이는 것은 주변의 흙을 부드럽게 해 파기 쉽게 하기 위해서다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/005101.png",
+    "image": "assets/051.png"
+  },
+  {
+    "id": 52,
+    "uid": "75",
+    "name": "나옹",
+    "types": [
+      "노말"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/75",
+    "height": "0.4m",
+    "weight": "4.2kg",
+    "category": "요괴고양이포켓몬",
+    "ability": "픽업",
+    "description": "반짝반짝 빛나는 물건을 좋아한다. 특히 동전을 제일 좋아해서 줍게 되면 어딘가에 감춰 놓는다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/005201.png",
+    "image": "assets/052.png"
+  },
+  {
+    "id": 53,
+    "uid": "79",
+    "name": "페르시온",
+    "types": [
+      "노말"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/79",
+    "height": "1.0m",
+    "weight": "32.0kg",
+    "category": "샴고양이포켓몬",
+    "ability": "유연",
+    "description": "전신에서 느껴지는 기품에 동경하는 사람이 많지만 사실 툭하면 할퀴려 드는 성격이다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/005301.png",
+    "image": "assets/053.png"
+  },
+  {
+    "id": 54,
+    "uid": "81",
+    "name": "고라파덕",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/81",
+    "height": "0.8m",
+    "weight": "19.6kg",
+    "category": "오리포켓몬",
+    "ability": "습기",
+    "description": "항상 두통에 시달리고 있다. 이 두통이 심해지면 이상한 힘을 쓰기 시작한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/005401.png",
+    "image": "assets/054.png"
+  },
+  {
+    "id": 55,
+    "uid": "82",
+    "name": "골덕",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/82",
+    "height": "1.7m",
+    "weight": "76.6kg",
+    "category": "오리포켓몬",
+    "ability": "습기",
+    "description": "물갈퀴가 달린 긴 손발을 써서 전력으로 헤엄치면 왠지 이마에서 빛이 반짝인다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/005501.png",
+    "image": "assets/055.png"
+  },
+  {
+    "id": 56,
+    "uid": "83",
+    "name": "망키",
+    "types": [
+      "격투"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/83",
+    "height": "0.5m",
+    "weight": "28.0kg",
+    "category": "돈숭이포켓몬",
+    "ability": "의기양양",
+    "description": "항상 화를 내고 있다. 적당한 먹이를 발견하면 무리를 이루어 덤벼든다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/005601.png",
+    "image": "assets/056.png"
+  },
+  {
+    "id": 57,
+    "uid": "84",
+    "name": "성원숭",
+    "types": [
+      "격투"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/84",
+    "height": "1.0m",
+    "weight": "32.0kg",
+    "category": "돈숭이포켓몬",
+    "ability": "의기양양",
+    "description": "자고 있을 때 다가가면 잠이 덜 깬 채로 화를 내며 영문도 모르고 뒤쫓아 온다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/005701.png",
+    "image": "assets/057.png"
+  },
+  {
+    "id": 58,
+    "uid": "85",
+    "name": "가디",
+    "types": [
+      "불꽃"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/85",
+    "height": "0.7m",
+    "weight": "19.0kg",
+    "category": "강아지포켓몬",
+    "ability": "위협",
+    "description": "자신보다 강하고 큰 상대라도 겁 없이 맞서는 용감하고 믿음직스런 성격이다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/005801.png",
+    "image": "assets/058.png"
+  },
+  {
+    "id": 59,
+    "uid": "87",
+    "name": "윈디",
+    "types": [
+      "불꽃"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/87",
+    "height": "1.9m",
+    "weight": "155.0kg",
+    "category": "전설포켓몬",
+    "ability": "위협",
+    "description": "초원을 내달리는 모습은 사람들의 마음을 사로잡았다고 옛날 그림에 묘사되어 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/005901.png",
+    "image": "assets/059.png"
+  },
+  {
+    "id": 60,
+    "uid": "89",
+    "name": "발챙이",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/89",
+    "height": "0.6m",
+    "weight": "12.4kg",
+    "category": "올챙이포켓몬",
+    "ability": "저수",
+    "description": "배의 소용돌이는 피부 너머로 비쳐 보이는 내장의 일부다. 먹이를 먹으면 선명하게 보인다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/006001.png",
+    "image": "assets/060.png"
+  },
+  {
+    "id": 61,
+    "uid": "90",
+    "name": "슈륙챙이",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/90",
+    "height": "1.0m",
+    "weight": "20.0kg",
+    "category": "올챙이포켓몬",
+    "ability": "저수",
+    "description": "두 다리가 발달하여 지상에서 살 수 있는데도 어째서인지 수중 생활을 좋아한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/006101.png",
+    "image": "assets/061.png"
+  },
+  {
+    "id": 62,
+    "uid": "91",
+    "name": "강챙이",
+    "types": [
+      "물",
+      "격투"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/91",
+    "height": "1.3m",
+    "weight": "54.0kg",
+    "category": "올챙이포켓몬",
+    "ability": "저수",
+    "description": "근육을 전부 사용하는 역동적인 헤엄치기가 특기지만 웬일인지 지상에서 생활한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/006201.png",
+    "image": "assets/062.png"
+  },
+  {
+    "id": 63,
+    "uid": "92",
+    "name": "캐이시",
+    "types": [
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/92",
+    "height": "0.9m",
+    "weight": "19.5kg",
+    "category": "초능력포켓몬",
+    "ability": "싱크로",
+    "description": "하루에 18시간은 자고 있다. 자는 동안에도 다양한 초능력을 사용한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/006301.png",
+    "image": "assets/063.png"
+  },
+  {
+    "id": 64,
+    "uid": "93",
+    "name": "윤겔라",
+    "types": [
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/93",
+    "height": "1.3m",
+    "weight": "56.5kg",
+    "category": "초능력포켓몬",
+    "ability": "싱크로",
+    "description": "능력을 사용할 때마다 몸에서 특수한 알파파를 발산하여 기계를 교란시킨다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/006401.png",
+    "image": "assets/064.png"
+  },
+  {
+    "id": 65,
+    "uid": "94",
+    "name": "후딘",
+    "types": [
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/94",
+    "height": "1.5m",
+    "weight": "48.0kg",
+    "category": "초능력포켓몬",
+    "ability": "싱크로",
+    "description": "뇌세포는 항상 분열해서 죽을 때까지 늘어나기 때문에 모든 것을 기억해 놓을 수 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/006501.png",
+    "image": "assets/065.png"
+  },
+  {
+    "id": 66,
+    "uid": "96",
+    "name": "알통몬",
+    "types": [
+      "격투"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/96",
+    "height": "0.8m",
+    "weight": "19.5kg",
+    "category": "괴력포켓몬",
+    "ability": "근성",
+    "description": "몸집은 어린아이만 하지만 온몸이 근육으로 되어 있어서 어른 100명은 날려 버릴 수 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/006601.png",
+    "image": "assets/066.png"
+  },
+  {
+    "id": 67,
+    "uid": "97",
+    "name": "근육몬",
+    "types": [
+      "격투"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/97",
+    "height": "1.5m",
+    "weight": "70.5kg",
+    "category": "괴력포켓몬",
+    "ability": "근성",
+    "description": "한 손으로 덤프트럭을 들어 올린다. 파워를 살려서 사람 대신 힘쓰는 일을 돕는 포켓몬이다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/006701.png",
+    "image": "assets/067.png"
+  },
+  {
+    "id": 68,
+    "uid": "98",
+    "name": "괴력몬",
+    "types": [
+      "격투"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/98",
+    "height": "1.6m",
+    "weight": "130.0kg",
+    "category": "괴력포켓몬",
+    "ability": "근성",
+    "description": "4개의 팔로 상대방의 손발을 붙잡아 꼼짝 못 하게 만들고 지평선 멀리까지 던져 버린다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/006801.png",
+    "image": "assets/068.png"
+  },
+  {
+    "id": 69,
+    "uid": "100",
+    "name": "모다피",
+    "types": [
+      "풀",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/100",
+    "height": "0.7m",
+    "weight": "4.0kg",
+    "category": "꽃포켓몬",
+    "ability": "엽록소",
+    "description": "홀쭉한 체형이지만 먹이를 잡을 때의 움직임은 눈에 보이지 않을 정도로 빠르다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/006901.png",
+    "image": "assets/069.png"
+  },
+  {
+    "id": 70,
+    "uid": "101",
+    "name": "우츠동",
+    "types": [
+      "풀",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/101",
+    "height": "1.0m",
+    "weight": "6.4kg",
+    "category": "파리잡이포켓몬",
+    "ability": "엽록소",
+    "description": "우선 독가루를 뿌려 상대의 움직임을 멈추게 하고 나서 용해액으로 숨통을 끊는다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/007001.png",
+    "image": "assets/070.png"
+  },
+  {
+    "id": 71,
+    "uid": "102",
+    "name": "우츠보트",
+    "types": [
+      "풀",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/102",
+    "height": "1.7m",
+    "weight": "15.5kg",
+    "category": "파리잡이포켓몬",
+    "ability": "엽록소",
+    "description": "체내로 거둬들인 것은 아무리 단단할지라도 용해액으로 흔적도 없이 녹여 버린다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/007101.png",
+    "image": "assets/071.png"
+  },
+  {
+    "id": 72,
+    "uid": "104",
+    "name": "왕눈해",
+    "types": [
+      "물",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/104",
+    "height": "0.9m",
+    "weight": "45.5kg",
+    "category": "해파리포켓몬",
+    "ability": "클리어바디",
+    "description": "바닷물이 빠지면 모래 해변에 남아 바싹 마른 왕눈해를 볼 수 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/007201.png",
+    "image": "assets/072.png"
+  },
+  {
+    "id": 73,
+    "uid": "105",
+    "name": "독파리",
+    "types": [
+      "물",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/105",
+    "height": "1.6m",
+    "weight": "55.0kg",
+    "category": "해파리포켓몬",
+    "ability": "클리어바디",
+    "description": "드물게 대량 발생하면 주변 바다에서 물고기포켓몬이 모두 사라져 버리고 만다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/007301.png",
+    "image": "assets/073.png"
+  },
+  {
+    "id": 74,
+    "uid": "106",
+    "name": "꼬마돌",
+    "types": [
+      "바위",
+      "땅"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/106",
+    "height": "0.4m",
+    "weight": "20.0kg",
+    "category": "암석포켓몬",
+    "ability": "돌머리",
+    "description": "움직이지 않고 있으면 돌멩이로 착각하여 무심코 밟게 되는데 그러면 주먹을 휘두르며 화를 낸다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/007401.png",
+    "image": "assets/074.png"
+  },
+  {
+    "id": 75,
+    "uid": "108",
+    "name": "데구리",
+    "types": [
+      "바위",
+      "땅"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/108",
+    "height": "1.0m",
+    "weight": "105.0kg",
+    "category": "암석포켓몬",
+    "ability": "돌머리",
+    "description": "걸음이 늦기 때문에 굴러서 이동한다. 도중에 무슨 일이 있어도 신경 쓰지 않는다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/007501.png",
+    "image": "assets/075.png"
+  },
+  {
+    "id": 76,
+    "uid": "110",
+    "name": "딱구리",
+    "types": [
+      "바위",
+      "땅"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/110",
+    "height": "1.4m",
+    "weight": "300.0kg",
+    "category": "메가톤포켓몬",
+    "ability": "돌머리",
+    "description": "암반처럼 단단한 껍질에 싸여 있다. 1년에 1번 탈피하여 커진다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/007601.png",
+    "image": "assets/076.png"
+  },
+  {
+    "id": 77,
+    "uid": "112",
+    "name": "포니타",
+    "types": [
+      "불꽃"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/112",
+    "height": "1.0m",
+    "weight": "30.0kg",
+    "category": "불의말포켓몬",
+    "ability": "도주",
+    "description": "태어나서 1시간이 지나면 불꽃의 갈기와 꼬리가 자라나 멋진 모습이 된다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/007701.png",
+    "image": "assets/077.png"
+  },
+  {
+    "id": 78,
+    "uid": "114",
+    "name": "날쌩마",
+    "types": [
+      "불꽃"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/114",
+    "height": "1.7m",
+    "weight": "95.0kg",
+    "category": "불의말포켓몬",
+    "ability": "도주",
+    "description": "달리는 속도는 시속 240km. 갈기의 불꽃이 세차게 타오르고 화살처럼 달려 나간다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/007801.png",
+    "image": "assets/078.png"
+  },
+  {
+    "id": 79,
+    "uid": "116",
+    "name": "야돈",
+    "types": [
+      "물",
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/116",
+    "height": "1.2m",
+    "weight": "36.0kg",
+    "category": "얼간이포켓몬",
+    "ability": "둔감",
+    "description": "물가에서 멍하니 있다. 뭔가가 꼬리를 깨물어도 하루 종일 눈치채지 못한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/007901.png",
+    "image": "assets/079.png"
+  },
+  {
+    "id": 80,
+    "uid": "118",
+    "name": "야도란",
+    "types": [
+      "물",
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/118",
+    "height": "1.6m",
+    "weight": "78.5kg",
+    "category": "기생포켓몬",
+    "ability": "둔감",
+    "description": "붙어 있는 셀러는 꼬리에서 배어 나오는 맛을 좋아해서 계속 떨어지지 않는다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/008001.png",
+    "image": "assets/080.png"
+  },
+  {
+    "id": 81,
+    "uid": "121",
+    "name": "코일",
+    "types": [
+      "전기",
+      "강철"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/121",
+    "height": "0.3m",
+    "weight": "6.0kg",
+    "category": "자석포켓몬",
+    "ability": "자력",
+    "description": "좌우에 있는 유닛에서 나오는 전자파를 이용해 중력을 거슬러 하늘에 떠 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/008101.png",
+    "image": "assets/081.png"
+  },
+  {
+    "id": 82,
+    "uid": "122",
+    "name": "레어코일",
+    "types": [
+      "전기",
+      "강철"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/122",
+    "height": "1.0m",
+    "weight": "60.0kg",
+    "category": "자석포켓몬",
+    "ability": "자력",
+    "description": "3개의 코일은 강한 자력으로 연결되어 있다. 가까이 다가가면 강한 귀울림에 시달리게 된다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/008201.png",
+    "image": "assets/082.png"
+  },
+  {
+    "id": 83,
+    "uid": "123",
+    "name": "파오리",
+    "types": [
+      "노말",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/123",
+    "height": "0.8m",
+    "weight": "15.0kg",
+    "category": "청둥오리포켓몬",
+    "ability": "날카로운눈",
+    "description": "가지고 있는 파 줄기는 소중한 무기이기도 하며 칼처럼 휘둘러서 다양한 것을 자를 수 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/008301.png",
+    "image": "assets/083.png"
+  },
+  {
+    "id": 84,
+    "uid": "125",
+    "name": "두두",
+    "types": [
+      "노말",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/125",
+    "height": "1.4m",
+    "weight": "39.2kg",
+    "category": "쌍둥이새포켓몬",
+    "ability": "도주",
+    "description": "완전히 같은 유전자를 가진 쌍둥이의 머리로 호흡이 척척 맞는 콤비네이션을 구사하며 싸운다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/008401.png",
+    "image": "assets/084.png"
+  },
+  {
+    "id": 85,
+    "uid": "126",
+    "name": "두트리오",
+    "types": [
+      "노말",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/126",
+    "height": "1.8m",
+    "weight": "85.2kg",
+    "category": "세쌍둥이새포켓몬",
+    "ability": "도주",
+    "description": "폐와 심장이 3개로 늘어났다. 두두보다 다리는 느리지만 장시간을 계속 달릴 수 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/008501.png",
+    "image": "assets/085.png"
+  },
+  {
+    "id": 86,
+    "uid": "127",
+    "name": "쥬쥬",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/127",
+    "height": "1.1m",
+    "weight": "90.0kg",
+    "category": "강치포켓몬",
+    "ability": "두꺼운지방",
+    "description": "머리에 있는 뿔은 매우 단단하다. 박치기로 빙산을 부수며 나아간다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/008601.png",
+    "image": "assets/086.png"
+  },
+  {
+    "id": 87,
+    "uid": "128",
+    "name": "쥬레곤",
+    "types": [
+      "물",
+      "얼음"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/128",
+    "height": "1.7m",
+    "weight": "120.0kg",
+    "category": "강치포켓몬",
+    "ability": "두꺼운지방",
+    "description": "물의 온도가 내려가는 밤에 먹이를 찾아 헤엄친다. 낮에는 얕은 해저에서 잔다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/008701.png",
+    "image": "assets/087.png"
+  },
+  {
+    "id": 88,
+    "uid": "129",
+    "name": "질퍽이",
+    "types": [
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/129",
+    "height": "0.9m",
+    "weight": "30.0kg",
+    "category": "오물포켓몬",
+    "ability": "악취",
+    "description": "오물이 포켓몬이 되었다. 더러운 장소에 모여 몸의 세균을 번식시킨다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/008801.png",
+    "image": "assets/088.png"
+  },
+  {
+    "id": 89,
+    "uid": "131",
+    "name": "질뻐기",
+    "types": [
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/131",
+    "height": "1.2m",
+    "weight": "30.0kg",
+    "category": "오물포켓몬",
+    "ability": "악취",
+    "description": "더러운 오물이 온몸에 달라붙었다. 지나간 자리를 건드리기만 해도 독이 퍼져 버린다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/008901.png",
+    "image": "assets/089.png"
+  },
+  {
+    "id": 90,
+    "uid": "133",
+    "name": "셀러",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/133",
+    "height": "0.3m",
+    "weight": "4.0kg",
+    "category": "두조개포켓몬",
+    "ability": "조가비갑옷",
+    "description": "다이아몬드보다 단단한 껍데기에 싸여 있지만 속은 의외로 말랑하다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/009001.png",
+    "image": "assets/090.png"
+  },
+  {
+    "id": 91,
+    "uid": "134",
+    "name": "파르셀",
+    "types": [
+      "물",
+      "얼음"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/134",
+    "height": "1.5m",
+    "weight": "132.5kg",
+    "category": "두조개포켓몬",
+    "ability": "조가비갑옷",
+    "description": "조수의 흐름이 격한 바다에 서식하는 파르셀의 껍데기에 붙은 가시는 크고 날카롭다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/009101.png",
+    "image": "assets/091.png"
+  },
+  {
+    "id": 92,
+    "uid": "135",
+    "name": "고오스",
+    "types": [
+      "고스트",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/135",
+    "height": "1.3m",
+    "weight": "0.1kg",
+    "category": "가스포켓몬",
+    "ability": "부유",
+    "description": "가스에서 태어난 생명체다. 독가스로 이루어진 몸에 둘러싸이면 누구든지 기절한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/009201.png",
+    "image": "assets/092.png"
+  },
+  {
+    "id": 93,
+    "uid": "136",
+    "name": "고우스트",
+    "types": [
+      "고스트",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/136",
+    "height": "1.6m",
+    "weight": "0.1kg",
+    "category": "가스포켓몬",
+    "ability": "부유",
+    "description": "가스로 된 혓바닥으로 핥으면 상대는 영혼을 빼앗겨 버린다. 어둠에 숨어 먹이를 노린다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/009301.png",
+    "image": "assets/093.png"
+  },
+  {
+    "id": 94,
+    "uid": "137",
+    "name": "팬텀",
+    "types": [
+      "고스트",
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/137",
+    "height": "1.5m",
+    "weight": "40.5kg",
+    "category": "그림자포켓몬",
+    "ability": "저주받은바디",
+    "description": "그림자에 모습을 숨긴다. 팬텀이 숨어 있는 방은 온도가 5도 내려간다고 전해진다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/009401.png",
+    "image": "assets/094.png"
+  },
+  {
+    "id": 95,
+    "uid": "140",
+    "name": "롱스톤",
+    "types": [
+      "바위",
+      "땅"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/140",
+    "height": "8.8m",
+    "weight": "210.0kg",
+    "category": "돌뱀포켓몬",
+    "ability": "돌머리",
+    "description": "평상시에는 땅속에 살고 있다. 땅속을 시속 80km로 파면서 먹이를 찾는다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/009501.png",
+    "image": "assets/095.png"
+  },
+  {
+    "id": 96,
+    "uid": "141",
+    "name": "슬리프",
+    "types": [
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/141",
+    "height": "1.0m",
+    "weight": "32.4kg",
+    "category": "최면포켓몬",
+    "ability": "불면",
+    "description": "먹어 치운 꿈은 모두 기억하고 있다. 아이들의 꿈이 맛있기 때문에 어른들의 꿈은 거의 먹지 않는다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/009601.png",
+    "image": "assets/096.png"
+  },
+  {
+    "id": 97,
+    "uid": "142",
+    "name": "슬리퍼",
+    "types": [
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/142",
+    "height": "1.6m",
+    "weight": "75.6kg",
+    "category": "최면포켓몬",
+    "ability": "불면",
+    "description": "상대와 눈이 마주쳤을 때 최면술 등의 다양한 초능력을 사용한다고 전해진다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/009701.png",
+    "image": "assets/097.png"
+  },
+  {
+    "id": 98,
+    "uid": "143",
+    "name": "크랩",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/143",
+    "height": "0.4m",
+    "weight": "6.5kg",
+    "category": "게포켓몬",
+    "ability": "괴력집게",
+    "description": "모래 해변에 구멍을 파서 산다. 집게는 싸울 때 떨어져 나가도 다시 자라나 원래대로 돌아온다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/009801.png",
+    "image": "assets/098.png"
+  },
+  {
+    "id": 99,
+    "uid": "144",
+    "name": "킹크랩",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/144",
+    "height": "1.3m",
+    "weight": "60.0kg",
+    "category": "집게포켓몬",
+    "ability": "괴력집게",
+    "description": "큰 집게의 파워는 1만 마력이다. 하지만 너무 무거워서 목표물을 잡는 것이 서투르다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/009901.png",
+    "image": "assets/099.png"
+  },
+  {
+    "id": 100,
+    "uid": "146",
+    "name": "찌리리공",
+    "types": [
+      "전기"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/146",
+    "height": "0.5m",
+    "weight": "10.4kg",
+    "category": "볼포켓몬",
+    "ability": "방음",
+    "description": "굴러서 이동하기 때문에 땅이 울퉁불퉁하면 충격으로 폭발해 버린다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/010001.png",
+    "image": "assets/100.png"
+  },
+  {
+    "id": 101,
+    "uid": "148",
+    "name": "붐볼",
+    "types": [
+      "전기"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/148",
+    "height": "1.2m",
+    "weight": "66.6kg",
+    "category": "볼포켓몬",
+    "ability": "방음",
+    "description": "전기 에너지를 모을수록 고속으로 이동할 수 있게 되나 그만큼 폭발하기도 쉬워진다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/010101.png",
+    "image": "assets/101.png"
+  },
+  {
+    "id": 102,
+    "uid": "150",
+    "name": "아라리",
+    "types": [
+      "풀",
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/150",
+    "height": "0.4m",
+    "weight": "2.5kg",
+    "category": "알포켓몬",
+    "ability": "엽록소",
+    "description": "알로 착각하여 건드리면 동료들이 모여들어서 집단으로 공격한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/010201.png",
+    "image": "assets/102.png"
+  },
+  {
+    "id": 103,
+    "uid": "151",
+    "name": "나시",
+    "types": [
+      "풀",
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/151",
+    "height": "2.0m",
+    "weight": "120.0kg",
+    "category": "야자열매포켓몬",
+    "ability": "엽록소",
+    "description": "걸어 다니는 열대우림이라고도 불린다. 열매 하나하나마다 얼굴이 있으며, 각자 의지를 가지고 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/010301.png",
+    "image": "assets/103.png"
+  },
+  {
+    "id": 104,
+    "uid": "153",
+    "name": "탕구리",
+    "types": [
+      "땅"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/153",
+    "height": "0.4m",
+    "weight": "6.5kg",
+    "category": "고독포켓몬",
+    "ability": "돌머리",
+    "description": "태어나자마자 사별한 어미의 뼈를 뒤집어쓰고 절대 맨얼굴을 보여 주지 않는다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/010401.png",
+    "image": "assets/104.png"
+  },
+  {
+    "id": 105,
+    "uid": "154",
+    "name": "텅구리",
+    "types": [
+      "땅"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/154",
+    "height": "1.0m",
+    "weight": "45.0kg",
+    "category": "뼈다귀포켓몬",
+    "ability": "돌머리",
+    "description": "어디선가 뼈를 주워 온다. 이 세상 어딘가에 텅구리만의 무덤이 있다는 소문이 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/010501.png",
+    "image": "assets/105.png"
+  },
+  {
+    "id": 106,
+    "uid": "156",
+    "name": "시라소몬",
+    "types": [
+      "격투"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/156",
+    "height": "1.5m",
+    "weight": "49.8kg",
+    "category": "킥포켓몬",
+    "ability": "유연",
+    "description": "발차기가 적중하는 순간에 발바닥의 근육을 단단하게 하여 위력을 최대로 끌어올린다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/010601.png",
+    "image": "assets/106.png"
+  },
+  {
+    "id": 107,
+    "uid": "157",
+    "name": "홍수몬",
+    "types": [
+      "격투"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/157",
+    "height": "1.4m",
+    "weight": "50.2kg",
+    "category": "펀치포켓몬",
+    "ability": "날카로운눈",
+    "description": "좌우 콤비네이션 펀치로 상대를 몰아붙인 뒤, 시속 500km의 스트레이트로 단숨에 마무리한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/010701.png",
+    "image": "assets/107.png"
+  },
+  {
+    "id": 108,
+    "uid": "158",
+    "name": "내루미",
+    "types": [
+      "노말"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/158",
+    "height": "1.2m",
+    "weight": "65.5kg",
+    "category": "핥기포켓몬",
+    "ability": "마이페이스",
+    "description": "손 대신 신장의 2배로 늘어나는 혓바닥을 사용한다. 끈적끈적한 타액이 무엇이든 달라붙게 한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/010801.png",
+    "image": "assets/108.png"
+  },
+  {
+    "id": 109,
+    "uid": "159",
+    "name": "또가스",
+    "types": [
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/159",
+    "height": "0.6m",
+    "weight": "1.0kg",
+    "category": "독가스포켓몬",
+    "ability": "부유",
+    "description": "얇은 풍선 상태의 몸에 맹독의 가스가 채워져 있어 가끔 대폭발을 일으킨다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/010901.png",
+    "image": "assets/109.png"
+  },
+  {
+    "id": 110,
+    "uid": "160",
+    "name": "또도가스",
+    "types": [
+      "독"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/160",
+    "height": "1.2m",
+    "weight": "9.5kg",
+    "category": "독가스포켓몬",
+    "ability": "부유",
+    "description": "체내에 들어 있는 독가스의 농도를 극한까지 낮추면 최고급의 향수가 된다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/011001.png",
+    "image": "assets/110.png"
+  },
+  {
+    "id": 111,
+    "uid": "162",
+    "name": "뿔카노",
+    "types": [
+      "땅",
+      "바위"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/162",
+    "height": "1.0m",
+    "weight": "115.0kg",
+    "category": "뿔포켓몬",
+    "ability": "피뢰침",
+    "description": "반경 10km의 범위를 영역으로 삼고 있으나, 달리다 보면 영역을 잊어버린다고 한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/011101.png",
+    "image": "assets/111.png"
+  },
+  {
+    "id": 112,
+    "uid": "163",
+    "name": "코뿌리",
+    "types": [
+      "땅",
+      "바위"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/163",
+    "height": "1.9m",
+    "weight": "120.0kg",
+    "category": "드릴포켓몬",
+    "ability": "피뢰침",
+    "description": "다이아몬드 원석도 부숴 버리는 위력을 자랑하는 뿔을 동료들과 부딪치며 단련한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/011201.png",
+    "image": "assets/112.png"
+  },
+  {
+    "id": 113,
+    "uid": "164",
+    "name": "럭키",
+    "types": [
+      "노말"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/164",
+    "height": "1.1m",
+    "weight": "34.6kg",
+    "category": "알포켓몬",
+    "ability": "자연회복",
+    "description": "상처 입은 포켓몬이나 사람이 있으면 영양 만점의 알을 낳아 나눠 주는 상냥한 포켓몬이다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/011301.png",
+    "image": "assets/113.png"
+  },
+  {
+    "id": 114,
+    "uid": "165",
+    "name": "덩쿠리",
+    "types": [
+      "풀"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/165",
+    "height": "1.0m",
+    "weight": "35.0kg",
+    "category": "넝쿨포켓몬",
+    "ability": "엽록소",
+    "description": "파란 덩굴로 덮여 있다. 덩굴에 숨겨져 있는 얼굴을 본 사람은 아직 없다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/011401.png",
+    "image": "assets/114.png"
+  },
+  {
+    "id": 115,
+    "uid": "166",
+    "name": "캥카",
+    "types": [
+      "노말"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/166",
+    "height": "2.2m",
+    "weight": "80.0kg",
+    "category": "가족포켓몬",
+    "ability": "일찍기상",
+    "description": "배의 주머니에서 새끼를 키운다. 안전할 때만 새끼를 주머니에서 꺼내어 놀게 한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/011501.png",
+    "image": "assets/115.png"
+  },
+  {
+    "id": 116,
+    "uid": "168",
+    "name": "쏘드라",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/168",
+    "height": "0.4m",
+    "weight": "8.0kg",
+    "category": "드래곤포켓몬",
+    "ability": "쓱쓱",
+    "description": "커다란 상대에게 습격당해도 발달한 등지느러미를 사용해 수중에서 자유롭게 도망친다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/011601.png",
+    "image": "assets/116.png"
+  },
+  {
+    "id": 117,
+    "uid": "169",
+    "name": "시드라",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/169",
+    "height": "1.2m",
+    "weight": "25.0kg",
+    "category": "드래곤포켓몬",
+    "ability": "독가시",
+    "description": "수컷이 새끼를 키운다. 이때 접근하는 자가 있으면 맹독을 띠는 가시로 쫓아낸다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/011701.png",
+    "image": "assets/117.png"
+  },
+  {
+    "id": 118,
+    "uid": "170",
+    "name": "콘치",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/170",
+    "height": "0.6m",
+    "weight": "15.0kg",
+    "category": "금붕어포켓몬",
+    "ability": "쓱쓱",
+    "description": "꼬리지느러미를 드레스같이 흔들며 우아하게 헤엄치는 모습은 마치 수중의 여왕 같다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/011801.png",
+    "image": "assets/118.png"
+  },
+  {
+    "id": 119,
+    "uid": "171",
+    "name": "왕콘치",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/171",
+    "height": "1.3m",
+    "weight": "39.0kg",
+    "category": "금붕어포켓몬",
+    "ability": "쓱쓱",
+    "description": "머리의 뿔로 강바닥에 있는 돌을 파내어 둥지를 만든다. 알을 목숨 걸고 지킨다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/011901.png",
+    "image": "assets/119.png"
+  },
+  {
+    "id": 120,
+    "uid": "172",
+    "name": "별가사리",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/172",
+    "height": "0.8m",
+    "weight": "34.5kg",
+    "category": "별포켓몬",
+    "ability": "발광",
+    "description": "몸의 중심에서 빛나는 핵이 있는 한 몸이 찢겨 나가도 재생할 수 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/012001.png",
+    "image": "assets/120.png"
+  },
+  {
+    "id": 121,
+    "uid": "173",
+    "name": "아쿠스타",
+    "types": [
+      "물",
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/173",
+    "height": "1.1m",
+    "weight": "80.0kg",
+    "category": "수수께끼포켓몬",
+    "ability": "발광",
+    "description": "몸의 중심에 있는 빨간 핵에서 밤하늘을 향해 알 수 없는 전파를 발신한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/012101.png",
+    "image": "assets/121.png"
+  },
+  {
+    "id": 122,
+    "uid": "175",
+    "name": "마임맨",
+    "types": [
+      "에스퍼",
+      "페어리"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/175",
+    "height": "1.3m",
+    "weight": "54.5kg",
+    "category": "배리어포켓몬",
+    "ability": "방음",
+    "description": "손끝에서 나오는 수수께끼의 파워로 주위의 공기를 굳혀서 보이지 않는 벽을 만들어 낸다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/012201.png",
+    "image": "assets/122.png"
+  },
+  {
+    "id": 123,
+    "uid": "177",
+    "name": "스라크",
+    "types": [
+      "벌레",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/177",
+    "height": "1.5m",
+    "weight": "56.0kg",
+    "category": "버마재비포켓몬",
+    "ability": "벌레의알림",
+    "description": "날카로운 낫으로 먹이를 베어 숨통을 끊는다. 매우 드물게 날개를 사용해서 난다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/012301.png",
+    "image": "assets/123.png"
+  },
+  {
+    "id": 124,
+    "uid": "178",
+    "name": "루주라",
+    "types": [
+      "얼음",
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/178",
+    "height": "1.4m",
+    "weight": "40.6kg",
+    "category": "인간형태포켓몬",
+    "ability": "둔감",
+    "description": "울음소리는 마치 인간의 말처럼 들리지만 의미는 전혀 이해할 수 없다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/012401.png",
+    "image": "assets/124.png"
+  },
+  {
+    "id": 125,
+    "uid": "179",
+    "name": "에레브",
+    "types": [
+      "전기"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/179",
+    "height": "1.1m",
+    "weight": "30.0kg",
+    "category": "전기포켓몬",
+    "ability": "정전기",
+    "description": "전신에 항상 전기가 흐르고 있기 때문에 가까이 가면 머리카락이 곤두서 버린다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/012501.png",
+    "image": "assets/125.png"
+  },
+  {
+    "id": 126,
+    "uid": "180",
+    "name": "마그마",
+    "types": [
+      "불꽃"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/180",
+    "height": "1.3m",
+    "weight": "44.5kg",
+    "category": "불뿜기포켓몬",
+    "ability": "불꽃몸",
+    "description": "화산의 분화구 근처에서 발견되었다. 입에서 불꽃을 뿜어낸다. 체온은 1200도나 된다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/012601.png",
+    "image": "assets/126.png"
+  },
+  {
+    "id": 127,
+    "uid": "181",
+    "name": "쁘사이저",
+    "types": [
+      "벌레"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/181",
+    "height": "1.5m",
+    "weight": "55.0kg",
+    "category": "뿔집게포켓몬",
+    "ability": "괴력집게",
+    "description": "긴 뿔을 휘둘러서 공격해 온다. 추울 때는 숲 깊은 곳에 몸을 숨긴다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/012701.png",
+    "image": "assets/127.png"
+  },
+  {
+    "id": 128,
+    "uid": "183",
+    "name": "켄타로스",
+    "types": [
+      "노말"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/183",
+    "height": "1.4m",
+    "weight": "88.4kg",
+    "category": "성난소포켓몬",
+    "ability": "위협",
+    "description": "목표를 정하면 꼬리로 몸을 채찍질하면서 똑바로 돌진한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/012801.png",
+    "image": "assets/128.png"
+  },
+  {
+    "id": 129,
+    "uid": "187",
+    "name": "잉어킹",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/187",
+    "height": "0.9m",
+    "weight": "10.0kg",
+    "category": "물고기포켓몬",
+    "ability": "쓱쓱",
+    "description": "힘도 스피드도 거의 없다. 세상에서 가장 약하고 한심한 포켓몬이다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/012901.png",
+    "image": "assets/129.png"
+  },
+  {
+    "id": 130,
+    "uid": "188",
+    "name": "갸라도스",
+    "types": [
+      "물",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/188",
+    "height": "6.5m",
+    "weight": "235.0kg",
+    "category": "흉악포켓몬",
+    "ability": "위협",
+    "description": "분쟁이 일어난 마을을 다 태워 버렸다는 기록이 고문서에 남아 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/013001.png",
+    "image": "assets/130.png"
+  },
+  {
+    "id": 131,
+    "uid": "190",
+    "name": "라프라스",
+    "types": [
+      "물",
+      "얼음"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/190",
+    "height": "2.5m",
+    "weight": "220.0kg",
+    "category": "탈것포켓몬",
+    "ability": "저수",
+    "description": "사람을 등에 태우고 바다를 건넌다. 기분이 좋으면 아름다운 목소리로 노래를 하기도 하는 듯하다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/013103.png",
+    "image": "assets/131.png"
+  },
+  {
+    "id": 132,
+    "uid": "192",
+    "name": "메타몽",
+    "types": [
+      "노말"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/192",
+    "height": "0.3m",
+    "weight": "4.0kg",
+    "category": "변신포켓몬",
+    "ability": "유연",
+    "description": "변신은 완벽하지만 웃는 바람에 힘이 빠지면 변신이 풀려 버리고 만다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/013201.png",
+    "image": "assets/132.png"
+  },
+  {
+    "id": 133,
+    "uid": "193",
+    "name": "이브이",
+    "types": [
+      "노말"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/193",
+    "height": "0.3m",
+    "weight": "6.5kg",
+    "category": "진화포켓몬",
+    "ability": "도주",
+    "description": "불안정한 유전자 덕분에 여러 가지 진화의 가능성을 가지고 있는 특수한 포켓몬.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/013301.png",
+    "image": "assets/133.png"
+  },
+  {
+    "id": 134,
+    "uid": "195",
+    "name": "샤미드",
+    "types": [
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/195",
+    "height": "1.0m",
+    "weight": "29.0kg",
+    "category": "거품뿜기포켓몬",
+    "ability": "저수",
+    "description": "수중에서의 생활에 적합한 몸으로 진화했다. 물에 녹아들면 보이지 않게 된다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/013401.png",
+    "image": "assets/134.png"
+  },
+  {
+    "id": 135,
+    "uid": "196",
+    "name": "쥬피썬더",
+    "types": [
+      "전기"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/196",
+    "height": "0.8m",
+    "weight": "24.5kg",
+    "category": "번개포켓몬",
+    "ability": "축전",
+    "description": "공기 중의 음이온을 빨아들여 약 10000볼트의 전기를 내뿜을 수 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/013501.png",
+    "image": "assets/135.png"
+  },
+  {
+    "id": 136,
+    "uid": "197",
+    "name": "부스터",
+    "types": [
+      "불꽃"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/197",
+    "height": "0.9m",
+    "weight": "25.0kg",
+    "category": "불꽃포켓몬",
+    "ability": "타오르는불꽃",
+    "description": "체내에 불꽃 주머니가 있어 깊이 숨을 들이켠 후 1700도의 불을 내뿜는다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/013601.png",
+    "image": "assets/136.png"
+  },
+  {
+    "id": 137,
+    "uid": "198",
+    "name": "폴리곤",
+    "types": [
+      "노말"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/198",
+    "height": "0.8m",
+    "weight": "36.5kg",
+    "category": "가상포켓몬",
+    "ability": "트레이스",
+    "description": "연구 끝에 태어난 인공 포켓몬이다. 기본적인 동작만 프로그래밍되어 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/013701.png",
+    "image": "assets/137.png"
+  },
+  {
+    "id": 138,
+    "uid": "199",
+    "name": "암나이트",
+    "types": [
+      "바위",
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/199",
+    "height": "0.4m",
+    "weight": "7.5kg",
+    "category": "소용돌이포켓몬",
+    "ability": "쓱쓱",
+    "description": "현대의 우수한 과학 기술로 화석에서 부활한 포켓몬이다. 고대의 바다를 헤엄치고 있었다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/013801.png",
+    "image": "assets/138.png"
+  },
+  {
+    "id": 139,
+    "uid": "200",
+    "name": "암스타",
+    "types": [
+      "바위",
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/200",
+    "height": "1.0m",
+    "weight": "35.0kg",
+    "category": "소용돌이포켓몬",
+    "ability": "쓱쓱",
+    "description": "나선형의 껍질이 너무 커져 버린 것이 원인으로 멸종했다고 여겨지고 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/013901.png",
+    "image": "assets/139.png"
+  },
+  {
+    "id": 140,
+    "uid": "201",
+    "name": "투구",
+    "types": [
+      "바위",
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/201",
+    "height": "0.5m",
+    "weight": "11.5kg",
+    "category": "껍질포켓몬",
+    "ability": "쓱쓱",
+    "description": "3억 년 전에 모래 해변에서 살고 있었던 것으로 추측된다. 단단한 껍질이 몸을 보호한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/014001.png",
+    "image": "assets/140.png"
+  },
+  {
+    "id": 141,
+    "uid": "202",
+    "name": "투구푸스",
+    "types": [
+      "바위",
+      "물"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/202",
+    "height": "1.3m",
+    "weight": "40.5kg",
+    "category": "껍질포켓몬",
+    "ability": "쓱쓱",
+    "description": "투구푸스의 먹이가 육상 생활을 시작했기 때문에 투구푸스 역시 육지에 올라온 것으로 추측된다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/014101.png",
+    "image": "assets/141.png"
+  },
+  {
+    "id": 142,
+    "uid": "203",
+    "name": "프테라",
+    "types": [
+      "바위",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/203",
+    "height": "1.8m",
+    "weight": "59.0kg",
+    "category": "화석포켓몬",
+    "ability": "돌머리",
+    "description": "호박에 남아 있던 공룡의 유전자에서 부활시켰다. 높은 소리로 울며 난다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/014201.png",
+    "image": "assets/142.png"
+  },
+  {
+    "id": 143,
+    "uid": "205",
+    "name": "잠만보",
+    "types": [
+      "노말"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/205",
+    "height": "2.1m",
+    "weight": "460.0kg",
+    "category": "졸음포켓몬",
+    "ability": "면역",
+    "description": "자고 있을 때를 제외하고는 항상 먹이를 먹고 있는 대식가. 하루에 400kg은 먹어 치운다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/014301.png",
+    "image": "assets/143.png"
+  },
+  {
+    "id": 144,
+    "uid": "207",
+    "name": "프리져",
+    "types": [
+      "얼음",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/207",
+    "height": "1.7m",
+    "weight": "55.4kg",
+    "category": "냉동포켓몬",
+    "ability": "프레셔",
+    "description": "전설의 새포켓몬이다. 공기 중의 수분을 얼려 눈보라를 만들어 낼 수 있다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/014401.png",
+    "image": "assets/144.png"
+  },
+  {
+    "id": 145,
+    "uid": "209",
+    "name": "썬더",
+    "types": [
+      "전기",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/209",
+    "height": "1.6m",
+    "weight": "52.6kg",
+    "category": "전기포켓몬",
+    "ability": "프레셔",
+    "description": "번개 구름 안에 있다고 전해지는 전설의 포켓몬이다. 번개를 자유로이 조종한다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/014501.png",
+    "image": "assets/145.png"
+  },
+  {
+    "id": 146,
+    "uid": "211",
+    "name": "파이어",
+    "types": [
+      "불꽃",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/211",
+    "height": "2.0m",
+    "weight": "60.0kg",
+    "category": "화염포켓몬",
+    "ability": "프레셔",
+    "description": "전설의 새포켓몬 중의 1마리다. 파이어가 모습을 보이면 봄이 찾아온다고 전해진다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/014601.png",
+    "image": "assets/146.png"
+  },
+  {
+    "id": 147,
+    "uid": "213",
+    "name": "미뇽",
+    "types": [
+      "드래곤"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/213",
+    "height": "1.8m",
+    "weight": "3.3kg",
+    "category": "드래곤포켓몬",
+    "ability": "탈피",
+    "description": "탈피를 반복하면서 점점 크게 자라는 생명력 넘치는 포켓몬이다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/014701.png",
+    "image": "assets/147.png"
+  },
+  {
+    "id": 148,
+    "uid": "214",
+    "name": "신뇽",
+    "types": [
+      "드래곤"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/214",
+    "height": "4.0m",
+    "weight": "16.5kg",
+    "category": "드래곤포켓몬",
+    "ability": "탈피",
+    "description": "수정 같은 구슬에는 날씨를 자유롭게 조종하는 능력이 담겨 있는 듯하다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/014801.png",
+    "image": "assets/148.png"
+  },
+  {
+    "id": 149,
+    "uid": "215",
+    "name": "망나뇽",
+    "types": [
+      "드래곤",
+      "비행"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/215",
+    "height": "2.2m",
+    "weight": "210.0kg",
+    "category": "드래곤포켓몬",
+    "ability": "정신력",
+    "description": "넓은 바다의 어딘가에 거처가 있다고 전해진다. 난파한 배를 육지까지 이끌어 준다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/014901.png",
+    "image": "assets/149.png"
+  },
+  {
+    "id": 150,
+    "uid": "217",
+    "name": "뮤츠",
+    "types": [
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/217",
+    "height": "2.0m",
+    "weight": "122.0kg",
+    "category": "유전자포켓몬",
+    "ability": "프레셔",
+    "description": "한 과학자가 몇 년에 걸쳐 무서운 유전자 연구를 계속한 결과 탄생했다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/015001.png",
+    "image": "assets/150.png"
+  },
+  {
+    "id": 151,
+    "uid": "220",
+    "name": "뮤",
+    "types": [
+      "에스퍼"
+    ],
+    "source": "https://pokemonkorea.co.kr/pokedex/view/220",
+    "height": "0.4m",
+    "weight": "4.0kg",
+    "category": "신종포켓몬",
+    "ability": "싱크로",
+    "description": "모든 기술을 사용하기 때문에 포켓몬의 조상이라고 생각하는 학자가 많다.",
+    "imageSource": "https://data1.pokemonkorea.co.kr/newdata/pokedex/full/015101.png",
+    "image": "assets/151.png"
+  }
+]
