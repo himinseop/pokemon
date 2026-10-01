@@ -111,3 +111,19 @@ dialog.dex-detail{--card-type:#999;max-height:92vh;border:8px solid #e9c45b;bord
 .shortcut-ranking:hover{background:#ffefbf;box-shadow:0 6px 0 #ecd28a}
 .shortcut:active{transform:translateY(3px);box-shadow:0 1px 0 #b8c6d8}
 @media(max-width:400px){.quick-links{gap:12px;margin-top:18px}.shortcut{padding:12px 9px;gap:8px;font-size:14px;min-height:64px;border-radius:15px}.shortcut-icon{flex-basis:32px;height:32px;border-radius:10px;font-size:22px}}
+
+/* Friendly quiz controls, paired with the shortcut buttons. */
+.game-control{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:1px solid;border-radius:12px;padding:10px 14px;font-size:14px;font-weight:800;white-space:nowrap;transition:transform .15s,box-shadow .15s,background .15s}
+.game-control span{display:grid;place-items:center;flex:0 0 24px;height:24px;border-radius:8px;background:#fff;font-size:13px}
+.quit-control{background:#fff0ef;border-color:#f1c6c2;color:#b34842;box-shadow:0 3px 0 #f1c6c2}
+.skip-control{background:#fff5d6;border-color:#ecd28a;color:#94651c;box-shadow:0 3px 0 #ecd28a}
+.skip-control span{font-size:18px}
+.game-heading>div{min-width:0}
+.game-heading .game-control{margin-left:auto;flex-shrink:0}
+.play-actions:has(.skip-control){justify-content:center;margin-top:4px}
+.game-control:hover:not(:disabled){transform:translateY(-2px)}
+.quit-control:hover:not(:disabled){background:#ffe4e1;box-shadow:0 5px 0 #f1c6c2}
+.skip-control:hover:not(:disabled){background:#ffefbf;box-shadow:0 5px 0 #ecd28a}
+.game-control:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #d8c8bd}
+.game-control:disabled{opacity:.5;box-shadow:none}
+@media(max-width:400px){.game-heading{flex-wrap:wrap;gap:12px}.game-heading>div{flex-basis:100%}.game-heading .quit-control{margin-left:auto}.game-control{padding:9px 12px}}
