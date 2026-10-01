@@ -41,23 +41,49 @@ ${mode==='time'?`<div class="choices" aria-label="4지선다 예시">${['이브�
 <div class="start-line"><button class="primary" id="start-game">${mode==='time'?'타임어택 시작!':'마스터 도전 시작!'}</button><p>${mode==='time'?'60초 · 정답 100점<br>연속 정답 보너스':'10문제 · 난이도별 점수<br>키보드 Enter로 정답 확인'}</p></div>`;
 }
 function modePokemon(){return mode==='time'?25:133;}
+function prepareQuestionImages(g){
+ // Keep the exact next questions warm, including the next shuffled deck.
+ if(!g.deck.length)g.deck=shuffle(g.pool.filter(p=>p.id!==g.question.id));
+ const ahead=g.mode==='write'?Math.min(3,10-g.total-1):3;
+ const upcoming=[g.question,...g.deck.slice(-ahead).reverse().slice(0,ahead)];
+ const keep=new Set(upcoming.map(p=>p.id));
+ for(const id of g.images.keys())if(!keep.has(id))g.images.delete(id);
+ upcoming.forEach((p,i)=>prepareQuestionImage(g,p,i===0?'high':'low'));
+}
+function prepareQuestionImage(g,p,priority){
+ const existing=g.images.get(p.id);if(existing){existing.image.fetchPriority=priority;return existing;}
+ const image=new Image(190,190),entry={image,ready:false,failed:false};
+ image.alt='이름을 맞혀야 하는 포켓몬';image.fetchPriority=priority;
+ g.images.set(p.id,entry);
+ entry.loaded=new Promise(resolve=>{
+  let settled=false;
+  const finish=ok=>{if(settled)return;settled=true;entry.ready=ok;entry.failed=!ok;resolve(ok);};
+  const loaded=()=>{if(typeof image.decode==='function')image.decode().then(()=>finish(true),()=>finish(image.naturalWidth>0));else finish(true);};
+  image.onload=loaded;image.onerror=()=>finish(false);image.src=p.image;
+  if(image.complete){if(image.naturalWidth)loaded();else finish(false);}
+ });
+ return entry;
+}
 function startGame(){cleanup();const pool=mode==='write'&&difficulty==='easy'?pokemon.filter(p=>familiar.includes(p.id)):pokemon;
-game={status:'playing',mode,difficulty,pool,deck:shuffle(pool),question:null,score:0,correct:0,total:0,streak:0,maxStreak:0,history:[],locked:false,saved:false,deadline:mode==='time'?performance.now()+60000:0,imageReady:false,imageFailures:0};
+game={status:'playing',mode,difficulty,pool,deck:shuffle(pool),images:new Map(),question:null,score:0,correct:0,total:0,streak:0,maxStreak:0,history:[],locked:false,saved:false,deadline:mode==='time'?performance.now()+60000:0,imageReady:false,imageFailures:0};
 nextQuestion();ticker=setInterval(tick,100);}
 function nextQuestion(){if(!game||game.status!=='playing')return;if(game.mode==='write'&&game.total>=10){endGame();return;}if(game.mode==='time'&&performance.now()>=game.deadline){endGame();return;}
 if(game.deck.length===0)game.deck=shuffle(game.pool.filter(p=>p.id!==game.question?.id));game.question=game.deck.pop();game.locked=false;game.imageReady=false;
-game.options=shuffle([game.question,...shuffle(pokemon.filter(p=>p.id!==game.question.id)).slice(0,3)]);if(game.mode==='write')game.deadline=performance.now()+difficulties[game.difficulty].seconds*1000;renderGameBody();}
+prepareQuestionImages(game);game.options=shuffle([game.question,...shuffle(pokemon.filter(p=>p.id!==game.question.id)).slice(0,3)]);if(game.mode==='write')game.deadline=performance.now()+difficulties[game.difficulty].seconds*1000;renderGameBody();}
 function timerState(g){const duration=g.mode==='time'?60000:difficulties[g.difficulty].seconds*1000;const remaining=Math.max(0,g.deadline-performance.now());return {seconds:Math.ceil(remaining/1000),percent:Math.min(100,remaining/duration*100)};}
 function renderQuestion(body){const g=game;const timeState=timerState(g);const secs=timeState.seconds;const previousProgress=g.mode==='time'?body.querySelector('.progress'):null;
 body.innerHTML=`<div class="game-stats"><span><strong id="score">${g.score.toLocaleString()}</strong> 점</span><span>${g.mode==='time'?`연속 <b id="streak">${g.streak}</b> 정답`:`${g.total+1} / 10 문제`}</span><span class="time">⏱ <strong id="time">${secs}</strong> 초</span></div><div class="progress" role="progressbar" aria-label="남은 시간" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${timeState.percent}"><div id="timer-bar" style="width:${timeState.percent}%"></div></div><div class="game-heading"><div><h2>${g.mode==='time'?'이 포켓몬의 이름은?':'포켓몬 이름을 적어 주세요'}</h2><small>${g.mode==='time'?'네 개의 이름 중 정답을 골라요':difficulties[g.difficulty].label+' · 한글 이름으로 답해요'}</small></div><button class="text-button" id="quit-game">그만하기</button></div>
-<div class="pokemon-stage ${g.mode==='write'&&g.difficulty==='hard'?'silhouette':''}"><span class="stage-tag">WHO’S THAT POKÉMON?</span><img id="question-image" src="${g.question.image}" alt="이름을 맞혀야 하는 포켓몬" width="190" height="190"></div>
+<div class="pokemon-stage ${g.mode==='write'&&g.difficulty==='hard'?'silhouette':''}"><span class="stage-tag">WHO’S THAT POKÉMON?</span><span id="question-image-slot"></span></div>
 ${g.mode==='time'?`<div class="choices">${g.options.map((p,i)=>`<button class="choice" data-answer="${p.id}" disabled><span>${i+1}</span>${p.name}</button>`).join('')}</div>`:`<form class="text-form" id="answer-form"><input id="answer-input" autocomplete="off" maxlength="30" placeholder="포켓몬 이름" aria-label="포켓몬 이름" disabled><button class="primary" type="submit" disabled>확인</button></form>`}
 <div id="feedback" class="feedback" role="status" aria-live="polite">포켓몬을 불러오는 중…</div><div class="play-actions"><span class="result-note">${g.mode==='time'?'키보드 1–4로도 선택할 수 있어요':'띄어쓰기는 자유롭게 입력해도 괜찮아요'}</span>${g.mode==='write'?'<button class="text-button" id="skip-question">모르겠어요</button>':''}</div>`;
 // Keep the time-attack bar itself alive when replacing the question.
 if(previousProgress){body.querySelector('.progress').replaceWith(previousProgress);previousProgress.querySelector('#timer-bar').style.width=timeState.percent+'%';previousProgress.setAttribute('aria-valuenow',timeState.percent);}
-const current=g.question.id;const img=document.querySelector('#question-image');
-const ready=()=>{if(game!==g||g.question.id!==current||g.locked)return;g.imageReady=true;body.querySelectorAll('.choice,.text-form input,.text-form button').forEach(b=>b.disabled=false);body.querySelector('#feedback').textContent='';if(g.mode==='write')body.querySelector('#answer-input').focus({preventScroll:true});};
-img.onload=ready;img.onerror=()=>{if(game!==g||g.question.id!==current)return;g.imageFailures++;if(g.imageFailures>=5){g.imageError=true;endGame();}else{nextQuestion();}};if(img.complete&&img.naturalWidth)ready();}
+const current=g.question.id,entry=g.images.get(current),img=entry.image;
+img.id='question-image';body.querySelector('#question-image-slot').replaceWith(img);
+const active=()=>game===g&&g.status==='playing'&&g.question.id===current&&!g.locked&&body.querySelector('#question-image')===img;
+const ready=()=>{if(!active())return;g.imageReady=true;body.querySelectorAll('.choice,.text-form input,.text-form button').forEach(b=>b.disabled=false);body.querySelector('#feedback').textContent='';if(g.mode==='write')body.querySelector('#answer-input').focus({preventScroll:true});};
+const failed=()=>{if(!active())return;g.imageFailures++;if(g.imageFailures>=5){g.imageError=true;endGame();}else nextQuestion();};
+if(entry.ready)ready();else entry.loaded.then(ok=>ok?ready():failed());}
 function tick(){if(!game||game.status!=='playing')return;const state=timerState(game);const time=document.querySelector('#time');if(time)time.textContent=state.seconds;const bar=document.querySelector('#timer-bar');if(bar){bar.style.width=state.percent+'%';bar.parentElement.setAttribute('aria-valuenow',state.percent);}if(state.seconds<=0){if(game.mode==='time')endGame();else if(!game.locked)submitAnswer('',true);}}
 function submitAnswer(value,timedOut=false){const g=game;if(!g||g.status!=='playing'||g.locked||(!g.imageReady&&!timedOut))return;if(performance.now()>=g.deadline&&!timedOut){if(g.mode==='time'){endGame();return;}timedOut=true;}
 g.locked=true;const correct=!timedOut&&(g.mode==='time'?Number(value)===g.question.id:normalize(value)===normalize(g.question.name));g.total++;if(correct){g.correct++;g.streak++;g.maxStreak=Math.max(g.maxStreak,g.streak);g.score+=g.mode==='time'?100+Math.min(g.streak-1,10)*10:(100+Math.floor(Math.max(0,g.deadline-performance.now())/1000)*2)*difficulties[g.difficulty].multiplier;}else g.streak=0;
