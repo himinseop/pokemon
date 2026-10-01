@@ -1,0 +1,104 @@
+{
+  "types": {
+    "노말": {
+      "icon": "assets/ui/type-normal.png",
+      "color": "#999999"
+    },
+    "불꽃": {
+      "icon": "assets/ui/type-fire.png",
+      "color": "#ff612c"
+    },
+    "물": {
+      "icon": "assets/ui/type-water.png",
+      "color": "#2992ff"
+    },
+    "전기": {
+      "icon": "assets/ui/type-electric.png",
+      "color": "#ffdb00"
+    },
+    "풀": {
+      "icon": "assets/ui/type-grass.png",
+      "color": "#42bf24"
+    },
+    "얼음": {
+      "icon": "assets/ui/type-ice.png",
+      "color": "#42d8ff"
+    },
+    "격투": {
+      "icon": "assets/ui/type-fighting.png",
+      "color": "#ffa202"
+    },
+    "독": {
+      "icon": "assets/ui/type-poison.png",
+      "color": "#994dcf"
+    },
+    "땅": {
+      "icon": "assets/ui/type-ground.png",
+      "color": "#ab7939"
+    },
+    "비행": {
+      "icon": "assets/ui/type-flying.png",
+      "color": "#95c9ff"
+    },
+    "에스퍼": {
+      "icon": "assets/ui/type-psychic.png",
+      "color": "#ff637f"
+    },
+    "벌레": {
+      "icon": "assets/ui/type-bug.png",
+      "color": "#9fa424"
+    },
+    "바위": {
+      "icon": "assets/ui/type-rock.png",
+      "color": "#bcb889"
+    },
+    "고스트": {
+      "icon": "assets/ui/type-ghost.png",
+      "color": "#6e4570"
+    },
+    "드래곤": {
+      "icon": "assets/ui/type-dragon.png",
+      "color": "#5462d6"
+    },
+    "악": {
+      "icon": "assets/ui/type-dark.png",
+      "color": "#4f4747"
+    },
+    "강철": {
+      "icon": "assets/ui/type-steel.png",
+      "color": "#6aaed3"
+    },
+    "페어리": {
+      "icon": "assets/ui/type-fairy.png",
+      "color": "#ffb1ff"
+    }
+  },
+  "genders": {
+    "수컷": "assets/ui/gender-male.png",
+    "암컷": "assets/ui/gender-female.png"
+  },
+  "pattern": "assets/ui/bg_pattern2.jpg",
+  "sources": {
+    "assets/ui/type-normal.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-15-37-94188-1674108937.png",
+    "assets/ui/type-fire.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-17-38-47338-1674109058.png",
+    "assets/ui/type-water.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-18-51-74356-1674109131.png",
+    "assets/ui/type-electric.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-28-29-69185-1674109709.png",
+    "assets/ui/type-grass.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-27-56-88558-1674109676.png",
+    "assets/ui/type-ice.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-28-59-69426-1674109739.png",
+    "assets/ui/type-fighting.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-29-33-26367-1674109773.png",
+    "assets/ui/type-poison.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-30-07-49159-1674109807.png",
+    "assets/ui/type-ground.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-30-35-54553-1674109835.png",
+    "assets/ui/type-flying.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-34-30-92371-1674110070.png",
+    "assets/ui/type-psychic.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-35-15-16439-1674110115.png",
+    "assets/ui/type-bug.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-35-59-10085-1674110159.png",
+    "assets/ui/type-rock.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-39-54-28241-1674110394.png",
+    "assets/ui/type-ghost.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-40-48-11897-1674110448.png",
+    "assets/ui/type-dragon.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-41-23-66716-1674110483.png",
+    "assets/ui/type-dark.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-41-54-71433-1674110514.png",
+    "assets/ui/type-steel.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-42-26-60702-1674110546.png",
+    "assets/ui/type-fairy.png": "https://data1.pokemonkorea.co.kr/newdata/2023/01/2023-01-19_15-43-04-50070-1674110584.png",
+    "assets/ui/gender-male.png": "https://pokemonkorea.co.kr/img/icon/icon_man.png",
+    "assets/ui/gender-female.png": "https://pokemonkorea.co.kr/img/icon/icon_woman.png",
+    "assets/ui/bg_pattern2.jpg": "https://pokemonkorea.co.kr/img/bg_pattern2.jpg"
+  }
+}
