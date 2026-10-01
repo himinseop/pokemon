@@ -1,4 +1,4 @@
-"""Refresh Kanto quiz entries and their official Pokédex details/related forms."""
+"""Refresh the complete official Korean Pokédex, quiz entries and related forms."""
 import concurrent.futures, html, json, pathlib, re, tempfile, time, urllib.parse, urllib.request
 ROOT=pathlib.Path(__file__).resolve().parents[1]
 BASE='https://pokemonkorea.co.kr'
@@ -76,7 +76,7 @@ def parse_entry(uid,base_entries):
         title=clean(re.search(r'<h3>(.*?)</h3>',section,re.S)[1])
         if title=='진화':entry['evolutions']=related_cards(section,base_entries,evolution=True)
         elif title=='모습':entry['forms']=related_cards(section,base_entries)
-    assert entry['types'] and entry['abilities'],uid
+    assert entry['types'],uid
     return entry
 def ability_text(name):
     path=CACHE/('ability-'+name+'.txt')
@@ -86,23 +86,64 @@ def ability_text(name):
         assert len(parts)>1 and clean(parts[1]),(name,response[:80])
         path.write_text(clean(parts[1]))
     return name,path.read_text()
+def official_listing():
+    index=fetch(BASE+'/pokedex').decode()
+    maximum=int(re.search(r'name="snumber2"[^>]*value="(\d+)"',index)[1])
+    result=[]
+    for page in range(1,251):
+        cached=CACHE/f'listing-{maximum}-{page}.txt'
+        if cached.exists():content=cached.read_text()
+        else:
+            payload=urllib.parse.urlencode({'mode':'load_more','word':'','characters':'','pn':page,'area':'',
+                'snumber':1,'snumber2':maximum,'sortselval':'number asc,number_count asc','typestr':''}).encode()
+            response=fetch(BASE+'/ajax/pokedex',payload).decode()
+            parts=response.split('#|#');assert len(parts)>1,('listing',page)
+            content=parts[1];cached.write_text(content)
+        rows=re.findall(r'<li\b[^>]*>(.*?)</li>',content,re.S)
+        if not rows:break
+        for row in rows:
+            uid=re.search(r"pokedex_detail\('[^']+',\s*'(\d+)'",row)[1]
+            heading=re.search(r'<h3><p>No\.(\d+)</p>(.*?)</h3>',row,re.S)
+            assert heading,uid
+            result.append({'uid':uid,'id':int(heading[1]),'name':clean(heading[2])})
+        if page%10==0:print(f'Official list: {len(result)} entries.',flush=True)
+    else:raise AssertionError('Official listing did not end')
+    assert len({p['uid'] for p in result})==len(result),'Duplicate official list entry'
+    primary={}
+    for p in result:primary.setdefault(p['id'],p)
+    assert sorted(primary)==list(range(1,maximum+1)),('Missing national numbers',set(range(1,maximum+1))-primary.keys())
+    print(f'Official list complete: {len(primary)} species, {len(result)} entries including forms.',flush=True)
+    return list(primary.values()),result,maximum
+
 def main():
-    base=json.loads((ROOT/'dist/pokemon.json').read_text());assert len(base)==151
-    base_entries={p['uid']:p for p in base};entries={};pending=set(base_entries)
+    base,listing,maximum=official_listing()
+    previous=json.loads((ROOT/'dist/pokemon.json').read_text())
+    previous+=list(json.loads((ROOT/'dist/pokemon-details.json').read_text()).values())
+    existing={p['uid']:p for p in previous}
+    base_entries={p['uid']:{**p,'image':existing[p['uid']]['image'] if p['uid'] in existing else f"assets/national/{p['id']:04d}.png"} for p in base}
+    entries={};pending={p['uid'] for p in listing}
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
         while pending:
-            imported=list(pool.map(lambda uid:parse_entry(uid,base_entries),sorted(pending,key=int)))
+            imported=[]
+            for i,p in enumerate(pool.map(lambda uid:parse_entry(uid,base_entries),sorted(pending,key=int)),1):
+                imported.append(p)
+                if i%50==0:print(f'Official details: {len(entries)+i} collected.',flush=True)
             entries.update({p['uid']:p for p in imported})
             pending={p['uid'] for entry in imported for p in entry['evolutions']+entry['forms']}-entries.keys()
-            assert len(entries)+len(pending)<600,'Unexpectedly broad related-entry graph'
+            assert len(entries)+len(pending)<3000,'Unexpectedly broad related-entry graph'
             print(f'Official details: {len(entries)} collected, {len(pending)} related entries remaining.',flush=True)
         names=sorted({a['name'] for p in entries.values() for a in p['abilities']})
         abilities=dict(pool.map(ability_text,names));print(f'Official ability descriptions: {len(abilities)}.',flush=True)
-        list(pool.map(lambda p:image_path(p['uid'],p['imageSource'],base_entries),entries.values()))
+        for i,_ in enumerate(pool.map(lambda p:image_path(p['uid'],p['imageSource'],base_entries),entries.values()),1):
+            if i%100==0:print(f'Official artwork: {i} / {len(entries)} ready.',flush=True)
     for entry in entries.values():
         for ability in entry['abilities']:ability['description']=abilities[ability['name']]
     result=[entries[p['uid']] for p in base];extras={uid:p for uid,p in entries.items() if uid not in base_entries}
-    (ROOT/'dist/pokemon.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
-    (ROOT/'dist/pokemon-details.json').write_text(json.dumps(extras,ensure_ascii=False,indent=2)+'\n')
-    print(f'Imported 151 quiz entries and {len(extras)} related Pokédex entries with local images.',flush=True)
+    assert [p['id'] for p in result]==list(range(1,maximum+1))
+    manifest={'source':BASE+'/pokedex','collectedAt':'2026-10-01','speciesCount':len(result),'relatedFormCount':len(extras),
+        'entryCount':len(entries),'maxNumber':maximum,'officialListingCount':len(listing)}
+    for filename,data in [('pokemon.json',result),('pokemon-details.json',extras),('pokedex-manifest.json',manifest)]:
+        target=ROOT/'dist'/filename
+        temp=target.with_suffix('.json.tmp');temp.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n');temp.replace(target)
+    print(f'Imported {len(result)} quiz entries and {len(extras)} related Pokédex entries with local images.',flush=True)
 if __name__=='__main__':main()
