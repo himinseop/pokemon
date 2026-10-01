@@ -34,7 +34,7 @@ function renderPlay(){
 previewChoices={easy:shuffle(pokemon.filter(p=>familiar.includes(p.id)))[0],normal:shuffle(pokemon)[0],hard:shuffle(pokemon)[0]};previewPokemon=mode==='time'?shuffle(pokemon)[0]:previewChoices[difficulty];
 app.innerHTML=`<section class="intro"><div><h1>이 포켓몬, 누구일까요?</h1></div></section>
 <div class="play-grid"><section class="game-card" aria-label="포켓몬 퀴즈"><div class="game-tabs"><button class="game-tab ${mode==='time'?'active':''}" data-mode="time">⚡ 타임어택</button><button class="game-tab ${mode==='write'?'active':''}" data-mode="write">✎ 마스터 도전</button></div><div id="game-body" class="game-body"></div></section></div>
-<div class="quick-links"><button class="text-button" data-nav="dex">포켓몬 도감</button><button class="text-button" data-nav="records">랭킹</button></div>`;
+<div class="quick-links"><button class="shortcut shortcut-dex" data-nav="dex"><span class="shortcut-icon" aria-hidden="true">📖</span><span>포켓몬 도감</span></button><button class="shortcut shortcut-ranking" data-nav="records"><span class="shortcut-icon" aria-hidden="true">🏆</span><span>랭킹</span></button></div>`;
 renderGameBody();
 }
 function renderGameBody(){const body=document.querySelector('#game-body');if(!body)return;

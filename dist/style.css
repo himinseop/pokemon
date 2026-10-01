@@ -100,3 +100,14 @@ dialog.dex-detail{--card-type:#999;max-height:92vh;border:8px solid #e9c45b;bord
 .loading-actions{text-align:center}
 @keyframes quiz-spin{to{transform:rotate(360deg)}}
 @media(max-width:600px){dialog.dex-detail{border-width:6px;width:calc(100vw - 20px)}.dex-detail .pokemon-detail-card{padding:15px}.pokemon-card-heading{margin:2px 32px 17px 2px;gap:8px}.dex-detail .pokemon-card-heading h2{font-size:27px}.card-type-icons{gap:5px}.card-type-icons img{width:26px;height:26px}.dex-detail .close{right:11px;top:12px;width:30px;height:30px}.dex-detail .detail-image{padding:10px;border-width:2px}.dex-detail .description-section{padding:15px}.dex-detail .dex-facts{padding:15px;gap:18px}.dex-detail .related-section{padding:12px}.difficulty-cards{gap:7px}.difficulty-cards .difficulty-choice{padding:8px 5px 12px}.difficulty-preview{height:85px}.difficulty-preview img{height:85px}.setup-stage.pokemon-stage{min-height:240px}.setup-stage.pokemon-stage img{height:210px;width:210px}.difficulty-choice small{font-size:12px}}
+/* Colorful shortcuts below the game. */
+.quick-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:440px;margin:22px auto 0}
+.shortcut{display:flex;align-items:center;justify-content:center;gap:12px;min-height:72px;padding:14px 18px;border:1px solid;border-radius:18px;font-size:16px;font-weight:800;line-height:1.4;transition:transform .15s,box-shadow .15s,background .15s}
+.shortcut-dex{background:#edf5ff;color:#2864b8;border-color:#bfd7f7;box-shadow:0 4px 0 #bfd7f7}
+.shortcut-ranking{background:#fff5d6;color:#94651c;border-color:#ecd28a;box-shadow:0 4px 0 #ecd28a}
+.shortcut-icon{display:grid;place-items:center;flex:0 0 40px;height:40px;border-radius:12px;background:#fff;font-size:25px;box-shadow:0 2px 6px #243a5610}
+.shortcut:hover{transform:translateY(-2px)}
+.shortcut-dex:hover{background:#e1efff;box-shadow:0 6px 0 #bfd7f7}
+.shortcut-ranking:hover{background:#ffefbf;box-shadow:0 6px 0 #ecd28a}
+.shortcut:active{transform:translateY(3px);box-shadow:0 1px 0 #b8c6d8}
+@media(max-width:400px){.quick-links{gap:12px;margin-top:18px}.shortcut{padding:12px 9px;gap:8px;font-size:14px;min-height:64px;border-radius:15px}.shortcut-icon{flex-basis:32px;height:32px;border-radius:10px;font-size:22px}}
