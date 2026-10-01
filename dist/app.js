@@ -44,7 +44,7 @@ if(game?.status==='loading'){body.innerHTML='<div class="quiz-start-loading" rol
 body.innerHTML=`<div class="game-setup"><h2>${mode==='time'?'60초 타임어택':'포켓몬 마스터 도전'}</h2>
 ${mode==='write'?`<div class="difficulty difficulty-cards" aria-label="난이도 선택">${Object.entries(difficulties).map(([key,d])=>`<button data-difficulty="${key}" class="difficulty-choice ${difficulty===key?'active':''}" aria-pressed="${difficulty===key}"><span class="difficulty-preview ${key==='hard'?'silhouette':''}"><img src="${previewChoices[key].image}" alt="${key==='hard'?'포켓몬 실루엣':key==='easy'?'친숙한 포켓몬 미리보기':'관동 포켓몬 미리보기'}" width="100" height="100"></span><strong>${d.label}</strong><small>${d.multiplier}배 점수</small></button>`).join('')}</div>`:''}
 ${mode==='time'?`<div class="pokemon-stage setup-stage"><img src="${previewPokemon.image}" alt="랜덤 포켓몬 미리보기" width="230" height="230"></div>`:''}
-<button class="primary setup-start" id="start-game">시작</button><p class="setup-note">${mode==='time'?'60초 · 정답 100점 · 연속 정답 보너스':'10문제 · 이름을 입력해요'}</p></div>`;
+<button class="primary setup-start" id="start-game">시작</button><p class="setup-note">${mode==='time'?'60초동안 최대한 많이 맞추기 · 정답 100점 · 연속 정답 보너스':'10문제 · 이름을 입력해요'}</p></div>`;
 }
 function prepareQuestionImages(g){
  // Keep the exact next questions warm, including the next shuffled deck.
