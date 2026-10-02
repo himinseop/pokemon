@@ -2,3 +2,6 @@
 /exports/
 /.sites-runtime/
 __pycache__/
+/node_modules/
+/cdk.out/
+/dist-aws/

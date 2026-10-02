@@ -1,0 +1,14 @@
+{
+  "account": "733625312722",
+  "region": "ap-northeast-2",
+  "stackName": "PokemonPlayProd",
+  "domainName": "pokemon.pir.kr",
+  "hostedZoneId": "Z25C4QNYU409X8",
+  "zoneName": "pir.kr",
+  "githubRepository": "himinseop/pokemon",
+  "githubOwnerId": "1148821",
+  "githubRepositoryId": "1400912995",
+  "githubEnvironment": "production",
+  "githubOidcProviderArn": "",
+  "certificateArn": ""
+}

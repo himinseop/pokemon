@@ -1,0 +1,22 @@
+{
+  "name": "pokemon-play",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {"node": ">=22.13.0"},
+  "scripts": {
+    "start": "python3 -m http.server 4173 --bind 127.0.0.1 --directory dist",
+    "check": "node --check dist/app.js && python3 scripts/verify-site.py",
+    "test": "node --test tests/*.test.cjs && python3 -m unittest discover -s tests -p 'test_*.py'",
+    "aws:build:web": "python3 scripts/build-aws.py",
+    "aws:synth": "cdk synth --lookups=false",
+    "aws:diff": "cdk diff PokemonPlayProd",
+    "aws:deploy": "cdk deploy PokemonPlayProd --outputs-file exports/aws-outputs.json",
+    "aws:publish": "python3 scripts/deploy-aws.py",
+    "ci": "npm run check && npm test && npm run aws:build:web && npm run aws:synth"
+  },
+  "devDependencies": {
+    "aws-cdk": "2.1139.0",
+    "aws-cdk-lib": "2.267.0",
+    "constructs": "10.8.1"
+  }
+}

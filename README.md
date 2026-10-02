@@ -7,7 +7,7 @@
 - 랭킹: 정상적으로 게임을 완료하고 0점보다 높은 점수로 모드·난이도별 TOP 20에 진입하면 이름 입력창이 자동으로 열립니다. 게임 완료창에서 해당 모드의 TOP 20과 내 위치를 함께 보여주며 내 행에 이름(최대 12자)을 직접 입력합니다. Enter 또는 체크 버튼으로 저장하면 같은 화면에서 저장된 이름을 확인할 수 있습니다. 이름을 비우거나 공백만 입력하면 전체 포켓몬 중 랜덤 포켓몬 이름으로 저장합니다. 동점은 정답 수와 먼저 세운 기록 순으로 결정합니다. 각 모드의 최고 20개를 보존하고, 중도 종료나 이미지 오류는 랭킹에 등록하지 않습니다. 같은 기기의 브라우저에 저장되며 온라인 공동 순위 기능은 포함하지 않습니다.
 - 도감: 전체 1,025종 목록, 이름/번호 검색, 공식 지방별 그룹 선택, 타입 필터, 이름순/번호순 정렬, 공식 도감의 작품별 설명·타입·분류·성별·키·몸무게와 모든 특성의 설명. 공식 진화 단계와 분기, 메가진화·지역별 모습·거다이맥스 등 다른 모습을 이미지로 표시합니다. 관련 포켓몬을 누르면 사이트 안에서 상세 도감으로 이동합니다.
 
-- 색칠놀이: 전체 1,025종에서 이름/번호 또는 지방으로 선택하고 다른 모습도 선택하여 윤곽선 도안을 A4 한 장으로 인쇄합니다. 선 표시를 세밀하게/보통/단순하게 조절할 수 있습니다. 선택한 원본 한 장만 브라우저에서 처리하며 별도 서버나 추가 이미지 저장은 필요 없습니다. 자동 윤곽선 변환이므로 일부 작은 무늬나 낮은 대비의 경계는 생략될 수 있습니다.
+- 색칠놀이: 전체 1,025종에서 이름/번호 또는 지방으로 선택하고 다른 모습도 선택하여 윤곽선 도안을 A4 한 장으로 인쇄합니다. 선 표시는 단순하게를 기본으로 사용하며 세밀하게/보통/단순하게 조절할 수 있습니다. 선택한 원본 한 장만 브라우저에서 처리하며 별도 서버나 추가 이미지 저장은 필요 없습니다. 자동 윤곽선 변환이므로 일부 작은 무늬나 낮은 대비의 경계는 생략될 수 있습니다.
 
 ## 실행
 
@@ -17,7 +17,7 @@
 python3 -m http.server 4173 --bind 127.0.0.1 --directory dist
 ```
 
-별도 설치나 빌드가 필요하지 않습니다. Sites의 비공개 사이트로 게시됩니다.
+로컬 실행에는 별도 설치나 빌드가 필요하지 않습니다. AWS용 검증·배포 절차는 아래 CI/CD 안내를 참고하세요.
 
 ## 데이터 출처
 
@@ -37,29 +37,17 @@ python3 -m http.server 4173 --bind 127.0.0.1 --directory dist
 
 지원 브라우저에서는 WebMCP를 통해 퀴즈 시작/상태/답안 제출과 도감 검색을 사용할 수 있습니다. 지원하지 않는 브라우저에서도 게임은 정상 작동합니다.
 
-## AWS 배포: pokemon.pir.kr
+## AWS 배포와 CI/CD: pokemon.pir.kr
 
-현재 사이트 배포와 별도로 사용자가 AWS 리소스와 기존 도메인의 DNS를 설정하는 절차입니다. 이 저장소의 파일을 수정하는 것만으로 AWS 배포나 DNS 변경이 실행되지는 않습니다. 추천 구성은 비공개 S3 버킷 + CloudFront + ACM이며, 별도 서버나 데이터베이스는 필요하지 않습니다.
+podcast와 같은 CDK 기반 비공개 S3 + CloudFront OAC + ACM + 기존 Route 53 구조를 사용합니다. `himinseop/pokemon`의 PR과 main push에서 사이트와 인프라를 검증하고, AWS 최초 설정 후 main의 검증된 릴리스를 GitHub Actions OIDC로 자동 배포합니다. 장기 AWS 키는 GitHub에 저장하지 않습니다.
 
-### 사용자가 설정할 항목
+설정은 `infra/config.json`, 파이프라인은 `.github/workflows/aws.yml`에 있습니다. [최초 AWS 설정·GitHub 연결·운영 및 복구 절차](docs/aws-deployment.md)를 참고하세요. `npm run ci`는 로컬 검증과 빌드/CloudFormation 생성을 수행하며 AWS 리소스를 변경하지 않습니다. `AWS_DEPLOY_ENABLED=true`를 설정하기 전에는 검증만 실행하고 배포는 건너뜁니다.
 
-1. **AWS 계정과 권한**: AWS 콘솔에서 S3, CloudFront, ACM을 관리할 수 있어야 합니다. CloudFront 정액 **Free** 플랜을 선택할 수 있는지 먼저 확인합니다. Free 플랜은 월 100GB 전송·100만 요청과 S3 Standard 5GB에 해당하는 저장 크레딧을 제공합니다. AWS Free Tier 상태인 계정은 정액 플랜 가입 제한이 있을 수 있습니다. 가입이 불가능하면 종량제 CloudFront의 월 1TB·1천만 요청 무료 범위를 대안으로 사용하되 초과분은 과금됩니다. 계정의 기존 사용량과 다른 서비스 사용량도 확인합니다.
-2. **S3**: 서울 리전(`ap-northeast-2`)에 일반 목적 버킷을 만들고 Standard 저장 클래스를 사용합니다. 버킷 이름은 계정 내 배포 이름과 별개로 전 세계에서 고유해야 합니다. 모든 퍼블릭 액세스 차단은 유지하고 ACL은 비활성화합니다. S3의 정적 웹사이트 엔드포인트는 사용하지 않습니다. 배포 ZIP을 풀고, `index.html`, JS/CSS/JSON과 `assets` 폴더를 버킷 최상위에 업로드합니다. ZIP 파일 하나만 업로드하면 게임이 제공되지 않습니다.
-3. **ACM**: 미국 버지니아 북부(`us-east-1`)에서 `pokemon.pir.kr`용 비내보내기 공개 인증서를 요청합니다. DNS 검증을 선택하고, ACM이 생성한 검증 CNAME을 현재 `pir.kr` DNS 관리 화면에 추가합니다. 이 검증 레코드는 자동 갱신을 위해 유지합니다.
-4. **CloudFront**: Standard distribution / Single website or app을 만들고, 원본으로 위 S3 버킷을 지정합니다. 추천 원본 설정으로 OAC를 사용하고, 해당 배포만 버킷의 파일을 읽도록 버킷 정책을 적용합니다. 가격 플랜은 Free(가입 가능 시), 기본 루트 객체는 `index.html`, 뷰어 프로토콜은 HTTP를 HTTPS로 리디렉션, 허용 메서드는 GET/HEAD입니다. 대체 도메인 이름에 `pokemon.pir.kr`을 넣고 위 ACM 인증서를 연결합니다. S3 원본 비공개 설정은 방문자 로그인을 뜻하지 않습니다. 현재 Sites의 소유자 전용 접근을 유지하려면 별도 방문자 인증 설계가 필요합니다.
-5. **기존 DNS**: `pir.kr`의 현재 DNS 서비스에서 이름 `pokemon`, 유형 CNAME, 대상은 생성된 CloudFront 배포 도메인으로 설정합니다. 예시가 아닌 실제 반환된 도메인을 그대로 사용하며 `https://`와 경로는 넣지 않습니다. 기존 DNS를 그대로 사용하므로 Route 53 호스팅 영역을 새로 만들 필요가 없습니다. ACM 검증 CNAME과 서비스 연결 CNAME은 서로 다른 레코드입니다.
-6. **업데이트와 비용**: 배포 시 바뀐 파일만 업로드하고 CloudFront 캐시를 무효화합니다. 이미지에 긴 캐시 기간을 적용하되 이미지를 바꾸면 파일 경로도 바꾸거나 캐시를 갱신합니다. 추가 유료 플랜·추가 WAF·실시간 로그·Origin Shield는 현재 규모에 필수적이지 않습니다. 정액 Free에 포함된 WAF는 유지합니다. S3 요청 및 플랜 밖 서비스에는 별도 요금이 생길 수 있으므로 청구 알림을 설정합니다.
+```sh
+npm ci
+npm run ci
+```
 
-`python3 scripts/package-aws.py`를 실행하면 `exports/pokemon-play-aws.zip`을 만듭니다. ZIP에는 배포에 필요한 정적 파일만 들어가며, ZIP 루트의 `index.html`을 포함합니다. AWS 및 DNS 리소스는 생성하지 않습니다.
-
-랭킹은 브라우저의 localStorage에 보관합니다. `pokemon.pir.kr`로 주소가 바뀌면 기존 Sites 주소의 기록은 자동으로 이전되지 않으며, 다른 기기와 공유되는 온라인 랭킹도 자동으로 생기지 않습니다. 온라인 공동 랭킹은 별도 서버 기능이 필요합니다.
-
-확인일: 2026-10-01. 공식 문서:
-
-- [S3 + CloudFront와 OAC](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/GettingStarted.SimpleDistribution.html)
-- [CloudFront Free 플랜과 가입 조건](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/flat-rate-pricing-plan.html)
-- [CloudFront 종량제 무료 범위](https://aws.amazon.com/cloudfront/pricing/pay-as-you-go/)
-- [CloudFront 인증서 리전](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cnames-and-https-requirements.html)
-- [대체 도메인과 DNS 연결](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/CNAMEs.html)
+`npm run aws:deploy -- --profile podbbangcast`는 인프라를 생성합니다. `npm run aws:publish -- --profile podbbangcast`는 검증된 `dist-aws` 파일을 게시합니다. 기존 수동 S3 업로드용 ZIP은 `python3 scripts/package-aws.py`로 계속 만들 수 있습니다. 랭킹은 브라우저 localStorage이며 공동 온라인 순위나 기존 도메인의 기록 자동 이전은 포함하지 않습니다.
 
 지방 그룹은 `scripts/import-regions.py`로 공식 도감의 11개 지방 필터(미확인 포함)를 마지막 페이지까지 수집하여 `dist/pokemon-regions.json`에 기록합니다. 다른 모습으로 지방에 속하는 경우 해당 종도 포함하므로 그룹이 겹칠 수 있습니다. 타임어택 랭킹은 3개 난이도로 분리하고, 기존 타임어택 기록은 보통 랭킹에서 유지합니다.
