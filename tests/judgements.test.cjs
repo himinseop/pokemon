@@ -165,7 +165,7 @@ test('moving on from a wrong answer records one miss without revealing its full 
 });
 test('master time bonus starts with image readiness, decreases for twenty seconds and never ends a slow question',async t=>{
  for(const [level,unit] of [['easy',100],['normal',200],['hard',300]]){
-  const h=await harness();t.after(h.close);await h.start('write',level);assert.equal(h.game().questionStartedAt,0);h.clock(10000);h.w.qa('tick()');assert.equal(h.w.qa('masterBonus(game)'),unit/4);assert.equal(h.$('.bonus-fill').style.width,'50%');h.correct();assert.equal(h.game().score,unit*1.25);assert.equal(h.game().history[0].elapsedMs,10000);assert.equal(h.game().bonusAwarded,unit/4);
+  const h=await harness();t.after(h.close);await h.start('write',level);assert.equal(h.game().questionStartedAt,0);h.clock(10000);h.w.qa('tick()');assert.equal(h.w.qa('masterBonus(game)'),unit/4);assert.ok(Math.abs(parseFloat(h.$('.bonus-fill').style.width)-unit/4/150*100)<.001);assert.equal(h.$('[aria-label="보너스 점수"]').getAttribute('aria-valuenow'),String(unit/4));h.correct();assert.equal(h.game().score,unit*1.25);assert.equal(h.game().history[0].elapsedMs,10000);assert.equal(h.game().bonusAwarded,unit/4);
   await h.next();h.clock(40000);h.w.qa('tick()');assert.equal(h.game().status,'playing');assert.equal(h.w.qa('masterBonus(game)'),0);assert.equal(h.$('.bonus-fill').style.width,'0%');h.correct();assert.equal(h.game().score,unit*2.25);assert.equal(h.game().history[1].elapsedMs,20000);
  }
 });

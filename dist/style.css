@@ -407,7 +407,7 @@ body.game-focused .master-tools .game-control:disabled{background:#fff;opacity:.
 @media screen{
  body.game-focused[data-game-mode="write"] .game-body{position:relative;height:min(700px,calc(var(--master-visible-height,100svh) - 24px));grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;gap:10px}
  body.game-focused[data-game-mode="write"] .pokemon-stage{grid-row:1;grid-column:1;height:100%;min-height:0;border-radius:22px}
- body.game-focused[data-game-mode="write"] #question-image{height:calc(100% - 84px);max-height:400px;transform:translateY(-38px)}
+ body.game-focused[data-game-mode="write"] #question-image{width:min(94%,440px);height:calc(100% - 84px);max-height:440px;transform:translateY(-38px)}
  body.game-focused[data-game-mode="write"] .text-form{grid-column:1;grid-row:1;position:absolute;top:var(--master-answer-top,10px);left:10px;right:10px;z-index:4;padding:6px;border:1px solid #e2e7ef;border-radius:18px;background:#ffffffeb;box-shadow:0 5px 18px #27344814;backdrop-filter:blur(8px);gap:8px}
  body.game-focused[data-game-mode="write"] .text-form .primary{min-width:78px;min-height:48px;padding:10px 12px;border-radius:12px;font-size:14px}
  body.game-focused[data-game-mode="write"] .answer-slot{height:48px;font-size:21px;border-radius:10px}
@@ -426,7 +426,7 @@ body.game-focused .master-tools .game-control:disabled{background:#fff;opacity:.
  .master-bonus[hidden]{display:none!important}
  .bonus-label{font-size:11px;font-weight:700;color:#a97d20;text-align:center;line-height:16px}
  .bonus-track{height:5px;background:#f3eee0;border-radius:8px;overflow:hidden}
- .bonus-fill{height:100%;width:100%;background:linear-gradient(90deg,#f4bc3b,#f7d567);border-radius:8px;transition:width .1s linear}
+ .bonus-fill{height:100%;width:0;background:linear-gradient(90deg,#f4bc3b,#f7d567);border-radius:8px;transition:width .1s linear}
  .bonus-earned .bonus-label{color:#25885c}
  .bonus-earned .bonus-fill{background:#53b98c}
  .bonus-expired .bonus-label{color:#8b96a5}
@@ -434,4 +434,22 @@ body.game-focused .master-tools .game-control:disabled{background:#fff;opacity:.
  .answer-slot.checked-wrong{border-color:#ee8b85;background:#fff0ee;color:#bf4d47;box-shadow:none}
  @media(max-width:700px) and (orientation:portrait){body.game-focused[data-game-mode="write"] #app{align-items:stretch}body.game-focused[data-game-mode="write"] .play-grid,body.game-focused[data-game-mode="write"] .game-card{height:100%}body.game-focused[data-game-mode="write"] .game-body{height:100%}}
  @media(max-width:340px){body.game-focused[data-game-mode="write"] .answer-slot{font-size:18px}.question-count{font-size:11px}}
+}
+
+/* Messages float above the answer, leaving more room for the Pokemon. */
+@media screen{
+ body.game-focused[data-game-mode="write"] .game-body{grid-template-rows:minmax(0,1fr) auto}
+ body.game-focused[data-game-mode="write"] .master-feedback{position:absolute;inset:auto 10px var(--master-feedback-bottom,80px);z-index:3;display:flex;align-items:center;justify-content:center;grid-row:auto;grid-column:auto;min-height:0;pointer-events:none}
+ body.game-focused[data-game-mode="write"] .master-feedback .feedback,body.game-focused[data-game-mode="write"] .master-feedback .hint-message{margin:0;min-height:0;padding:4px 10px;border-radius:12px;background:#ffffffd9;font-size:12px;line-height:18px;max-width:100%}
+ .master-feedback .feedback:empty{display:none}
+ .attack-score{min-width:58px;text-align:right}
+ .master-bonus{gap:3px}
+ .bonus-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;line-height:16px;color:#a97d20;font-size:11px}
+ .bonus-heading .bonus-label{text-align:left}
+ .bonus-current{font-size:12px;font-variant-numeric:tabular-nums}
+ .bonus-scale{display:flex;align-items:center;justify-content:space-between;font-size:10px;line-height:12px;color:#8995a5;font-variant-numeric:tabular-nums}
+ .bonus-earned .bonus-heading{color:#25885c}
+ .bonus-expired .bonus-heading{color:#8b96a5}
+ .dex-detail .detail-tool,.dex-detail .detail-tool.coloring-tool,.dex-detail .detail-tool:hover,.dex-detail .detail-tool:active{background:#ffffffb8;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+ button:focus,button:focus-visible{outline:none!important;outline-offset:0}
 }
