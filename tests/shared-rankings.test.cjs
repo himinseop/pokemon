@@ -72,15 +72,26 @@ test('ranking prefills the trainer name and permits a separate edited name befor
 test('quitting displays the end ranking and replay returns to the selected master difficulty',async t=>{
  const h=await harness(server());t.after(h.close);h.click('[data-mode="write"]');h.click('[data-difficulty="hard"]');h.click('#start-game');await flush();
  h.$('#answer-input').value=h.w.qa('game.question.name');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));h.click('#quit-game');await flush();
- assert.equal(h.w.qa('game.status'),'ended');assert.equal(h.w.qa('game.quit'),true);assert.ok(h.$('#high-score').open);assert.equal(h.$('#save-message').textContent,'즐거운 도전이었어요');assert.equal(h.$('#trainer-name').value,'지우');
- h.click('#ranking-replay');assert.equal(h.w.qa('game'),null);assert.equal(h.w.qa('mode'),'write');assert.equal(h.w.qa('difficulty'),'hard');assert.equal(h.$('[data-mode="write"]').classList.contains('active'),true);assert.equal(h.$('[data-difficulty="hard"]').getAttribute('aria-pressed'),'true');assert.ok(h.$('#start-game'));
+ assert.equal(h.w.qa('game.status'),'ended');assert.equal(h.w.qa('game.quit'),true);assert.ok(h.$('#high-score').open);assert.equal(h.$('#save-message').textContent,'즐거운 도전이었어!');assert.equal(h.$('#trainer-name').value,'지우');
+ h.click('#ranking-replay');await flush();assert.equal(h.w.qa('game'),null);assert.equal(h.w.qa('mode'),'write');assert.equal(h.w.qa('difficulty'),'hard');assert.equal(h.$('[data-mode="write"]').classList.contains('active'),true);assert.equal(h.$('[data-difficulty="hard"]').getAttribute('aria-pressed'),'true');assert.ok(h.$('#start-game'));
 });
 test('quitting with no answers still opens the leaderboard without offering a zero score save',async t=>{
- const h=await harness(server());t.after(h.close);h.click('#start-game');await flush();h.click('#quit-game');await flush();assert.ok(h.$('#high-score').open);assert.equal(h.$('#trainer-name'),null);assert.equal(h.$('#save-message').textContent,'즐거운 도전이었어요');h.click('#ranking-replay');assert.ok(h.$('#start-game'));
+ const h=await harness(server());t.after(h.close);h.click('#start-game');await flush();h.click('#quit-game');await flush();assert.ok(h.$('#high-score').open);assert.equal(h.$('#trainer-name'),null);assert.equal(h.$('#save-message').textContent,'즐거운 도전이었어!');h.click('#ranking-replay');assert.ok(h.$('#start-game'));
 });
 test('ranking dates use Korean calendar days and completed weeks, months and years',async t=>{
  const h=await harness(server());t.after(h.close);
  const relative=date=>h.w.qa(`rankingDate('${date}',new Date('2026-10-07T05:00:00Z'))`);
  for(const [date,label] of [['2026-10-07T00:04:00Z','09:04'],['2026-10-06T16:05:00Z','01:05'],['2026-10-06T00:00:00Z','1일전'],['2026-10-01T00:00:00Z','6일전'],['2026-09-30T00:00:00Z','1주전'],['2026-09-23T00:00:00Z','2주전'],['2026-09-07T00:00:00Z','1개월전'],['2025-11-07T00:00:00Z','11개월전'],['2025-10-07T00:00:00Z','1년전'],['2024-10-07T00:00:00Z','2년전']])assert.equal(relative(date),label,date);
  assert.equal(h.w.qa("rankingDate('2026-01-31T05:00:00Z',new Date('2026-02-28T05:00:00Z'))"),'1개월전');
+});
+
+test('replay saves the entered ranking name before returning to the selected lobby',async t=>{
+ const shared=server(),h=await harness(shared,{trainer:'지우'});t.after(h.close);await h.finish();h.$('#trainer-name').value='우리집트레이너';h.click('#ranking-replay');
+ assert.ok(h.w.qa('game'));assert.equal(h.$('#ranking-replay').disabled,true);await flush();
+ assert.equal(h.w.qa('game'),null);assert.ok(h.$('#start-game'));assert.equal(shared.boards.get('time-easy')[0].name,'우리집트레이너');assert.equal(shared.submissions.length,1);assert.equal(h.w.qa('mode'),'time');assert.equal(h.w.qa('difficulty'),'easy');
+});
+test('replay stays on the name entry when saving fails and retries without duplicate records',async t=>{
+ const shared=server(),h=await harness(shared);t.after(h.close);await h.finish();shared.loseNextAck=true;h.$('#trainer-name').value='꼬부기';h.click('#ranking-replay');await flush();
+ assert.equal(h.w.qa('game.status'),'ended');assert.ok(h.$('#high-score').open);assert.equal(h.$('#trainer-name').value,'꼬부기');assert.equal(h.$('#ranking-replay').disabled,false);assert.equal(h.$('#start-game'),null);
+ h.click('#ranking-replay');await flush();assert.equal(h.w.qa('game'),null);assert.ok(h.$('#start-game'));assert.equal(shared.boards.get('time-easy').length,1);assert.equal(shared.submissions[0].id,shared.submissions[1].id);
 });

@@ -53,7 +53,7 @@ test('typed retries reset the streak, stay on the same question, and replay FAIL
  const question=h.game().question;h.submit('없는포켓몬');const oldImage=h.$('.judgement-image');
  assert.equal(h.game().streak,0);assert.equal(h.game().score,300);assert.equal(h.game().total,3);assert.equal(h.game().locked,false);
  assert.equal(h.game().question,question);assert.equal(h.$('#judgement-effect').dataset.judgement,'fail');
- assert.equal(h.$('#feedback').textContent,'다시 도전해 보세요!');
+ assert.equal(h.$('#feedback').textContent,'괜찮아! 한 번 더 맞혀봐.');
  h.submit('없는포켓몬');assert.notEqual(h.$('.judgement-image'),oldImage);assert.equal([...h.timers.values()].filter(x=>x.delay===500).length,1);
  h.correct();assert.equal(h.$('#judgement-effect').dataset.judgement,'good');assert.equal(h.game().streak,1);await h.run(550);
  h.$('#skip-question').click();assert.equal(h.$('#judgement-effect').dataset.judgement,'fail');assert.equal(h.game().streak,0);
@@ -100,4 +100,18 @@ test('master keyboard follows the visual viewport and restores the input on dism
  viewport.height=333;h.w.qa('fitLayersToViewport()');assert.equal(h.w.document.body.classList.contains('master-keyboard'),true);assert.equal(h.w.document.documentElement.style.getPropertyValue('--master-visible-height'),'333px');assert.ok(h.$('.question-score'));assert.ok(h.$('#skip-question'));
  viewport.height=667;h.w.qa('fitLayersToViewport()');assert.equal(h.w.document.body.classList.contains('master-keyboard'),false);assert.ok(h.$('#answer-input'));
  viewport.height=333;viewport.scale=2;h.w.qa('fitLayersToViewport()');assert.equal(h.w.document.body.classList.contains('master-keyboard'),false);
+});
+
+test('master syllable boxes preserve Korean composition and ignore premature submit',async t=>{
+ const h=await harness();t.after(h.close);await h.start('write');const input=h.$('#answer-input'),length=Array.from(h.game().question.name.normalize('NFKC').replace(/\s+/g,'')).length;
+ assert.equal(h.w.document.querySelectorAll('.answer-slot').length,length);assert.equal([...h.w.document.querySelectorAll('.answer-slot')].map(cell=>cell.textContent).join(''),'');
+ input.dispatchEvent(new h.w.CompositionEvent('compositionstart',{bubbles:true}));input.value='ㅍ';input.dispatchEvent(new h.w.InputEvent('input',{bubbles:true,isComposing:true}));h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.game().total,0);assert.equal(input.value,'ㅍ');
+ input.value=h.game().question.name;input.dispatchEvent(new h.w.InputEvent('input',{bubbles:true,isComposing:true}));input.dispatchEvent(new h.w.CompositionEvent('compositionend',{bubbles:true}));
+ assert.equal([...h.w.document.querySelectorAll('.answer-slot')].map(cell=>cell.textContent).join(''),input.value);h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.game().correct,1);await h.run(550);assert.equal(h.$('#answer-input'),input);assert.equal(h.w.document.activeElement,input);assert.equal([...h.w.document.querySelectorAll('.answer-slot')].map(cell=>cell.textContent).join(''),'');
+});
+test('syllable boxes accept spaced paste and show deletion without exposing answer letters',async t=>{
+ const h=await harness();t.after(h.close);await h.start('write');const input=h.$('#answer-input'),answer=h.game().question.name;
+ input.value=Array.from(answer).join(' ');input.dispatchEvent(new h.w.InputEvent('input',{bubbles:true,inputType:'insertFromPaste'}));assert.equal([...h.w.document.querySelectorAll('.answer-slot')].map(cell=>cell.textContent).join(''),answer);assert.ok(input.value.includes(' ')||answer.length===1);
+ input.value='';input.dispatchEvent(new h.w.InputEvent('input',{bubbles:true,inputType:'deleteContentBackward'}));assert.equal([...h.w.document.querySelectorAll('.answer-slot')].map(cell=>cell.textContent).join(''),'');
+ input.value=answer;input.dispatchEvent(new h.w.InputEvent('input',{bubbles:true}));h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.game().correct,1);
 });
