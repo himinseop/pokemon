@@ -391,3 +391,12 @@ body.game-focused .play-actions:has(.hint-control){align-items:stretch}
  .dex-detail .detail-tools{position:static;order:2;display:flex;flex-direction:row;justify-content:center;gap:12px;flex-shrink:0;padding:12px;border:8px solid #e9c45b;border-top:0;border-radius:0 0 22px 22px;background:var(--card-type,#fff)}
  @media(max-width:600px){.dex-detail .detail-tools{border-width:6px;border-top:0}.dex-detail .detail-scroll{max-height:calc(var(--layer-height) - 74px)}}
 }
+/* Glass tools float over the card; bottom padding keeps its final content clear. */
+@media screen{
+ .dex-detail .detail-scroll{max-height:var(--layer-height);border-radius:22px;border-bottom:8px solid #e9c45b}
+ .dex-detail .pokemon-detail-card{padding-bottom:96px}
+ .dex-detail .detail-tools{position:absolute;inset:auto 0 14px;z-index:4;display:flex;justify-content:center;gap:12px;padding:0;border:0;border-radius:0;background:transparent;pointer-events:none}
+ .dex-detail .detail-tool,.dex-detail .detail-tool.coloring-tool{pointer-events:auto;background:#ffffffb8;border-color:#ffffffa6;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 3px 15px #14223b26}
+ .dex-detail .detail-tool:hover{background:#fffffff0}
+ @media(max-width:600px){.dex-detail .detail-scroll{border-bottom-width:6px}}
+}
