@@ -231,3 +231,18 @@ body.game-focused[data-game-mode="write"] .pokemon-stage{height:clamp(180px,calc
 body.game-focused .quiz-start-loading{padding:32px 0}
 @media(max-width:380px){body.game-focused .choice{gap:8px;padding:12px;font-size:14px}body.game-focused .game-stats{font-size:12px}body.game-focused .game-stats strong{font-size:22px}}
 @media(max-height:500px) and (orientation:landscape){body.game-focused #app{max-width:900px;min-height:100svh;align-items:flex-start}body.game-focused .game-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center}body.game-focused .pokemon-stage{grid-column:1;grid-row:1/5;height:calc(100svh - 24px);min-height:180px}body.game-focused .question-score,body.game-focused .choices,body.game-focused .text-form,body.game-focused .feedback,body.game-focused .play-actions{grid-column:2}body.game-focused[data-game-mode="write"] .pokemon-stage{height:calc(100svh - 24px)}}
+
+/* Shared boards use the same two-mode selector as the game lobby. */
+.ranking-controls{background:#fff;border:1px solid var(--border);border-radius:20px;overflow:hidden;margin-bottom:24px}
+.ranking-mode-tabs{padding:0 14px}
+.ranking-mode-tabs .game-tab{font-size:15px;padding:18px 6px}
+.ranking-difficulties{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:16px}
+.ranking-difficulties button{min-height:44px;border:1px solid #e3e9f2;background:#fff;border-radius:12px;font-size:14px;font-weight:700;color:#748094}
+.ranking-difficulties button.active{border-color:#ee938d;background:#fff0ee;color:#d75047}
+.ranking-refresh{flex-shrink:0;display:grid;place-items:center;width:42px;height:42px;padding:10px;border:1px solid #e3e9f2;border-radius:12px;background:#fff;color:#748094}
+.ranking-refresh svg{width:22px;height:22px}
+.ranking-refresh:disabled{opacity:.45}
+.ranking-intro{gap:12px;align-items:center}
+.ranking-status{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:200px;padding:28px;text-align:center;gap:16px;color:#748094;background:#fff;border:1px solid var(--border);border-radius:20px}
+.ranking-status p{font-size:14px;line-height:1.7;margin:0}
+@media(max-width:700px){.ranking-mode-tabs{padding:0 10px}.ranking-mode-tabs .game-tab{font-size:14px}.ranking-difficulties{padding:14px;gap:8px}.ranking-controls{margin-bottom:20px}.ranking-intro p{font-size:13px}}
