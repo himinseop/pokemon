@@ -369,3 +369,25 @@ body.game-focused .play-actions:has(.hint-control) .game-control>span{flex-basis
 body.master-keyboard .play-actions:has(.hint-control) .game-control{min-height:52px}
 body.game-focused .play-actions:has(.hint-control){align-items:stretch}
 .hint-control.used:disabled{opacity:1;background:#f5f7fa;border-color:#e2e7ef;color:#748094;box-shadow:none}
+
+/* The master keyboard uses a single compact score/control row. */
+@media screen and (max-width:700px) and (orientation:portrait){
+ body.master-keyboard .game-body{grid-template-rows:minmax(0,1fr) auto auto}
+ body.master-keyboard .pokemon-stage{grid-row:1;grid-column:1}
+ body.master-keyboard .question-score{grid-row:2;grid-column:1}
+ body.master-keyboard .game-stats{min-height:44px}
+ body.master-keyboard .feedback-area{grid-row:3;grid-column:1;min-height:20px}
+ body.master-keyboard .hint-message{display:none}
+ body.master-keyboard .play-actions:has(.hint-control){grid-row:2;grid-column:1;justify-self:center;align-self:center;z-index:2;width:auto;gap:8px;margin:0}
+ body.master-keyboard .play-actions:has(.hint-control) .game-control{flex:none;width:44px;height:44px;min-height:44px;padding:4px;border-radius:10px;font-size:0;gap:0;box-shadow:none}
+ body.master-keyboard .play-actions:has(.hint-control) .game-control>span{font-size:21px;flex-basis:26px;height:26px}
+ body.master-keyboard .hint-control .control-label{display:none}
+}
+/* Details keep a visible close/coloring toolbar beneath the scrollable card. */
+@media screen{
+ dialog.dex-detail{width:min(768px,calc(100vw - 24px));padding:0;border-radius:22px;background:var(--card-type,#fff);overflow:hidden;box-shadow:0 22px 80px #16274460}
+ dialog.dex-detail[open]{display:flex;flex-direction:column}
+ .dex-detail .detail-scroll{order:1;flex:1;min-height:0;max-height:calc(var(--layer-height) - 76px);border-radius:22px 22px 0 0;border-bottom:0;box-shadow:none}
+ .dex-detail .detail-tools{position:static;order:2;display:flex;flex-direction:row;justify-content:center;gap:12px;flex-shrink:0;padding:12px;border:8px solid #e9c45b;border-top:0;border-radius:0 0 22px 22px;background:var(--card-type,#fff)}
+ @media(max-width:600px){.dex-detail .detail-tools{border-width:6px;border-top:0}.dex-detail .detail-scroll{max-height:calc(var(--layer-height) - 74px)}}
+}

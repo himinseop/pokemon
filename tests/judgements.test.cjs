@@ -120,11 +120,23 @@ test('one hint per master question reveals the correct position and halves only 
  for(const [level,unit] of [['easy',100],['normal',200],['hard',300]]){
   const h=await harness();t.after(h.close);await h.start('write',level);const input=h.$('#answer-input'),question=h.game().question,letters=Array.from(question.name);
   h.w.Math.random=()=>.73;h.$('#hint-question').click();const expected=level==='hard'?Math.floor(letters.length*.73):0;
-  assert.equal(h.game().hint.index,expected);assert.equal(h.game().hint.letter,letters[expected]);assert.equal(h.$('#hint-question').disabled,true);assert.equal(h.game().score,0);assert.ok(h.$('#hint-message').textContent.includes(letters[expected]));assert.equal(h.w.document.querySelectorAll('.hint-target').length,1);assert.equal(h.w.document.activeElement,input);
+  assert.equal(h.game().hint.index,expected);assert.equal(h.game().hint.letter,letters[expected]);assert.equal(h.$('#hint-question').disabled,true);assert.equal(h.game().score,0);assert.equal(h.w.document.querySelectorAll('.answer-slot')[expected].textContent,letters[expected]);assert.equal(h.w.document.querySelectorAll('.hint-target').length,1);assert.equal(h.w.document.activeElement,input);
   h.submit('없는포켓몬');assert.equal(h.game().question,question);assert.equal(h.game().hintUsed,true);h.w.qa('showQuestionHint()');assert.equal(h.game().hint.index,expected);
   h.correct();assert.equal(h.game().score,unit/2);assert.equal(h.game().history[0].hintUsed,true);await h.run(550);assert.equal(h.game().hintUsed,false);assert.equal(h.$('#hint-question').disabled,false);assert.equal(h.$('#hint-message').hidden,true);h.correct();assert.equal(h.game().score,unit*1.5);
  }
 });
 test('skipping after a hint awards no points and the next question gets a fresh hint',async t=>{
  const h=await harness();t.after(h.close);await h.start('write');h.$('#hint-question').click();h.$('#skip-question').click();assert.equal(h.game().score,0);assert.equal(h.game().history[0].correct,false);assert.equal(h.game().history[0].hintUsed,true);await h.run(1300);assert.equal(h.game().hintUsed,false);assert.equal(h.$('#hint-question').disabled,false);
+});
+
+test('hint fills a fixed letter and accepts only the remaining letters, including a full-name paste',async t=>{
+ const h=await harness();t.after(h.close);await h.start('write','hard');h.w.qa("game.deck.push(pokemon.find(p=>p.name==='파라블레이즈'));nextQuestion()");await flush();h.w.Math.random=()=>.5;h.$('#hint-question').click();assert.equal(h.game().hint.index,3);assert.equal(h.w.document.querySelectorAll('.answer-slot')[3].textContent,'레');
+ h.$('#answer-input').value='파 라 블 이 즈';h.$('#answer-input').dispatchEvent(new h.w.InputEvent('input',{bubbles:true,inputType:'insertFromPaste'}));assert.equal([...h.w.document.querySelectorAll('.answer-slot')].map(cell=>cell.textContent).join(''),'파라블레이즈');
+ h.$('#answer-input').value='파라블레이즈';h.$('#answer-input').dispatchEvent(new h.w.InputEvent('input',{bubbles:true,inputType:'insertFromPaste'}));assert.equal(h.$('#answer-input').value,'파라블이즈');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.game().correct,1);assert.equal(h.game().score,150);
+});
+test('a one-letter Pokemon hint is filled and can be confirmed without further typing',async t=>{
+ const h=await harness();t.after(h.close);await h.start('write');h.w.qa("game.deck.push(pokemon.find(p=>p.name==='뮤'));nextQuestion()");await flush();h.$('#hint-question').click();assert.equal(h.$('#answer-slots').textContent,'뮤');assert.equal(h.$('#answer-input').maxLength,0);h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.game().correct,1);assert.equal(h.game().score,50);
+});
+test('requesting a hint while composing commits existing letters and retains input focus',async t=>{
+ const h=await harness();t.after(h.close);await h.start('write','normal');h.w.qa("game.deck.push(pokemon.find(p=>p.name==='파라블레이즈'));nextQuestion()");await flush();const input=h.$('#answer-input');input.value='파라';input.dispatchEvent(new h.w.CompositionEvent('compositionstart',{bubbles:true}));h.$('#hint-question').click();assert.equal(h.game().answerComposing,false);assert.equal(input.value,'라');assert.equal(h.$('#answer-slots').textContent,'파라');assert.equal(h.w.document.activeElement,input);
 });
