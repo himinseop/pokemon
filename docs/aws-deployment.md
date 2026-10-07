@@ -1,6 +1,6 @@
 # 포켓몬 플레이 AWS와 CI/CD
 
-구성일: 2026-10-02. 참고: 공유 `../docs/aws-deployment-guide.md`의 podcast 구성. 게임은 정적 사이트이므로 S3·CloudFront·ACM·기존 Route 53 영역만 사용합니다. GitHub Actions로 정적 릴리스를 자동 배포하고, 인프라 변경은 CDK diff 검토 후 별도로 배포합니다.
+구성일: 2026-10-02, 공유 랭킹 추가: 2026-10-07. 참고: 공유 `../docs/aws-deployment-guide.md`의 podcast 구성. 게임 파일은 S3·CloudFront·ACM·기존 Route 53 영역으로 제공하고, 공유 랭킹은 HTTP API·Lambda·DynamoDB로 저장합니다. GitHub Actions로 웹과 랭킹 서버 코드를 자동 배포하고, 인프라 변경은 CDK diff 검토 후 별도로 배포합니다.
 
 초기 구성 시 AWS 계정과 기존 리소스를 조회하여 대상 도메인·인증서·CloudFront·GitHub OIDC Provider가 없는 것을 확인했습니다. 기존 서울 CDK bootstrap과 pir.kr 공개 호스팅 영역을 재사용합니다. 최초 인프라 배포 후 GitHub 자동 배포를 활성화합니다.
 
@@ -29,11 +29,14 @@ flowchart LR
   Upload --> Cache[CloudFront 캐시 갱신]
   Visitor[방문자] --> CF[CloudFront / HTTPS]
   CF -->|OAC| S3[비공개 S3]
+  CF -->|api/* · 캐시 없음| API[HTTP API]
+  API --> Lambda[랭킹 Lambda]
+  Lambda --> DB[DynamoDB · 모드별 TOP 20]
   DNS[기존 Route 53] -.-> CF
   ACM[ACM / us-east-1] -.-> CF
 ```
 
-`infra/config.json`에 배포 설정을 모았습니다. CDK는 서울 스택에서 인증서용 보조 리소스를 통해 us-east-1 인증서를 만드는 podcast와 같은 패턴을 사용합니다. 인증서 ARN을 지정하면 기존 인증서를 참조합니다. S3는 공개 접근·ACL 차단, SSL 강제, AWS 관리형 암호화, `RETAIN`입니다. CloudFront는 OAC, HTTPS 리디렉션, GET/HEAD, 압축, `PRICE_CLASS_200`, 표준 보안 헤더를 사용합니다. 새 호스팅 영역·EC2·NAT·업무 Lambda·DynamoDB·SQS·유료 로그를 추가하지 않습니다. ACM/OIDC 생성용 CDK 보조 리소스는 업무 서버와 별개입니다.
+`infra/config.json`에 배포 설정을 모았습니다. CDK는 서울 스택에서 인증서용 보조 리소스를 통해 us-east-1 인증서를 만드는 podcast와 같은 패턴을 사용합니다. 인증서 ARN을 지정하면 기존 인증서를 참조합니다. S3는 공개 접근·ACL 차단, SSL 강제, AWS 관리형 암호화, `RETAIN`입니다. CloudFront는 OAC, HTTPS 리디렉션, 정적 파일 GET/HEAD, 압축, `PRICE_CLASS_200`, 표준 보안 헤더를 사용합니다. `api/*` 경로만 캐시 없이 HTTP API로 전달합니다. 공유 랭킹은 DynamoDB on-demand, Python 3.13 ARM64 Lambda(128MB, 동시 실행 5개), HTTP API(초당 10개/순간 20개 요청 제한)로 구성하며 로그는 7일 보존합니다. 새 호스팅 영역·EC2·NAT·RDS·SQS는 추가하지 않습니다. 자세한 저장 방식은 [공유 랭킹](shared-rankings.md)을 참고합니다.
 
 CloudFront 정액 Free 플랜을 자동 선택하는 코드가 아닙니다. podcast와 같은 종량제 CloudFront 구성이며 S3 저장·요청·전송, CloudFront 요청·전송·무효화 및 CDK 보조 리소스는 사용량에 따른 비용이 있습니다. 기존 계정의 무료 범위와 다른 서비스 사용량을 함께 확인합니다.
 
@@ -82,7 +85,7 @@ npm run aws:diff -- --profile podbbangcast
 npm run aws:deploy -- --profile podbbangcast
 ```
 
-diff에서 새 버킷·CloudFront·DNS·IAM 구성인지 검토합니다. 인증서의 DNS 검증과 CloudFront 준비에는 시간이 걸립니다. `aws:deploy`는 인프라만 배포하며 게임 파일은 아직 업로드하지 않습니다. 반환된 `SiteUrl`, `WebBucketName`, `DistributionId`, `GitHubDeployRoleArn`은 `exports/aws-outputs.json`에도 저장됩니다. `pir.kr`의 공개 DNS가 해당 Route 53 영역에 연결되어 있어야 자동 검증·A/AAAA Alias가 작동합니다.
+diff에서 기존 리소스가 의도치 않게 교체되지 않는지와 추가 DB·API·IAM 권한을 검토합니다. 인증서의 DNS 검증과 CloudFront 준비에는 시간이 걸립니다. `aws:deploy`는 인프라만 배포하며 게임 파일은 아직 업로드하지 않습니다. 반환된 `SiteUrl`, `WebBucketName`, `DistributionId`, `GitHubDeployRoleArn`, `RankingsTableName`, `RankingFunctionName`, `RankingApiUrl`은 `exports/aws-outputs.json`에도 저장됩니다. `pir.kr`의 공개 DNS가 해당 Route 53 영역에 연결되어 있어야 자동 검증·A/AAAA Alias가 작동합니다.
 
 ### 4. GitHub 환경과 변수
 
@@ -113,13 +116,14 @@ AWS 준비 전에는 `AWS_DEPLOY_ENABLED`를 설정하지 않거나 `false`로 �
 
 - PR과 main push: JS 문법, 1,025종/모습/지방 그룹과 이미지 누락, CDK 권한·OAC·DNS·캐시 설정, 빌드·업로드 순서 테스트를 실행합니다. PR은 AWS 인증 없이 검증만 합니다.
 - 빌드: 로컬 `dist`는 유지하고 `dist-aws`를 생성합니다. 이미지·아이콘과 앱/스타일 파일명을 SHA-256 기반 경로로 바꾸고 JSON/CSS/HTML 참조도 함께 변경합니다. 원본 수집을 CI에서 다시 실행하지 않습니다.
-- 무결성: 릴리스 manifest에 모든 파일의 SHA-256을 기록합니다. 업로드 전 빠진 파일·추가 파일·변경된 파일을 검사하고, AWS 계정과 스택의 도메인도 확인합니다.
+- 랭킹 서버 빌드: `exports/ranking-function.zip`과 별도 manifest를 생성합니다. 서버 소스는 공개 S3에 올리지 않습니다.
+- 무결성: 릴리스 manifest에 모든 파일의 SHA-256을 기록합니다. 업로드 전 빠진 파일·추가 파일·변경된 파일을 검사하고, AWS 계정과 스택의 도메인도 확인합니다. 웹과 Lambda artifact의 revision과 체크섬이 일치해야 게시합니다.
 - 배포: 검증 job의 같은 릴리스 artifact를 production job에서 사용합니다. 다른 빌드 결과를 새로 만들지 않습니다. production 배포는 동시에 하나씩 실행하고, 진행 중인 업로드를 새 commit으로 강제 취소하지 않습니다.
-- 업로드: 해시 이미지에는 1년 immutable 캐시를 적용하고 `--size-only`로 동일 이미지의 반복 업로드를 피합니다. 변경된 내용은 새 파일명을 갖습니다. 다른 파일은 `no-cache`, HTML은 `no-cache,no-store,must-revalidate`로 업로드합니다. HTML을 마지막에 올린 뒤 CloudFront `/*` 한 경로를 무효화하고 완료를 기다립니다.
+- 업로드: 검증된 랭킹 Lambda 코드를 먼저 갱신하고 완료를 기다립니다. 해시 이미지에는 1년 immutable 캐시를 적용하고 `--size-only`로 동일 이미지의 반복 업로드를 피합니다. 변경된 내용은 새 파일명을 갖습니다. 다른 파일은 `no-cache`, HTML은 `no-cache,no-store,must-revalidate`로 업로드합니다. HTML을 마지막에 올린 뒤 CloudFront `/*` 한 경로를 무효화하고 완료를 기다립니다.
 - 이전 이미지/앱 파일을 자동 삭제하지 않습니다. 따라서 이전 캐시 화면의 해시 경로도 유지됩니다. 장기적으로 불필요해진 파일을 정리할 때는 실제 참조와 복구 계획을 별도로 확인합니다.
-- 마지막으로 HTTPS 화면과 1,025종 manifest를 확인합니다. GitHub Actions 결과와 릴리스 commit SHA가 배포 이력입니다.
+- 마지막으로 HTTPS 화면과 1,025종 manifest, 공유 랭킹 API를 확인합니다. GitHub Actions 결과와 릴리스 commit SHA가 배포 이력입니다.
 
-배포 Role에는 지정 버킷의 List/Get/Put, 지정 CloudFront의 Create/GetInvalidation, 이 스택의 DescribeStacks만 부여합니다. S3 삭제, CDK/CloudFormation 변경, IAM 관리나 다른 프로젝트 배포 권한은 없습니다. AWS 리소스 자체를 바꿀 때는 로컬 SSO로 diff/deploy 절차를 수행합니다.
+배포 Role에는 지정 버킷의 List/Get/Put, 지정 CloudFront의 Create/GetInvalidation, 이 스택의 DescribeStacks와 지정 랭킹 Lambda의 UpdateFunctionCode/GetFunctionConfiguration만 부여합니다. S3 삭제, CDK/CloudFormation 변경, IAM 관리나 다른 프로젝트 배포 권한은 없습니다. AWS 리소스 자체를 바꿀 때는 로컬 SSO로 diff/deploy 절차를 수행합니다.
 
 ## 수동 게시와 복구
 
@@ -129,12 +133,13 @@ AWS 준비 전에는 `AWS_DEPLOY_ENABLED`를 설정하지 않거나 `false`로 �
 npm run check
 npm test
 npm run aws:build:web
+npm run aws:build:ranking
 npm run aws:publish -- --profile podbbangcast
 ```
 
-`main`의 문제 commit을 revert하여 반영하면 CI가 복구 릴리스를 배포합니다. 수동 복구는 정상 commit의 코드에서 검증·빌드·게시 절차를 다시 실행합니다. 인프라 변경·DNS 변경은 이 파일 게시만으로 되돌아가지 않습니다. 랭킹은 기존과 같이 브라우저 localStorage이며 도메인이 바뀌면 기존 Sites 주소의 기록이 자동 이전되지 않습니다.
+`main`의 문제 commit을 revert하여 반영하면 CI가 복구 릴리스를 배포합니다. 수동 복구는 정상 commit의 코드에서 검증·빌드·게시 절차를 다시 실행합니다. 인프라 변경·DNS 변경은 이 파일 게시만으로 되돌아가지 않습니다. 새로 등록한 랭킹은 공유 DynamoDB에 저장합니다. 기존 브라우저의 개인 기록은 삭제하거나 자동 공개하지 않으며, 공유 기록으로 자동 이전되지 않습니다. 스택 삭제 시에도 랭킹 테이블은 보존합니다.
 
-AWS 작업 없이 로컬 게임만 실행할 때는 기존처럼 `dist`를 제공합니다.
+AWS 작업 없이 로컬 게임만 실행할 때는 기존처럼 `dist`를 제공합니다. 단순 정적 서버에는 `/api`가 없으므로 공유 랭킹은 운영 사이트에서 확인합니다.
 
 ```sh
 npm start
