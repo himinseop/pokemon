@@ -47,7 +47,7 @@ let leaveAction=null;
 function confirmLeave(action){detailRequest++;const dialog=document.querySelector('#detail');leaveAction=action;dialog.classList.remove('dex-detail');dialog.removeAttribute('aria-labelledby');dialog.innerHTML='<div class="detail-inner"><h2 style="font-size:22px">진행 중인 게임을 끝낼까요?</h2><p>이동하면 이번 게임의 기록은 저장되지 않아요.</p><div class="result-actions"><button class="secondary" id="keep-playing">계속 플레이</button><button class="primary" id="leave-game">게임 끝내고 이동</button></div></div>';dialog.showModal();}
 function navigate(next){if(activeGame()){confirmLeave(()=>{cleanup();game=null;view=next;render();});return;}cleanup();game=null;view=next;render();}
 function updateNav(){document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.nav===view));}
-function render(){updateNav();if(view==='play')renderPlay();else if(view==='dex')renderDex();else renderRecords();}
+function render(){updateGameFocus();updateNav();if(view==='play')renderPlay();else if(view==='dex')renderDex();else renderRecords();}
 function renderPlay(){
 previewChoices={easy:shuffle(pokemon.filter(p=>familiar.includes(p.id)))[0],normal:shuffle(pokemon)[0],hard:shuffle(pokemon)[0]};previewPokemon=previewChoices[difficulty];
 app.innerHTML=`<section class="intro"><div><h1>이 포켓몬, 누구일까요?</h1></div></section>
@@ -55,10 +55,17 @@ app.innerHTML=`<section class="intro"><div><h1>이 포켓몬, 누구일까요?</
 <div class="quick-links"><button class="shortcut shortcut-dex" data-nav="dex"><span class="shortcut-icon" aria-hidden="true">📖</span><span>포켓몬 도감</span></button><button class="shortcut shortcut-ranking" data-nav="records"><span class="shortcut-icon" aria-hidden="true">🏆</span><span>랭킹</span></button></div>`;
 renderGameBody();
 }
-function renderGameBody(){const body=document.querySelector('#game-body');if(!body)return;
+function updateGameFocus(){
+ const focused=view==='play'&&!!activeGame(),entering=focused&&!document.body.classList.contains('game-focused');
+ document.body.classList.toggle('game-focused',focused);
+ if(focused)document.body.dataset.gameMode=game.mode;else delete document.body.dataset.gameMode;
+ if(entering)app.scrollIntoView({block:'start'});
+}
+const gameExit=()=>'<button class="game-exit" id="quit-game" aria-label="게임 그만하기" title="그만하기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>';
+function renderGameBody(){updateGameFocus();const body=document.querySelector('#game-body');if(!body)return;
 if(game?.status==='ended'){renderResult(body);return;}
 if(game?.status==='playing'){renderQuestion(body);return;}
-if(game?.status==='loading'){body.innerHTML='<div class="quiz-start-loading" role="status" aria-live="polite"><span class="quiz-spinner" aria-hidden="true"></span><p>첫 문제를 불러오는 중이에요…</p></div><div class="loading-actions"><button class="game-control quit-control" id="quit-game"><span aria-hidden="true">■</span>그만하기</button></div>';return;}
+if(game?.status==='loading'){body.innerHTML=`<div class="focus-loading">${gameExit()}<div class="quiz-start-loading" role="status" aria-live="polite"><span class="quiz-spinner" aria-hidden="true"></span><p>첫 문제를 불러오는 중이에요…</p></div></div>`;return;}
 body.innerHTML=`<div class="game-setup"><h2>${mode==='time'?'60초 타임어택':'포켓몬 마스터 도전'}</h2>
 ${mode==='write'?`<div class="difficulty difficulty-cards" aria-label="난이도 선택">${Object.entries(difficulties).map(([key,d])=>`<button data-difficulty="${key}" class="difficulty-choice ${difficulty===key?'active':''}" aria-pressed="${difficulty===key}"><span class="difficulty-preview ${key==='hard'?'silhouette':''}"><img src="${previewChoices[key].image}" alt="${key==='hard'?'포켓몬 실루엣':key==='easy'?'친숙한 포켓몬 미리보기':'전체 포켓몬 미리보기'}" width="100" height="100"></span><strong>${d.label}</strong><small>${d.multiplier}배 점수</small></button>`).join('')}</div>`:`<div class="difficulty difficulty-time" aria-label="타임어택 난이도 선택">${Object.entries(difficulties).map(([key,d])=>`<button data-difficulty="${key}" class="difficulty-choice ${difficulty===key?'active':''}" aria-pressed="${difficulty===key}"><strong>${d.label}</strong><small>${key==='easy'?'친숙한 포켓몬':key==='normal'?'전체 포켓몬':'실루엣'}</small></button>`).join('')}</div>`}
 ${mode==='time'?`<div class="pokemon-stage setup-stage ${difficulty==='hard'?'silhouette':''}"><img src="${previewPokemon.image}" alt="${difficulty==='hard'?'포켓몬 실루엣':'랜덤 포켓몬 미리보기'}" width="230" height="230"></div>`:''}
@@ -107,11 +114,10 @@ function nextQuestion(){if(!game||game.status!=='playing')return;if(game.mode===
  selectQuestion(game);renderGameBody();}
 function timerState(g){const duration=60000;const remaining=Math.max(0,g.deadline-performance.now());return {seconds:Math.ceil(remaining/1000),percent:Math.min(100,remaining/duration*100)};}
 function renderQuestion(body){clearJudgement();const g=game;const timeState=g.mode==='time'?timerState(g):null;const previousProgress=g.mode==='time'?body.querySelector('.progress'):null;
-body.innerHTML=`<div class="game-heading"><div><h2>${g.mode==='time'?'이 포켓몬의 이름은?':'포켓몬 이름을 적어 주세요'}</h2><small>${g.mode==='time'?difficulties[g.difficulty].label+' · 네 개의 이름 중 정답을 골라요':difficulties[g.difficulty].label+' · 한글 이름으로 답해요'}</small></div><button class="game-control quit-control" id="quit-game"><span aria-hidden="true">■</span>그만하기</button></div>
-<div class="pokemon-stage ${g.difficulty==='hard'?'silhouette':''}"><span class="stage-tag">WHO’S THAT POKÉMON?</span><span id="question-image-slot"></span><span id="judgement-effect" class="judgement-effect" aria-hidden="true" hidden></span></div>
+body.innerHTML=`<div class="pokemon-stage ${g.difficulty==='hard'?'silhouette':''}">${gameExit()}<span id="question-image-slot"></span><span id="judgement-effect" class="judgement-effect" aria-hidden="true" hidden></span></div>
 <div class="question-score"><div class="game-stats"><span><strong id="score">${g.score.toLocaleString()}</strong> 점</span><span>${g.mode==='time'?`연속 <b id="streak">${g.streak}</b> 정답`:`${g.total+1} / 10 문제`}</span>${timeState?`<span class="time">⏱ <strong id="time">${timeState.seconds}</strong> 초</span>`:''}</div>${timeState?`<div class="progress" role="progressbar" aria-label="남은 시간" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${timeState.percent}"><div id="timer-bar" style="width:${timeState.percent}%"></div></div>`:''}</div>
 ${g.mode==='time'?`<div class="choices">${g.options.map((p,i)=>`<button class="choice" data-answer="${p.id}" disabled><span>${i+1}</span>${p.name}</button>`).join('')}</div>`:`<form class="text-form" id="answer-form"><input id="answer-input" autocomplete="off" maxlength="30" placeholder="포켓몬 이름" aria-label="포켓몬 이름" disabled><button class="primary" type="submit" disabled>확인</button></form>`}
-<div id="feedback" class="feedback" role="status" aria-live="polite">포켓몬을 불러오는 중…</div><div class="play-actions">${g.mode==='time'?'<span class="result-note">키보드 1–4로도 선택할 수 있어요</span>':'<button class="game-control skip-control" id="skip-question"><span aria-hidden="true">?</span>모르겠어요</button>'}</div>`;
+<div id="feedback" class="feedback" role="status" aria-live="polite">포켓몬을 불러오는 중…</div>${g.mode==='write'?'<div class="play-actions"><button class="game-control skip-control" id="skip-question"><span aria-hidden="true">?</span>모르겠어요</button></div>':''}`;
 // Keep the time-attack bar itself alive when replacing the question.
 if(previousProgress){body.querySelector('.progress').replaceWith(previousProgress);previousProgress.querySelector('#timer-bar').style.width=timeState.percent+'%';previousProgress.setAttribute('aria-valuenow',timeState.percent);}
 const current=g.question.id,entry=g.images.get(current),img=entry.image;

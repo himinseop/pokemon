@@ -200,3 +200,34 @@ dialog.dex-detail{width:min(826px,calc(100vw - 32px));max-height:calc(100dvh - 4
 @media(max-width:700px){.entry-ranking th:first-child{width:42px}.entry-ranking th:nth-child(3){width:58px}.entry-ranking th:last-child{width:78px}.entry-ranking th,.entry-ranking td{padding:10px 6px}.entry-ranking .entry-input{gap:6px}}
 
 @media(max-width:700px){.ranking th:nth-child(5),.ranking td:nth-child(5){display:table-cell}.ranking{font-size:12px}.ranking .score{font-size:16px}.ranking th,.ranking td{padding:14px 6px}.ranking .record-date{font-size:10px}}
+
+/* Playing uses the viewport for artwork and answers, with no lobby navigation. */
+body.game-focused{background:#fff}
+body.game-focused #app{display:flex;align-items:center;max-width:720px;width:100%;min-height:100svh;padding:max(12px,env(safe-area-inset-top)) clamp(16px,4vw,32px) max(12px,env(safe-area-inset-bottom))}
+body.game-focused #app>.intro,body.game-focused .game-tabs,body.game-focused .quick-links,body.game-focused>footer{display:none}
+body.game-focused .play-grid{width:100%;max-width:none;margin:0}
+body.game-focused .game-card{border:0;border-radius:0;box-shadow:none;background:transparent;overflow:visible}
+body.game-focused .game-body{display:grid;gap:14px;padding:0}
+body.game-focused .pokemon-stage{height:clamp(180px,calc(100svh - 300px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),420px);min-height:0;margin:0;border:0;border-radius:28px;background:radial-gradient(circle at center,#edf3fd,#f8faff 70%);isolation:isolate}
+body.game-focused .pokemon-stage:before{width:min(70vw,290px);height:min(70vw,290px);border-color:#e3ebf7;box-shadow:0 0 0 28px #eef3fb,0 0 0 29px #e5ecf7,0 0 0 58px #f3f6fc}
+body.game-focused #question-image{width:min(86%,400px);height:90%;max-height:400px;object-fit:contain}
+.game-exit{position:absolute;top:12px;right:12px;z-index:3;display:grid;place-items:center;width:44px;height:44px;padding:10px;border:1px solid #e3e9f2;border-radius:50%;background:#ffffffde;color:#7a8799;box-shadow:0 2px 8px #27344808}
+.game-exit svg{width:22px;height:22px}
+.game-exit:hover{background:#fff;color:#bd514b;border-color:#f0c9c5}
+body.game-focused .question-score{margin:0;padding:2px 4px 0}
+body.game-focused .game-stats{padding:0;gap:10px;font-size:13px}
+body.game-focused .game-stats strong{font-size:24px}
+body.game-focused .progress{height:6px;margin:10px 0 0;border-radius:10px}
+body.game-focused .choices{margin:0;gap:12px}
+body.game-focused .choice{display:flex;align-items:center;gap:10px;min-height:62px;padding:14px;border-radius:16px;font-size:16px;overflow-wrap:anywhere}
+body.game-focused .choice span{flex:0 0 26px;margin:0;width:26px;height:26px}
+body.game-focused .feedback{min-height:24px;margin:0;font-size:13px;line-height:1.6}
+body.game-focused .text-form{margin:0;gap:10px}
+body.game-focused .text-form input{min-height:54px;border-radius:16px}
+body.game-focused .text-form .primary{border-radius:16px}
+body.game-focused .play-actions{margin:0}
+body.game-focused[data-game-mode="write"] .pokemon-stage{height:clamp(180px,calc(100svh - 260px - env(safe-area-inset-top) - env(safe-area-inset-bottom)),420px)}
+.focus-loading{position:relative;min-height:60svh;display:grid;place-items:center}
+body.game-focused .quiz-start-loading{padding:32px 0}
+@media(max-width:380px){body.game-focused .choice{gap:8px;padding:12px;font-size:14px}body.game-focused .game-stats{font-size:12px}body.game-focused .game-stats strong{font-size:22px}}
+@media(max-height:500px) and (orientation:landscape){body.game-focused #app{max-width:900px;min-height:100svh;align-items:flex-start}body.game-focused .game-body{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center}body.game-focused .pokemon-stage{grid-column:1;grid-row:1/5;height:calc(100svh - 24px);min-height:180px}body.game-focused .question-score,body.game-focused .choices,body.game-focused .text-form,body.game-focused .feedback,body.game-focused .play-actions{grid-column:2}body.game-focused[data-game-mode="write"] .pokemon-stage{height:calc(100svh - 24px)}}
