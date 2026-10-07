@@ -42,7 +42,7 @@ function sharedEntries(key,rows){
  return rows;
 }
 async function rankingRequest(url,options={}){
- const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
  try{const result=await fetch(url,{...options,signal:controller.signal,cache:'no-store'});const data=await result.json();if(!result.ok)throw Error(typeof data.error==='string'?data.error:'랭킹 서버에 연결하지 못했어요. 다시 시도해 주세요.');return data;}
  catch(error){if(error.name==='AbortError')throw Error('랭킹 서버의 응답이 늦어지고 있어요. 다시 시도해 주세요.');if(error instanceof TypeError)throw Error('랭킹 서버에 연결하지 못했어요. 다시 시도해 주세요.');throw error;}
  finally{clearTimeout(timeout);}

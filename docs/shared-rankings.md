@@ -14,7 +14,7 @@ DynamoDB `pokemon-play-prod-rankings`는 `mode`를 키로 하며, 각 항목에 
 
 ## AWS와 비용
 
-DynamoDB on-demand, Python 3.13 ARM64 Lambda(128MB, 5초, 동시 실행 5개), HTTP API를 사용합니다. API에는 초당 10개 / 순간 20개 요청 제한을 두고, Lambda 로그는 7일만 보존합니다. 상시 서버, RDS, VPC, NAT, 웹소켓, 정기 폴링을 추가하지 않습니다. 테이블은 스택 삭제 시 보존합니다.
+DynamoDB on-demand, Python 3.13 ARM64 Lambda(256MB, 8초, 동시 실행 5개), HTTP API를 사용합니다. API에는 초당 10개 / 순간 20개 요청 제한을 두고, Lambda 로그는 7일만 보존합니다. 상시 서버, RDS, VPC, NAT, 웹소켓, 정기 폴링을 추가하지 않습니다. 테이블은 스택 삭제 시 보존합니다.
 
 AWS의 [DynamoDB 요금 안내](https://aws.amazon.com/dynamodb/pricing/)와 [HTTP API 안내](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api.html)를 참고했습니다. 요청·저장량과 계정의 무료 범위에 따라 실제 비용이 결정됩니다.
 

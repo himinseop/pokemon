@@ -44,7 +44,7 @@ test('shared rankings use one retained on-demand board table and uncached API re
  const t=template(),table=resources(t,'AWS::DynamoDB::Table')[0];
  assert.equal(table.DeletionPolicy,'Retain');assert.equal(table.Properties.BillingMode,'PAY_PER_REQUEST');assert.deepEqual(table.Properties.KeySchema,[{AttributeName:'mode',KeyType:'HASH'}]);
  const fn=resources(t,'AWS::Lambda::Function').find(r=>r.Properties.FunctionName==='pokemon-play-prod-rankings');
- assert.equal(fn.Properties.Runtime,'python3.13');assert.equal(fn.Properties.ReservedConcurrentExecutions,5);assert.equal(fn.Properties.Timeout,5);
+ assert.equal(fn.Properties.Runtime,'python3.13');assert.equal(fn.Properties.ReservedConcurrentExecutions,5);assert.equal(fn.Properties.Timeout,8);assert.equal(fn.Properties.MemorySize,256);
  const api=resources(t,'AWS::ApiGatewayV2::Api')[0];assert.equal(api.Properties.ProtocolType,'HTTP');
  const routes=resources(t,'AWS::ApiGatewayV2::Route').map(r=>r.Properties.RouteKey).sort();assert.deepEqual(routes,['GET /api/rankings','POST /api/scores']);
  const d=resources(t,'AWS::CloudFront::Distribution')[0].Properties.DistributionConfig;

@@ -36,7 +36,7 @@ flowchart LR
   ACM[ACM / us-east-1] -.-> CF
 ```
 
-`infra/config.json`에 배포 설정을 모았습니다. CDK는 서울 스택에서 인증서용 보조 리소스를 통해 us-east-1 인증서를 만드는 podcast와 같은 패턴을 사용합니다. 인증서 ARN을 지정하면 기존 인증서를 참조합니다. S3는 공개 접근·ACL 차단, SSL 강제, AWS 관리형 암호화, `RETAIN`입니다. CloudFront는 OAC, HTTPS 리디렉션, 정적 파일 GET/HEAD, 압축, `PRICE_CLASS_200`, 표준 보안 헤더를 사용합니다. `api/*` 경로만 캐시 없이 HTTP API로 전달합니다. 공유 랭킹은 DynamoDB on-demand, Python 3.13 ARM64 Lambda(128MB, 동시 실행 5개), HTTP API(초당 10개/순간 20개 요청 제한)로 구성하며 로그는 7일 보존합니다. 새 호스팅 영역·EC2·NAT·RDS·SQS는 추가하지 않습니다. 자세한 저장 방식은 [공유 랭킹](shared-rankings.md)을 참고합니다.
+`infra/config.json`에 배포 설정을 모았습니다. CDK는 서울 스택에서 인증서용 보조 리소스를 통해 us-east-1 인증서를 만드는 podcast와 같은 패턴을 사용합니다. 인증서 ARN을 지정하면 기존 인증서를 참조합니다. S3는 공개 접근·ACL 차단, SSL 강제, AWS 관리형 암호화, `RETAIN`입니다. CloudFront는 OAC, HTTPS 리디렉션, 정적 파일 GET/HEAD, 압축, `PRICE_CLASS_200`, 표준 보안 헤더를 사용합니다. `api/*` 경로만 캐시 없이 HTTP API로 전달합니다. 공유 랭킹은 DynamoDB on-demand, Python 3.13 ARM64 Lambda(256MB, 동시 실행 5개), HTTP API(초당 10개/순간 20개 요청 제한)로 구성하며 로그는 7일 보존합니다. 새 호스팅 영역·EC2·NAT·RDS·SQS는 추가하지 않습니다. 자세한 저장 방식은 [공유 랭킹](shared-rankings.md)을 참고합니다.
 
 CloudFront 정액 Free 플랜을 자동 선택하는 코드가 아닙니다. podcast와 같은 종량제 CloudFront 구성이며 S3 저장·요청·전송, CloudFront 요청·전송·무효화 및 CDK 보조 리소스는 사용량에 따른 비용이 있습니다. 기존 계정의 무료 범위와 다른 서비스 사용량을 함께 확인합니다.
 
