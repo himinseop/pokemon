@@ -157,7 +157,7 @@ dialog.dex-detail{width:min(826px,calc(100vw - 32px));max-height:calc(100dvh - 4
 .detail-scroll{max-height:calc(100dvh - 40px);overflow:auto;overscroll-behavior:contain;border:8px solid #e9c45b;border-radius:22px;background:var(--card-type);box-shadow:0 22px 80px #16274460,0 0 0 1px #af8537,inset 0 0 0 2px #fff3b5}
 .dex-detail .pokemon-card-heading{margin-right:0}
 .detail-tools{position:absolute;right:0;top:0;display:flex;flex-direction:column;gap:12px}
-.detail-tool{width:44px;height:44px;padding:10px;display:grid;place-items:center;border:1px solid #ffffff80;border-radius:14px;background:#fff;color:#344158;box-shadow:0 4px 14px #14223b35;transition:transform .15s,background .15s}
+.detail-tool{width:44px;height:44px;padding:10px;display:grid;place-items:center;border:1px solid #ffffff80;border-radius:50%;background:#fff;color:#344158;box-shadow:0 4px 14px #14223b35;transition:transform .15s,background .15s}
 .detail-tool svg{width:24px;height:24px}
 .detail-tool:hover{background:#f1f5fb;transform:translateY(-2px)}
 .detail-tool.coloring-tool{background:#fff1cc;color:#936320}
