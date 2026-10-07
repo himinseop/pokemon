@@ -29,7 +29,12 @@ function syncMasterKeyboard(){
  const open=!!viewport&&Math.abs((viewport.scale||1)-1)<.05&&masterViewportHeight-height>120;
  root.style.setProperty('--master-visible-height',`${height}px`);root.style.setProperty('--master-viewport-top',`${viewport?.offsetTop||0}px`);
  document.body.classList.toggle('master-keyboard',open);
- if(open){const stage=document.querySelector('.pokemon-stage'),body=document.querySelector('#game-body'),form=document.querySelector('#answer-form');if(stage&&body&&form)root.style.setProperty('--master-answer-top',`${Math.max(8,stage.getBoundingClientRect().bottom-body.getBoundingClientRect().top-form.offsetHeight-10)}px`);}
+ if(open){const stage=document.querySelector('.pokemon-stage'),body=document.querySelector('#game-body'),form=document.querySelector('#answer-form');if(stage&&body&&form){
+  const stageRect=stage.getBoundingClientRect(),bodyRect=body.getBoundingClientRect(),answerTop=Math.max(8,stageRect.bottom-bodyRect.top-form.offsetHeight-10);
+  root.style.setProperty('--master-answer-top',`${answerTop}px`);
+  root.style.setProperty('--master-judgement-bottom',`${stageRect.bottom-bodyRect.top-answerTop+16}px`);
+  root.style.setProperty('--master-judgement-height',`${Math.max(0,Math.min(112,bodyRect.top+answerTop-stageRect.top-32))}px`);
+ }}
 }
 function fitLayersToViewport(){
  const viewport=window.visualViewport,root=document.documentElement;
@@ -177,7 +182,7 @@ function prepareQuestionImage(g,p,priority){
 }
 function selectQuestion(g){
  if(!g.deck.length)g.deck=shuffle(g.pool.filter(p=>p.id!==g.question?.id));
- g.question=g.deck.pop();g.answerLength=Array.from(normalize(g.question.name)).length;g.answerComposing=false;g.hintUsed=false;g.hint=null;g.selectedAnswer=null;g.locked=false;g.imageReady=false;prepareQuestionImages(g);
+ g.question=g.deck.pop();g.answerLength=Array.from(normalize(g.question.name)).length;g.answerComposing=false;g.answerRevealed=false;g.hintUsed=false;g.hint=null;g.selectedAnswer=null;g.locked=false;g.imageReady=false;prepareQuestionImages(g);
  g.options=shuffle([g.question,...shuffle(g.pool.filter(p=>p.id!==g.question.id)).slice(0,3)]);
 }
 function startGame(){if(!trainerName||document.body.classList.contains('trainer-entry'))return;cleanup();const pool=difficulty==='easy'?pokemon.filter(p=>familiar.includes(p.id)):pokemon;
@@ -206,17 +211,18 @@ function finishAnswerComposition(){
 }
 function updateAnswerSlots(limit=false){
  const input=document.querySelector('#answer-input'),slots=document.querySelector('#answer-slots');if(!input||!slots||game?.mode!=='write')return;
- const length=game.answerLength,editable=Array.from({length},(_,index)=>index).filter(index=>!game.hintUsed||index!==game.hint.index),allowed=editable.length;
+ const length=game.answerLength,revealed=game.answerRevealed,fixedHint=game.hintUsed&&!revealed,editable=Array.from({length},(_,index)=>index).filter(index=>!fixedHint||index!==game.hint.index),allowed=editable.length;
+ if(revealed){input.value=game.question.name.normalize('NFKC').replace(/\s+/g,'');input.readOnly=true;}
  let letters=typedLetters(input.value);
- if(limit&&!game.answerComposing){
-  if(game.hintUsed&&letters.length===length&&normalize(input.value)===normalize(game.question.name)){letters.splice(game.hint.index,1);input.value=letters.join('');}
+ if(limit&&!revealed&&!game.answerComposing){
+  if(fixedHint&&letters.length===length&&normalize(input.value)===normalize(game.question.name)){letters.splice(game.hint.index,1);input.value=letters.join('');}
   else if(letters.length>allowed){input.value=letters.slice(0,allowed).join('');input.setSelectionRange(input.value.length,input.value.length);}
  }
  const value=typedLetters(input.value),start=typedLetters(input.value.slice(0,input.selectionStart??input.value.length)).length,end=typedLetters(input.value.slice(0,input.selectionEnd??input.value.length)).length;
  if(slots.children.length!==length)slots.replaceChildren(...Array.from({length},()=>{const span=document.createElement('span');span.className='answer-slot';return span;}));
- input.parentElement.style.setProperty('--answer-length',length);input.maxLength=allowed?30:0;input.setAttribute('aria-label',game.hintUsed?`포켓몬 이름, 남은 ${allowed}글자`:`포켓몬 이름, ${length}글자`);
- const focused=document.activeElement===input&&!input.disabled,active=editable[Math.min(start,allowed-1)];
- [...slots.children].forEach((cell,index)=>{const hinted=game.hintUsed&&game.hint.index===index,position=editable.indexOf(index),letter=hinted?game.hint.letter:(value[position]||'');cell.textContent=letter;cell.classList.toggle('filled',!!letter);cell.classList.toggle('hint-target',hinted);cell.classList.toggle('active',!hinted&&focused&&start===end&&index===active);cell.classList.toggle('selected',!hinted&&focused&&start!==end&&position>=start&&position<end);});
+ input.parentElement.style.setProperty('--answer-length',length);input.maxLength=allowed?30:0;input.setAttribute('aria-label',revealed?'정답 포켓몬 이름':fixedHint?`포켓몬 이름, 남은 ${allowed}글자`:`포켓몬 이름, ${length}글자`);
+ const focused=document.activeElement===input&&!input.disabled&&!revealed,active=editable[Math.min(start,allowed-1)];
+ [...slots.children].forEach((cell,index)=>{const hinted=fixedHint&&game.hint.index===index,position=editable.indexOf(index),letter=hinted?game.hint.letter:(value[position]||'');cell.textContent=letter;cell.classList.toggle('filled',!!letter);cell.classList.toggle('hint-target',hinted);cell.classList.toggle('revealed-answer',!!revealed);cell.classList.toggle('active',!hinted&&focused&&start===end&&index===active);cell.classList.toggle('selected',!hinted&&focused&&start!==end&&position>=start&&position<end);});
 }
 function focusAnswerSlot(event){
  const input=event.target;if(input.id!=='answer-input'||input.disabled)return;
@@ -260,12 +266,14 @@ const failed=()=>{if(!active())return;g.imageFailures++;if(g.imageFailures>=5){g
 if(entry.ready)ready();else entry.loaded.then(ok=>ok?ready():failed());}
 function tick(){if(!game||game.status!=='playing'||game.mode!=='time')return;const state=timerState(game);const time=document.querySelector('#time');if(time)time.textContent=state.seconds;const bar=document.querySelector('#timer-bar');if(bar){bar.style.width=state.percent+'%';bar.parentElement.setAttribute('aria-valuenow',state.percent);}if(state.seconds<=0)endGame();}
 function submitAnswer(value,skipped=false){const g=game;if(!g||g.status!=='playing'||g.locked||!g.imageReady)return;if(g.mode==='time'&&performance.now()>=g.deadline){endGame();return;}
+if(g.mode==='write'&&skipped)finishAnswerComposition();
 const correct=!skipped&&(g.mode==='time'?Number(value)===g.question.id:normalize(value)===normalize(g.question.name));const feedback=document.querySelector('#feedback');
 // A wrong typed guess leaves the same question open for another try.
 if(g.mode==='write'&&!correct&&!skipped){g.streak=0;showJudgement(false);feedback.className='feedback bad';feedback.textContent='괜찮아! 한 번 더 맞혀봐.';const input=document.querySelector('#answer-input');input.focus({preventScroll:true});input.select();updateAnswerSlots();return;}
 g.locked=true;g.selectedAnswer=g.mode==='time'?Number(value):null;g.total++;if(correct){g.correct++;g.streak++;g.maxStreak=Math.max(g.maxStreak,g.streak);g.score+=g.mode==='time'?100+Math.min(g.streak-1,10)*10:masterPoints(g,g.hintUsed);}else g.streak=0;
+if(g.mode==='write'&&skipped){g.answerRevealed=true;updateAnswerSlots();const hintMessage=document.querySelector('#hint-message');if(hintMessage)hintMessage.hidden=true;}
 showJudgement(correct);
-const answerRevealed=g.mode==='time'||correct||skipped;g.history.push({pokemon:g.question,correct,answer:String(value),answerRevealed,hintUsed:!!g.hintUsed});feedback.className='feedback '+(correct?'good':'bad');feedback.textContent=g.mode==='write'?(correct?'잘했어! 정답이야!':`정답은 ${g.question.name}! 다음 친구도 만나보자!`):(correct?`정답! ${g.question.name}, 정말 잘 맞혔어!`:'');
+const answerRevealed=g.mode==='time'||correct||skipped;g.history.push({pokemon:g.question,correct,answer:String(value),answerRevealed,hintUsed:!!g.hintUsed});feedback.className='feedback '+(correct?'good':'bad');feedback.textContent=g.mode==='write'?(correct?'잘했어! 정답이야!':''):(correct?`정답! ${g.question.name}, 정말 잘 맞혔어!`:'');
 if(answerRevealed)document.querySelector('.pokemon-stage')?.classList.add('reveal');document.querySelectorAll('[data-answer]').forEach(b=>{b.disabled=true;b.setAttribute('aria-pressed',String(Number(b.dataset.answer)===g.selectedAnswer));if(Number(b.dataset.answer)===g.question.id)b.classList.add('correct');else if(Number(b.dataset.answer)===Number(value))b.classList.add('wrong');});document.querySelectorAll('.text-form button,#skip-question,#hint-question').forEach(b=>b.disabled=true);document.querySelector('#score').textContent=g.score.toLocaleString();const streak=document.querySelector('#streak');if(streak)streak.textContent=g.streak;
 advance=setTimeout(nextQuestion,correct?550:1300);}
 function endGame(reason='complete'){

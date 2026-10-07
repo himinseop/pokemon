@@ -368,6 +368,7 @@ body.master-keyboard .answer-slot{height:48px;font-size:21px;border-radius:10px}
 .hint-message[hidden]{display:none}
 .feedback-area:has(.hint-message:not([hidden])) .feedback:empty{display:none}
 .answer-slot.hint-target{background:#fff7da;border-color:#e8c675}
+.answer-slot.revealed-answer{background:#eef5ff;border-color:#a9c6ed;color:#365b8b}
 body.game-focused .play-actions:has(.hint-control){gap:10px;justify-content:center}
 body.game-focused .play-actions:has(.hint-control) .game-control{flex:1;min-width:0;min-height:56px;padding:10px 8px;font-size:16px;gap:7px}
 body.game-focused .play-actions:has(.hint-control) .game-control>span{flex-basis:26px;height:26px;font-size:21px}
@@ -379,6 +380,7 @@ body.game-focused .play-actions:has(.hint-control){align-items:stretch}
 @media screen and (max-width:700px) and (orientation:portrait){
  body.master-keyboard .game-body{grid-template-rows:minmax(0,1fr) auto auto}
  body.master-keyboard .pokemon-stage{grid-row:1;grid-column:1}
+ body.master-keyboard .judgement-effect{bottom:var(--master-judgement-bottom,88px);height:var(--master-judgement-height,112px)}
  body.master-keyboard .question-score{grid-row:2;grid-column:1}
  body.master-keyboard .game-stats{min-height:44px}
  body.master-keyboard .feedback-area{grid-row:3;grid-column:1;min-height:20px}

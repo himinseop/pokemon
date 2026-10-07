@@ -128,6 +128,17 @@ test('one hint per master question reveals the correct position and halves only 
 test('skipping after a hint awards no points and the next question gets a fresh hint',async t=>{
  const h=await harness();t.after(h.close);await h.start('write');h.$('#hint-question').click();h.$('#skip-question').click();assert.equal(h.game().score,0);assert.equal(h.game().history[0].correct,false);assert.equal(h.game().history[0].hintUsed,true);await h.run(1300);assert.equal(h.game().hintUsed,false);assert.equal(h.$('#hint-question').disabled,false);
 });
+test('skipping fills every answer cell, clears the answer message and restores editable blank cells next question',async t=>{
+ for(const hinted of [false,true]){
+  const h=await harness();t.after(h.close);await h.start('write','hard');h.w.qa("game.deck.push(pokemon.find(p=>p.name==='파라블레이즈'));nextQuestion()");await flush();
+  const input=h.$('#answer-input');if(hinted){h.w.Math.random=()=>.5;h.$('#hint-question').click();}
+  input.value='잘못';input.dispatchEvent(new h.w.InputEvent('input',{bubbles:true}));h.$('#skip-question').click();
+  assert.equal(h.$('#feedback').textContent,'');assert.equal(h.$('#hint-message').hidden,true);
+  assert.equal(input.value,'파라블레이즈');assert.equal(input.readOnly,true);assert.equal(h.$('#answer-slots').textContent,'파라블레이즈');assert.equal(h.w.document.querySelectorAll('.revealed-answer').length,6);assert.equal(h.w.document.querySelectorAll('.hint-target,.answer-slot.active,.answer-slot.selected').length,0);
+  assert.equal(h.game().score,0);assert.equal(h.game().history[0].correct,false);assert.equal(h.game().history[0].answerRevealed,true);assert.equal(h.game().history[0].hintUsed,hinted);
+  await h.run(1300);assert.equal(h.$('#answer-input'),input);assert.equal(input.value,'');assert.equal(input.readOnly,false);assert.equal(h.$('#answer-slots').textContent,'');assert.equal(h.w.document.querySelectorAll('.revealed-answer').length,0);assert.equal(h.w.document.activeElement,input);
+ }
+});
 
 test('hint fills a fixed letter and accepts only the remaining letters, including a full-name paste',async t=>{
  const h=await harness();t.after(h.close);await h.start('write','hard');h.w.qa("game.deck.push(pokemon.find(p=>p.name==='파라블레이즈'));nextQuestion()");await flush();h.w.Math.random=()=>.5;h.$('#hint-question').click();assert.equal(h.game().hint.index,3);assert.equal(h.w.document.querySelectorAll('.answer-slot')[3].textContent,'레');
