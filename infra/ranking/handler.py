@@ -70,7 +70,7 @@ def parse_submission(event):
     timed = mode.startswith('time')
     if not isinstance(results, list) or any(type(value) is not bool for value in results):
         raise RequestError(400, '정답 기록을 확인해 주세요.')
-    if (timed and not 1 <= len(results) <= 110) or (not timed and len(results) != 10):
+    if (timed and not 1 <= len(results) <= 110) or (not timed and not 1 <= len(results) <= 10):
         raise RequestError(400, '완료한 게임 기록만 저장할 수 있어요.')
     correct = sum(results)
     if not correct:

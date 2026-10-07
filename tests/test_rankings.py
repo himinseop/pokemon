@@ -64,6 +64,12 @@ class Rankings(unittest.TestCase):
         for mode, unit in [('easy', 100), ('normal', 200), ('hard', 300)]:
             record = self.submit(mode=mode, results=[True]*8+[False]*2)[1]['record']
             self.assertEqual(record['score'], unit*8)
+    def test_quitting_master_keeps_only_answered_questions_and_earned_points(self):
+        status, data = self.submit(mode='hard', results=[True, False, True])
+        self.assertEqual(status, 200)
+        self.assertEqual(data['record']['score'], 600)
+        self.assertEqual(data['record']['total'], 3)
+        self.assertEqual(data['record']['correct'], 2)
     def test_duplicate_submission_is_idempotent_and_cannot_rename_another_record(self):
         first = self.submit()[1]
         again = self.submit()[1]
@@ -91,7 +97,7 @@ class Rankings(unittest.TestCase):
         status, data = self.submit(id='below-cutoff-record', results=[True])
         self.assertEqual(status, 200); self.assertFalse(data['qualified']); self.assertEqual(self.table.items, before)
     def test_invalid_requests_do_not_write_to_the_database(self):
-        for payload in [{'mode': 'bad'}, {'results': []}, {'results': [1]}, {'results': [False]*10}, {'results': [True]*111}, {'mode': 'hard', 'results': [True]*9}, {'name': 'x'*13}, {'name': 'a\nb'}, {'id': '<bad>'}]:
+        for payload in [{'mode': 'bad'}, {'results': []}, {'results': [1]}, {'results': [False]*10}, {'results': [True]*111}, {'mode': 'hard', 'results': [True]*11}, {'name': 'x'*13}, {'name': 'a\nb'}, {'id': '<bad>'}]:
             self.assertEqual(self.submit(**payload)[0], 400)
         self.assertEqual(self.table.writes, 0)
         self.assertEqual(self.request(mode='not-a-board')[0], 400)

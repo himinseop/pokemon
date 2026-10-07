@@ -1,8 +1,9 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const {JSDOM}=require('jsdom');
 const root=path.resolve(__dirname,'../dist'),flush=()=>new Promise(r=>setImmediate(r));
 function server(){return {boards:new Map(),submissions:[],loseNextAck:false,deferMode:null,release:null};}
-async function harness(shared){
+async function harness(shared,{trainer='지우'}={}){
  const dom=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'https://pokemon.pir.kr/',runScripts:'outside-only'}),w=dom.window;
+ if(trainer!==null)w.localStorage.setItem('pokemon-play-trainer-name',trainer);
  w.localStorage.setItem('pokemon-play-records',JSON.stringify([{id:'old-private',name:'개인기록',mode:'time-easy',score:999999,correct:1,total:1,date:'2020-01-01T00:00:00Z'}]));
  let id=0;w.setTimeout=()=>++id;w.clearTimeout=()=>{};w.setInterval=()=>++id;w.clearInterval=()=>{};
  w.Image=function(){const img=w.document.createElement('img');Object.defineProperty(img,'complete',{value:true});Object.defineProperty(img,'naturalWidth',{value:240});img.decode=async()=>{};return img;};
@@ -50,4 +51,36 @@ test('a lost save acknowledgement keeps the name, enables retry and reuses the s
 test('a delayed board request cannot replace the game lobby after navigation',async t=>{
  const shared=server(),h=await harness(shared);t.after(h.close);shared.deferMode='time-easy';h.click('[data-nav="records"]');assert.ok(h.$('.ranking-status'));
  h.click('[data-nav="play"]');assert.ok(h.$('#start-game'));shared.release();await flush();assert.ok(h.$('#start-game'));assert.equal(h.$('.ranking-controls'),null);
+});
+
+test('first visit requires a trainer name, then remembers it for the next visit',async t=>{
+ const h=await harness(server(),{trainer:null});t.after(h.close);
+ assert.ok(h.w.document.body.classList.contains('trainer-entry'));assert.equal(h.$('#start-game'),null);
+ h.w.qa('startGame()');assert.equal(h.w.qa('game'),null);
+ const input=h.$('#entry-trainer-name');input.value='   ';h.$('#trainer-entry-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.$('#start-game'),null);
+ input.value='  지우  ';input.dispatchEvent(new h.w.Event('input',{bubbles:true}));h.$('#trainer-entry-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));
+ assert.ok(h.$('#start-game'));assert.equal(h.w.localStorage.getItem('pokemon-play-trainer-name'),'지우');assert.equal(h.w.document.body.classList.contains('trainer-entry'),false);
+ const again=await harness(server(),{trainer:h.w.localStorage.getItem('pokemon-play-trainer-name')});t.after(again.close);assert.ok(again.$('#start-game'));assert.equal(again.$('#entry-trainer-name'),null);
+});
+test('ranking prefills the trainer name and permits a separate edited name before saving',async t=>{
+ const shared=server(),h=await harness(shared,{trainer:'아빠'});t.after(h.close);await h.finish();assert.equal(h.$('#trainer-name').value,'아빠');
+ h.$('#trainer-name').value='꼬부기';h.$('#trainer-name').dispatchEvent(new h.w.Event('input',{bubbles:true}));h.click('#close-ranking');h.click('#enter-ranking');assert.equal(h.$('#trainer-name').value,'꼬부기');
+ await h.save('꼬부기');assert.equal(shared.submissions[0].name,'꼬부기');assert.equal(h.w.localStorage.getItem('pokemon-play-trainer-name'),'아빠');
+ assert.equal(h.$('.my-entry td:first-child .my-tag'),null);assert.equal(h.$('.my-entry td:nth-child(2) .my-tag').textContent,'나');assert.ok(!h.$('#save-message').textContent.includes('저장했어요'));
+ h.click('#ranking-replay');assert.equal(h.w.qa('game'),null);assert.ok(h.$('#start-game'));assert.equal(h.w.qa('mode'),'time');assert.equal(h.w.qa('difficulty'),'easy');
+});
+test('quitting displays the end ranking and replay returns to the selected master difficulty',async t=>{
+ const h=await harness(server());t.after(h.close);h.click('[data-mode="write"]');h.click('[data-difficulty="hard"]');h.click('#start-game');await flush();
+ h.$('#answer-input').value=h.w.qa('game.question.name');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));h.click('#quit-game');await flush();
+ assert.equal(h.w.qa('game.status'),'ended');assert.equal(h.w.qa('game.quit'),true);assert.ok(h.$('#high-score').open);assert.equal(h.$('#save-message').textContent,'즐거운 도전이었어요');assert.equal(h.$('#trainer-name').value,'지우');
+ h.click('#ranking-replay');assert.equal(h.w.qa('game'),null);assert.equal(h.w.qa('mode'),'write');assert.equal(h.w.qa('difficulty'),'hard');assert.equal(h.$('[data-mode="write"]').classList.contains('active'),true);assert.equal(h.$('[data-difficulty="hard"]').getAttribute('aria-pressed'),'true');assert.ok(h.$('#start-game'));
+});
+test('quitting with no answers still opens the leaderboard without offering a zero score save',async t=>{
+ const h=await harness(server());t.after(h.close);h.click('#start-game');await flush();h.click('#quit-game');await flush();assert.ok(h.$('#high-score').open);assert.equal(h.$('#trainer-name'),null);assert.equal(h.$('#save-message').textContent,'즐거운 도전이었어요');h.click('#ranking-replay');assert.ok(h.$('#start-game'));
+});
+test('ranking dates use Korean calendar days and completed weeks, months and years',async t=>{
+ const h=await harness(server());t.after(h.close);
+ const relative=date=>h.w.qa(`rankingDate('${date}',new Date('2026-10-07T05:00:00Z'))`);
+ for(const [date,label] of [['2026-10-07T00:04:00Z','09:04'],['2026-10-06T16:05:00Z','01:05'],['2026-10-06T00:00:00Z','1일전'],['2026-10-01T00:00:00Z','6일전'],['2026-09-30T00:00:00Z','1주전'],['2026-09-23T00:00:00Z','2주전'],['2026-09-07T00:00:00Z','1개월전'],['2025-11-07T00:00:00Z','11개월전'],['2025-10-07T00:00:00Z','1년전'],['2024-10-07T00:00:00Z','2년전']])assert.equal(relative(date),label,date);
+ assert.equal(h.w.qa("rankingDate('2026-01-31T05:00:00Z',new Date('2026-02-28T05:00:00Z'))"),'1개월전');
 });

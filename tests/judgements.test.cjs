@@ -8,8 +8,9 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
 
 async function harness(){
  const dom=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'http://localhost/',runScripts:'outside-only'}),w=dom.window;
+ w.localStorage.setItem('pokemon-play-trainer-name','지우');
  let now=0,id=0;const timers=new Map();
- w.fetch=async url=>({ok:true,json:async()=>JSON.parse(fs.readFileSync(path.join(root,url),'utf8'))});
+ w.fetch=async url=>({ok:true,json:async()=>url.startsWith('/api/rankings')?{mode:new URL(url,'http://localhost').searchParams.get('mode'),entries:[],serverTime:'2026-10-07T00:00:00Z'}:JSON.parse(fs.readFileSync(path.join(root,url),'utf8'))});
  Object.defineProperty(w.performance,'now',{value:()=>now});
  w.setTimeout=(fn,delay)=>{timers.set(++id,{fn,delay});return id;};w.clearTimeout=id=>timers.delete(id);
  w.setInterval=()=>++id;w.clearInterval=()=>{};
@@ -66,8 +67,8 @@ test('keyboard answers work; duplicate submissions are ignored and deadline/quit
  const image=h.$('.judgement-image');h.w.qa('submitAnswer(game.question.id)');
  assert.equal(h.game().total,1);assert.equal(h.$('.judgement-image'),image);
  await h.run(500);assert.equal(h.$('#judgement-effect').hidden,true);await h.run(550);h.correct();
- h.$('#quit-game').click();assert.equal(h.$('#judgement-effect'),null);assert.equal(h.timers.size,0);
- await h.start();assert.equal(h.game().streak,0);assert.equal(h.$('#judgement-effect').hidden,true);
+ h.$('#quit-game').click();await flush();assert.equal(h.$('#judgement-effect'),null);assert.equal(h.timers.size,0);
+ h.$('#high-score').close();await h.start();assert.equal(h.game().streak,0);assert.equal(h.$('#judgement-effect').hidden,true);
  h.clock(h.game().deadline);h.correct();assert.equal(h.game().total,0);assert.equal(h.game().status,'ended');assert.equal(h.$('#judgement-effect'),null);
 });
 
@@ -77,4 +78,12 @@ test('broken judgement images fall back to readable text, and leaving clears the
  assert.equal(h.$('.judgement-image').hidden,true);assert.equal(h.$('.judgement-fallback').hidden,false);assert.equal(h.$('.judgement-fallback').textContent,'GOOD');
  h.w.qa("navigate('dex')");h.$('#leave-game').click();
  assert.equal(h.game(),null);assert.equal(h.$('#judgement-effect'),null);assert.equal(h.timers.size,0);
+});
+
+test('each new question clears the last selection and preserves the timer bar',async t=>{
+ const h=await harness();t.after(h.close);await h.start();const progress=h.$('.progress'),deadline=h.game().deadline;
+ const chosen=h.$(`[data-answer="${h.game().question.id}"]`);chosen.focus();h.correct();assert.equal(chosen.getAttribute('aria-pressed'),'true');assert.ok(chosen.classList.contains('correct'));
+ await h.run(550);assert.equal(h.game().selectedAnswer,null);assert.equal(h.game().deadline,deadline);assert.equal(h.$('.progress'),progress);
+ for(const button of h.w.document.querySelectorAll('.choice')){assert.equal(button.getAttribute('aria-pressed'),'false');assert.equal(button.classList.contains('correct'),false);assert.equal(button.classList.contains('wrong'),false);assert.equal(button.disabled,false);assert.equal(button.matches(':focus'),false);}
+ h.$(`[data-answer="${h.game().options.find(p=>p.id!==h.game().question.id).id}"]`).click();await h.run(1300);assert.equal(h.game().selectedAnswer,null);assert.equal(h.$('.wrong,.correct'),null);
 });
