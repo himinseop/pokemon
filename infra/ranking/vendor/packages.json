@@ -1,0 +1,10 @@
+[
+  {
+    "wheel": "pyasn1-0.6.2-py3-none-any.whl",
+    "sha256": "1eb26d860996a18e9b6ed05e7aae0e9fc21619fcee6af91cca9bad4fbea224bf"
+  },
+  {
+    "wheel": "rsa-4.9.1-py3-none-any.whl",
+    "sha256": "68635866661c6836b8d39430f97a996acbd61bfa49406748ea243539fe239762"
+  }
+]

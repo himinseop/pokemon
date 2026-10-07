@@ -27,6 +27,10 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run check
       - run: npm test
+      - name: Verify DynamoDB transactions with the AWS SDK
+        run: |
+          python3 -m pip install boto3==1.43.109
+          python3 tests/access-sdk.py
       - run: npm run aws:build:web
       - run: npm run aws:build:ranking
       - run: npm run aws:synth
@@ -97,18 +101,4 @@ jobs:
       - name: Publish verified files and refresh CloudFront
         run: python3 scripts/deploy-aws.py
       - name: Verify the published site
-        run: |
-          curl --fail --silent --show-error --retry 5 --retry-delay 5 https://pokemon.pir.kr/ -o /tmp/pokemon-index.html
-          grep -q '포켓몬' /tmp/pokemon-index.html
-          curl --fail --silent --show-error --retry 5 --retry-delay 5 https://pokemon.pir.kr/pokedex-manifest.json -o /tmp/pokemon-manifest.json
-          python3 - <<'PY'
-          import json
-          assert json.load(open('/tmp/pokemon-manifest.json'))['speciesCount'] == 1025
-          PY
-          curl --fail --silent --show-error --retry 5 --retry-delay 5 'https://pokemon.pir.kr/api/rankings?mode=time-easy' -o /tmp/pokemon-rankings.json
-          python3 - <<'PY'
-          import json
-          rankings = json.load(open('/tmp/pokemon-rankings.json'))
-          assert rankings['mode'] == 'time-easy' and isinstance(rankings['entries'], list)
-          PY
-          echo '### Published https://pokemon.pir.kr' >> "$GITHUB_STEP_SUMMARY"
+        run: python3 scripts/verify-published.py

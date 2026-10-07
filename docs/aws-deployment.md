@@ -121,7 +121,7 @@ AWS 준비 전에는 `AWS_DEPLOY_ENABLED`를 설정하지 않거나 `false`로 �
 - 배포: 검증 job의 같은 릴리스 artifact를 production job에서 사용합니다. 다른 빌드 결과를 새로 만들지 않습니다. production 배포는 동시에 하나씩 실행하고, 진행 중인 업로드를 새 commit으로 강제 취소하지 않습니다.
 - 업로드: 검증된 랭킹 Lambda 코드를 먼저 갱신하고 완료를 기다립니다. 해시 이미지에는 1년 immutable 캐시를 적용하고 `--size-only`로 동일 이미지의 반복 업로드를 피합니다. 변경된 내용은 새 파일명을 갖습니다. 다른 파일은 `no-cache`, HTML은 `no-cache,no-store,must-revalidate`로 업로드합니다. HTML을 마지막에 올린 뒤 CloudFront `/*` 한 경로를 무효화하고 완료를 기다립니다.
 - 이전 이미지/앱 파일을 자동 삭제하지 않습니다. 따라서 이전 캐시 화면의 해시 경로도 유지됩니다. 장기적으로 불필요해진 파일을 정리할 때는 실제 참조와 복구 계획을 별도로 확인합니다.
-- 마지막으로 HTTPS 화면과 1,025종 manifest, 공유 랭킹 API를 확인합니다. GitHub Actions 결과와 릴리스 commit SHA가 배포 이력입니다.
+- 마지막으로 공개 초대장·관리자 화면과 API 설정을 확인합니다. 초대 제한이 켜져 있으면 인증 없는 게임·도감 데이터 접근은 403, 랭킹 API는 401/403이어야 합니다. GitHub Actions 결과와 릴리스 commit SHA가 배포 이력입니다.
 
 배포 Role에는 지정 버킷의 List/Get/Put, 지정 CloudFront의 Create/GetInvalidation, 이 스택의 DescribeStacks와 지정 랭킹 Lambda의 UpdateFunctionCode/GetFunctionConfiguration만 부여합니다. S3 삭제, CDK/CloudFormation 변경, IAM 관리나 다른 프로젝트 배포 권한은 없습니다. AWS 리소스 자체를 바꿀 때는 로컬 SSO로 diff/deploy 절차를 수행합니다.
 
@@ -144,3 +144,41 @@ AWS 작업 없이 로컬 게임만 실행할 때는 기존처럼 `dist`를 제�
 ```sh
 npm start
 ```
+
+
+## 초대 접속과 관리자 페이지 최초 적용
+
+공유 주소는 `https://pokemin.pir.kr/<43자 난수 키>`이고, 공유 주소를 열면 같은 경로의 `pokemon.pir.kr`로 먼저 이동합니다. 서로 다른 도메인의 localStorage를 공유할 수 없으므로 발급과 저장은 메인 도메인에서 합니다. `shareDomainName`을 비우면 공유 주소도 `pokemon.pir.kr`를 사용합니다. 초대 링크는 3일 뒤 만료되며 기존에 받은 기기 키는 자동 만료되지 않습니다. 여기서 기기는 브라우저의 저장 공간 단위입니다.
+
+`/admin`은 공개 로그인 화면이고 실제 초대·기기·접속 기록 API는 Cognito access token, PKCE 로그인, `admins` 그룹으로 제한합니다. 일반 회원가입은 열지 않습니다. 접속 기기의 이름, 첫·최근 접속 시간, 접속 횟수, 브라우저 정보와 방문 기록을 별도 `pokemon-play-prod-access` DynamoDB에 보존합니다. 차단·삭제된 키는 다음 메인 접속 또는 검증에서 브라우저 저장 공간에서 삭제하며 서명 쿠키도 만료시킵니다. 일시적인 통신 실패에는 키를 지우지 않습니다.
+
+운영 설정의 `invitationAccessEnabled`는 최종적으로 true여야 합니다. 새 인프라를 기존 사이트에 추가할 때는 아래 순서로 적용합니다. 초기 배포에서 바로 제한을 켜지 않아 관리자와 서명 설정을 끝낼 수 있도록 합니다.
+
+```sh
+# 1. 현재 랭킹 내용을 읽기 전용으로 백업하고 새 인프라를 추가합니다.
+aws sso login --profile podbbangcast
+npx cdk diff --profile podbbangcast -c invitationAccessEnabled=false
+npx cdk deploy PokemonPlayProd --profile podbbangcast -c invitationAccessEnabled=false --outputs-file exports/aws-outputs.json
+
+# 2. SSM 서명 키와 관리자 계정을 준비합니다. 이메일은 운영자 주소를 지정합니다.
+python3 scripts/provision-access.py --profile podbbangcast --email ADMIN_EMAIL
+
+# 3. 검증한 웹·서버 파일을 게시합니다.
+npm run ci
+npm run aws:publish -- --profile podbbangcast
+
+# 4. 관리자 로그인과 초대 링크 발급·접속을 먼저 확인한 뒤 접근 제한을 켭니다.
+npx cdk diff --profile podbbangcast
+npm run aws:deploy -- --profile podbbangcast
+python3 scripts/verify-published.py
+```
+
+서명은 RSA 2048 / SHA-256을 사용합니다. 공개 키만 `infra/cloudfront-public.pem`으로 버전 관리합니다. 최초 생성한 개인 키 `exports/cloudfront-private.pem`은 권한 0600으로 보관하고 Git·웹 배포에서 제외합니다. 설정 스크립트는 이를 SSM Standard SecureString에 저장하며 기존 키가 다른 경우 덮어쓰지 않습니다. 이미 운영 중인 키는 새로 생성하지 않습니다. 기기 키 원문은 브라우저에 저장하고 DB에는 SHA-256 검증 해시만 저장합니다. 관리자 목록에도 기기 키 원문을 전달하지 않습니다.
+
+관리자 계정 생성 이메일은 보내지 않으며 최초 로그인 정보는 권한 0600의 `exports/admin-credentials.txt`에만 기록합니다. 이미 로그인 가능한 계정은 비밀번호를 변경하지 않습니다. 생성 중 실패한 계정은 스크립트를 다시 실행하여 마무리할 수 있습니다. 관리자에게 메일을 보내는 비밀번호 찾기는 Cognito 로그인 화면에서 직접 요청할 수 있습니다.
+
+CloudFront 서명 쿠키는 30분이며 접속 중 10분마다 갱신합니다. 만료되는 것은 파일 접근 세션이고 영구 기기 키는 유지합니다. 이미지·게임 HTML·JS·CSS·JSON·파비콘은 trusted key group으로 보호하고, 공개 초대장 파일과 관리자 로그인 화면만 예외입니다. 공개 경로는 viewer function에서도 허용 목록으로 제한해 인코딩된 우회 경로가 게임 파일로 전달되지 않게 합니다. API 요청은 캐시하지 않고 Authorization·기기 키 헤더와 쿠키를 전달합니다. 관리자 차단은 다음 접속/API 검증에서 반영되며 이미 발급된 파일 접근 쿠키는 다음 검증 또는 30분 만료까지 유효합니다.
+
+기존 랭킹 테이블의 이름·키 구조·보존 정책은 변경하지 않습니다. 인프라 diff에서 랭킹 테이블 교체·삭제가 보이면 배포를 멈추고 확인합니다. GitHub 자동 배포 권한은 계속 파일과 Lambda 코드 갱신만 허용하며 초대·랭킹 DB 삭제 권한을 주지 않습니다. 최초 적용 이후 일반 배포가 기기나 초대·랭킹 기록을 초기화하지 않습니다.
+
+로컬에서는 `npm start`로 게임만 미리 볼 수 있습니다. 관리자와 초대 API는 AWS에서 동작합니다. `npm test`는 만료·기존 키 재사용·차단·삭제·접속 로그·관리자 권한·쿠키 서명·브라우저 진입과 기존 게임을 검증합니다. CI는 실제 boto3 SDK의 트랜잭션 직렬화도 확인합니다.

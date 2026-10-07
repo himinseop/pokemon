@@ -66,7 +66,7 @@ function enterTrainer(){
  const input=app.querySelector('#entry-trainer-name'),name=validTrainerName(input.value);
  if(!name){input.setCustomValidity('이름을 12자 안으로 적어줘.');input.reportValidity();return;}
  trainerName=name;try{localStorage.setItem(TRAINER_KEY,name);}catch{}
- document.body.classList.remove('trainer-entry');if(pokemonLoading||pokemonLoadError)renderSiteLoading();else render();
+ window.PokemonAccess?.reportTrainer();document.body.classList.remove('trainer-entry');if(pokemonLoading||pokemonLoadError)renderSiteLoading();else render();
 }
 const RANKING_LIMIT=20;
 const recordDate=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'});
@@ -99,7 +99,7 @@ function sharedEntries(key,rows){
 }
 async function rankingRequest(url,options={}){
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
- try{const result=await fetch(url,{...options,signal:controller.signal,cache:'no-store'});const data=await result.json();if(!result.ok)throw Error(typeof data.error==='string'?data.error:'랭킹에 연결하지 못했어. 잠깐 뒤에 다시 눌러줘.');return data;}
+ try{const result=await fetch(url,{...options,headers:{...options.headers,...window.PokemonAccess?.headers()},credentials:'same-origin',signal:controller.signal,cache:'no-store'});const data=await result.json();if(!result.ok){if(data.reason==='invalid_device')window.PokemonAccess?.revoked();throw Error(typeof data.error==='string'?data.error:'랭킹에 연결하지 못했어. 잠깐 뒤에 다시 눌러줘.');}return data;}
  catch(error){if(error.name==='AbortError')throw Error('랭킹이 조금 늦어지고 있어. 잠깐 뒤에 다시 눌러줘.');if(error instanceof TypeError)throw Error('랭킹에 연결하지 못했어. 잠깐 뒤에 다시 눌러줘.');throw error;}
  finally{clearTimeout(timeout);}
 }
@@ -135,7 +135,7 @@ let leaveAction=null;
 function confirmLeave(action){detailRequest++;const dialog=document.querySelector('#detail');leaveAction=action;dialog.classList.remove('dex-detail');dialog.removeAttribute('aria-labelledby');dialog.innerHTML='<div class="detail-inner"><h2 style="font-size:22px">이번 도전은 여기까지 할까?</h2><p>지금 이동하면 이번 점수는 남길 수 없어.</p><div class="result-actions"><button class="secondary" id="keep-playing">계속할래!</button><button class="primary" id="leave-game">여기까지 할래</button></div></div>';dialog.showModal();}
 function navigate(next){if(activeGame()){confirmLeave(()=>{cleanup();game=null;view=next;render();});return;}cleanup();game=null;view=next;render();}
 function updateNav(){document.querySelectorAll('.nav').forEach(b=>b.classList.toggle('active',b.dataset.nav===view));}
-function render(){if(!trainerName||document.body.classList.contains('trainer-entry'))return;updateGameFocus();updateNav();if(view==='play')renderPlay();else if(view==='dex')renderDex();else renderRecords();}
+function render(){if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;if(!trainerName||document.body.classList.contains('trainer-entry'))return;updateGameFocus();updateNav();if(view==='play')renderPlay();else if(view==='dex')renderDex();else renderRecords();}
 function renderPlay(){
 previewChoices={easy:shuffle(pokemon.filter(p=>familiar.includes(p.id)))[0],normal:shuffle(pokemon)[0],hard:shuffle(pokemon)[0]};previewPokemon=previewChoices[difficulty];
 app.innerHTML=`<section class="intro"><div><p class="trainer-greeting"><span>포켓몬스터의 세계에 잘 왔단다!</span><span class="trainer-name-group"><strong>${escapeHTML(trainerName)}</strong><button class="trainer-edit" id="edit-trainer" title="이름 수정" aria-label="트레이너 이름 수정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z"/><path d="m14 5 5 5"/></svg></button></span></p><h1>이 포켓몬, 누구일까?</h1></div></section>
@@ -187,7 +187,7 @@ function selectQuestion(g){
  g.question=g.deck.pop();g.questionNumber=g.total+1;g.questionStartedAt=null;g.elapsedAtAnswer=null;g.bonusAwarded=0;g.judgement=null;g.awaitingNext=false;g.checkedLetters=null;g.lastAttempt='';g.answerLength=Array.from(normalize(g.question.name)).length;g.answerComposing=false;g.answerRevealed=false;g.hintUsed=false;g.hint=null;g.selectedAnswer=null;g.locked=false;g.imageReady=false;prepareQuestionImages(g);
  g.options=shuffle([g.question,...shuffle(g.pool.filter(p=>p.id!==g.question.id)).slice(0,3)]);
 }
-function startGame(){if(!trainerName||document.body.classList.contains('trainer-entry'))return;cleanup();const pool=difficulty==='easy'?pokemon.filter(p=>familiar.includes(p.id)):pokemon;
+function startGame(){if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;if(!trainerName||document.body.classList.contains('trainer-entry'))return;cleanup();const pool=difficulty==='easy'?pokemon.filter(p=>familiar.includes(p.id)):pokemon;
  game={status:'loading',mode,difficulty,pool,deck:shuffle(pool),images:new Map(),question:null,score:0,correct:0,total:0,streak:0,maxStreak:0,history:[],locked:false,saved:false,deadline:0,imageReady:false,imageFailures:0};
  prepareFirstQuestion(game);
 }
@@ -436,7 +436,7 @@ async function showRelatedDetail(uid){
   if(!details[uid])throw Error('entry');renderDexDetail(details[uid]);
  }catch{if(request!==detailRequest||!dialog.open)return;dialog.innerHTML=detailShell(`<p>이 친구의 정보를 가져오지 못했어. 한 번 더 불러볼까?</p><button class="secondary" data-dex-uid="${uid}">다시 불러오기</button>`);}
 }
-function renderRecords(){
+function renderRecords(){if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;
  const key=recordTab,list=leaderboard(key),state=rankingStates.get(key)||{status:'idle'},kind=rankingMode(key),level=rankingDifficulty(key);
  const content=state.status==='idle'||state.status==='loading'?'<div class="ranking-status" role="status"><span class="quiz-spinner" aria-hidden="true"></span><p>친구들의 멋진 기록을 가져오고 있어…</p></div>':state.status==='error'?`<div class="ranking-status" role="status"><p>${escapeHTML(state.message)}</p><button class="secondary" id="retry-rankings">다시 불러오기</button></div>`:list.length?`<table class="ranking"><thead><tr><th>순위</th><th>트레이너</th><th>점수</th><th>정답</th><th>날짜</th></tr></thead><tbody>${list.map((r,i)=>`<tr class="${r.id===lastSavedId?'new-record':''}"><td>${rankBadge(i+1)}</td><td><span class="trainer-name-label" title="${escapeHTML(r.name)}"><span class="trainer-name-text">${escapeHTML(r.name)}</span>${r.id===lastSavedId?'<span class="my-tag">나</span>':''}</span></td><td class="score">${r.score.toLocaleString()}</td><td>${r.correct} / ${r.total}</td><td class="record-date"><time datetime="${escapeHTML(r.date)}" title="${escapeHTML(recordDate.format(new Date(r.date)))}">${rankingDate(r.date)}</time></td></tr>`).join('')}</tbody></table><p class="result-note">${rankingLabel(key)} TOP 20 · 같은 점수라면 최근에 도전한 친구가 먼저 보여.</p>`:`<div class="empty"><div style="font-size:38px;margin-bottom:14px">🏆</div>아직 기록이 없어. 네가 첫 번째 주인공이 되어볼까?<div style="margin-top:23px"><button class="primary" data-play-record="${key}">도전 시작하기</button></div></div>`;
  app.innerHTML=`<button class="text-button back-to-game" data-nav="play"><img src="assets/ui/pokeball.svg" alt="" width="24" height="24">도전하러가기!</button><section class="intro ranking-intro"><div><h1>우리들의 랭킹</h1><p>친구들과 함께 멋진 기록을 만들어보자!</p></div></section><section class="ranking-controls" aria-label="랭킹 모드와 난이도"><div class="game-tabs ranking-mode-tabs" role="group" aria-label="게임 모드">${[['time','⏱️ 타임어택'],['write','🏆 마스터']].map(([value,label])=>`<button class="game-tab ${kind===value?'active':''}" data-ranking-mode="${value}" aria-pressed="${kind===value}">${label}</button>`).join('')}</div><div class="ranking-difficulties" role="group" aria-label="난이도">${Object.entries(difficulties).map(([value,d])=>`<button data-ranking-difficulty="${value}" class="${level===value?'active':''}" aria-pressed="${level===value}">${d.label}</button>`).join('')}</div></section><div class="shared-ranking-board" aria-live="polite">${content}</div>`;
@@ -454,7 +454,7 @@ document.addEventListener('select',e=>{if(e.target.id==='answer-input')updateAns
 document.addEventListener('keyup',e=>{if(e.target.id==='answer-input')updateAnswerSlots();});
 document.addEventListener('focusout',e=>{if(e.target.id==='answer-input')updateAnswerSlots();});
 document.addEventListener('change',e=>{if(e.target.id==='region-filter'){regionFilter=e.target.value;renderDexResults();}if(e.target.id==='type-filter'){typeFilter=e.target.value;renderDexResults();}if(e.target.id==='sort'){sort=e.target.value;renderDexResults();}});
-document.addEventListener('keydown',e=>{if(document.querySelector('#detail').open||document.querySelector('#coloring').open||document.querySelector('#high-score').open||e.target.matches('input,select,textarea')||e.isComposing)return;if(game?.status==='playing'&&game.mode==='time'&&!game.locked&&/^[1-4]$/.test(e.key)){e.preventDefault();submitAnswer(game.options[Number(e.key)-1].id);}});
+document.addEventListener('keydown',e=>{if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;if(document.querySelector('#detail').open||document.querySelector('#coloring').open||document.querySelector('#high-score').open||e.target.matches('input,select,textarea')||e.isComposing)return;if(game?.status==='playing'&&game.mode==='time'&&!game.locked&&/^[1-4]$/.test(e.key)){e.preventDefault();submitAnswer(game.options[Number(e.key)-1].id);}});
 for(const id of ['detail','coloring'])document.querySelector('#'+id).addEventListener('click',e=>{if(e.target===e.currentTarget){const r=e.currentTarget.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.currentTarget.close();}});
 document.querySelector('#coloring').addEventListener('close',()=>{if(!document.querySelector('#coloring').open)coloringRequest++;});
 async function init(){pokemonLoading=true;pokemonLoadError=false;try{const [dataResponse,manifestResponse,regionResponse]=await Promise.all([fetch('pokemon.json'),fetch('pokedex-manifest.json'),fetch('pokemon-regions.json')]);if(!dataResponse.ok||!manifestResponse.ok||!regionResponse.ok)throw Error('data');const [data,manifest,regionalData]=await Promise.all([dataResponse.json(),manifestResponse.json(),regionResponse.json()]);if(!Array.isArray(data)||data.length!==manifest.speciesCount||manifest.speciesCount!==manifest.maxNumber||!data.every((p,i)=>p.id===i+1&&p.name&&p.image&&p.types?.length))throw Error('incomplete');if(!Array.isArray(regionalData.groups)||!regionalData.groups.length||regionalData.groups.some(g=>!g.name||!Array.isArray(g.numbers)||g.numbers.some(n=>!Number.isInteger(n)||n<1||n>manifest.maxNumber)))throw Error('regions');pokemon=data;pokedexManifest=manifest;regionGroups=regionalData.groups;pokemonLoading=false;render();}catch{pokemonLoading=false;pokemonLoadError=true;renderSiteLoading();}}
@@ -471,5 +471,7 @@ if(document.modelContext?.registerTool){
   {name:'search_pokemon_pokedex',title:'포켓몬 도감 검색',description:'Search the full national Pokédex by Korean name or Pokédex number and show the same results in the visible Pokédex.',inputSchema:{type:'object',properties:{query:{type:'string',maxLength:40}},required:['query'],additionalProperties:false},annotations:{readOnlyHint:false},execute(input){if(typeof input?.query!=='string'||input.query.length>40||Object.keys(input).some(k=>k!=='query'))throw Error('Invalid search query.');if(!trainerName||document.body.classList.contains('trainer-entry'))throw Error('Enter a trainer name first.');if(!pokemon.length)throw Error('Pokédex is not ready.');if(activeGame())throw Error('Finish the active game first.');if(document.querySelector('#high-score').open)throw Error('Save or dismiss the high-score entry first.');search=input.query;typeFilter='';regionFilter='';sort='number';view='dex';render();const q=normalize(search);return {results:pokemon.filter(p=>!q||normalize(p.name).includes(q)||number(p).includes(q)||String(p.id)===q).map(p=>({number:p.id,name:p.name,types:p.types}))};}}
  ];
  registrations.forEach(tool=>{try{Promise.resolve(document.modelContext.registerTool(tool,{signal:lifecycle.signal})).catch(()=>{});}catch{}});
- addEventListener('pagehide',()=>lifecycle.abort(),{once:true});
+ addEventListener('pagehide',()=>lifecycle.abort(),{once:true});addEventListener('pokemon-access-revoked',()=>lifecycle.abort(),{once:true});
 }
+
+window.addEventListener('pokemon-access-revoked',()=>{cleanup();game=null;detailRequest++;coloringRequest++;document.body.classList.remove('game-focused','trainer-entry');});

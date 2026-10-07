@@ -41,20 +41,22 @@ def build(source=ROOT / 'dist', target=ROOT / 'dist-aws'):
         destination = target / hashed
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes(content)
-    for path in source.iterdir():
-        if not path.is_file(): continue
+    for path in source.rglob('*'):
+        if not path.is_file() or path.is_relative_to(source / 'assets'): continue
         content = path.read_bytes()
         if path.suffix in ['.html', '.js', '.css', '.json', '.svg', '.txt']:
             content = rewrite(content.decode('utf-8'), replacements).encode('utf-8')
-        (target / path.name).write_bytes(content)
+        destination = target / path.relative_to(source)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(content)
     for name in ['app.js', 'style.css']:
         path = target / name
         hashed = asset_name(name, path.read_bytes())
         path.rename(target / hashed)
-        index = target / 'index.html'
+        index = target / 'game.html'
         index.write_text(index.read_text(encoding='utf-8').replace(f'"{name}"', f'"{hashed}"'), encoding='utf-8')
     import re
-    for path in target.iterdir():
+    for path in target.rglob('*'):
         if path.suffix in ['.html', '.js', '.css', '.json', '.svg']:
             for reference in re.findall(r'assets/[A-Za-z0-9_./-]+', path.read_text(encoding='utf-8')):
                 if not (target / reference).is_file():
