@@ -137,6 +137,18 @@ dialog.dex-detail{--card-type:#999;max-height:92vh;border:8px solid #e9c45b;bord
 .filters select{appearance:none;-webkit-appearance:none;padding-right:42px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23748094' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-size:14px 14px;background-position:right 14px center}
 @media(max-width:700px){.pokemon-stage:not(.setup-stage){min-height:270px}#question-image{width:220px;height:220px}.filters select{padding-right:38px;background-position:right 12px center}}
 @media(forced-colors:active){.filters select{appearance:auto;background-image:none;padding-right:18px}}
+/* Rounded graffiti judgements stay in front of the artwork, including silhouettes. */
+.judgement-effect{position:absolute;z-index:2;left:50%;bottom:8px;transform:translateX(-50%);width:min(84%,360px);height:128px;display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none}
+.judgement-effect[hidden],.judgement-effect [hidden]{display:none!important}
+.pokemon-stage .judgement-image{display:block;width:100%;height:100%;min-width:0;min-height:0;margin:0;object-fit:contain;filter:none;animation:judgement-pop .5s both;transform-origin:center}
+.judgement-fallback{font-size:clamp(32px,7vw,52px);font-weight:900;font-style:italic;color:#50bf39;text-shadow:2px 2px 0 white,-2px -2px 0 white,3px 4px 0 #253448;animation:judgement-pop .5s both}
+[data-judgement="great"] .judgement-fallback{color:#00aadb}[data-judgement="perfect"] .judgement-fallback{color:#f5ac10}[data-judgement="awesome"] .judgement-fallback{color:#d738df}[data-judgement="fail"] .judgement-fallback{color:#ec5b67}
+.judgement-effect[data-judgement="fail"]>*{animation-name:judgement-wiggle}
+@keyframes judgement-pop{0%{opacity:0;transform:translateY(12px) scale(.55) rotate(-5deg)}24%{opacity:1;transform:translateY(-3px) scale(1.08) rotate(2deg)}43%{opacity:1;transform:translateY(0) scale(.97) rotate(-1deg)}62%,78%{opacity:1;transform:scale(1) rotate(0)}100%{opacity:0;transform:translateY(-10px) scale(1.03)}}
+@keyframes judgement-wiggle{0%{opacity:0;transform:scale(.75) rotate(-3deg)}24%{opacity:1;transform:scale(1.03) rotate(3deg)}43%{opacity:1;transform:scale(1) rotate(-2deg)}62%,78%{opacity:1;transform:scale(1) rotate(0)}100%{opacity:0;transform:translateY(6px) scale(.97)}}
+@media(max-width:700px){.judgement-effect{width:min(86%,320px);height:112px;bottom:6px}}
+@media(prefers-reduced-motion:reduce){.pokemon-stage .judgement-image,.judgement-fallback{animation:none;transform:none;opacity:1}}
+
 /* Regional filters and card-side controls. */
 .difficulty-time{margin:0 0 12px;gap:10px}.difficulty-time button{padding:12px 6px}.difficulty-time small{display:block;margin-top:5px;color:#748094}.records-tabs{flex-wrap:wrap}
 .filters input{min-width:160px}.filters select{min-width:135px}

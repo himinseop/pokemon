@@ -2,7 +2,20 @@
 const app=document.querySelector('#app');
 const difficulties={easy:{label:'쉬움',multiplier:1},normal:{label:'보통',multiplier:2},hard:{label:'어려움',multiplier:3}};
 const familiar=[1,2,3,4,5,6,7,8,9,12,16,25,26,35,37,39,52,54,58,63,66,74,79,92,94,95,104,113,129,130,131,132,133,134,135,136,143,144,145,146,149,150,151];
-let pokemon=[],pokedexManifest=null,view='play',mode='time',difficulty='easy',game=null,ticker=null,advance=null,recordTab='time',search='',typeFilter='',sort='number',regionFilter='',regionGroups=[];
+let pokemon=[],pokedexManifest=null,view='play',mode='time',difficulty='easy',game=null,ticker=null,advance=null,judgementTimer=null,recordTab='time',search='',typeFilter='',sort='number',regionFilter='',regionGroups=[];
+const judgementAssets={good:'assets/judgements/good.png',great:'assets/judgements/great.png',perfect:'assets/judgements/perfect.png',awesome:'assets/judgements/awesome.png',fail:'assets/judgements/fail.png'};
+const judgementPreloads=Object.values(judgementAssets).map(src=>{const image=new Image();image.src=src;return image;});
+function judgementFor(correct,streak){return !correct?'fail':streak>=7?'awesome':streak>=5?'perfect':streak>=3?'great':'good';}
+function clearJudgement(){clearTimeout(judgementTimer);judgementTimer=null;const effect=document.querySelector('#judgement-effect');if(effect){effect.hidden=true;effect.replaceChildren();}}
+function showJudgement(correct){
+ clearJudgement();const effect=document.querySelector('#judgement-effect');if(!effect)return;
+ const key=judgementFor(correct,game.streak),image=document.createElement('img'),fallback=document.createElement('span');
+ effect.dataset.judgement=key;image.className='judgement-image';image.alt='';image.src=judgementAssets[key];image.draggable=false;
+ fallback.className='judgement-fallback';fallback.textContent=key.toUpperCase();fallback.hidden=true;
+ image.addEventListener('error',()=>{image.hidden=true;fallback.hidden=false;},{once:true});
+ effect.replaceChildren(image,fallback);effect.hidden=false;
+ judgementTimer=setTimeout(()=>{effect.hidden=true;effect.replaceChildren();judgementTimer=null;},500);
+}
 const escapeHTML=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const shuffle=xs=>{const a=[...xs];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 const normalize=s=>s.normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko');
@@ -29,7 +42,7 @@ let previewPokemon=null,previewChoices=null;
 
 const card=p=>`<button class="dex-card" data-pokemon="${p.id}" aria-label="${p.name} 도감 보기"><span class="number">No. ${number(p)}</span><img src="${p.image}" alt="${p.name}" loading="lazy" width="140" height="130"><strong>${p.name}</strong><div>${badges(p)}</div></button>`;
 const highest=key=>Math.max(0,...records.filter(r=>r.mode===key).map(r=>r.score));
-function cleanup(){clearInterval(ticker);clearTimeout(advance);ticker=null;advance=null;}
+function cleanup(){clearInterval(ticker);clearTimeout(advance);clearJudgement();ticker=null;advance=null;}
 let leaveAction=null;
 function confirmLeave(action){detailRequest++;const dialog=document.querySelector('#detail');leaveAction=action;dialog.classList.remove('dex-detail');dialog.removeAttribute('aria-labelledby');dialog.innerHTML='<div class="detail-inner"><h2 style="font-size:22px">진행 중인 게임을 끝낼까요?</h2><p>이동하면 이번 게임의 기록은 저장되지 않아요.</p><div class="result-actions"><button class="secondary" id="keep-playing">계속 플레이</button><button class="primary" id="leave-game">게임 끝내고 이동</button></div></div>';dialog.showModal();}
 function navigate(next){if(activeGame()){confirmLeave(()=>{cleanup();game=null;view=next;render();});return;}cleanup();game=null;view=next;render();}
@@ -93,9 +106,9 @@ function prepareFirstQuestion(g){
 function nextQuestion(){if(!game||game.status!=='playing')return;if(game.mode==='write'&&game.total>=10){endGame();return;}if(game.mode==='time'&&performance.now()>=game.deadline){endGame();return;}
  selectQuestion(game);renderGameBody();}
 function timerState(g){const duration=60000;const remaining=Math.max(0,g.deadline-performance.now());return {seconds:Math.ceil(remaining/1000),percent:Math.min(100,remaining/duration*100)};}
-function renderQuestion(body){const g=game;const timeState=g.mode==='time'?timerState(g):null;const previousProgress=g.mode==='time'?body.querySelector('.progress'):null;
+function renderQuestion(body){clearJudgement();const g=game;const timeState=g.mode==='time'?timerState(g):null;const previousProgress=g.mode==='time'?body.querySelector('.progress'):null;
 body.innerHTML=`<div class="game-heading"><div><h2>${g.mode==='time'?'이 포켓몬의 이름은?':'포켓몬 이름을 적어 주세요'}</h2><small>${g.mode==='time'?difficulties[g.difficulty].label+' · 네 개의 이름 중 정답을 골라요':difficulties[g.difficulty].label+' · 한글 이름으로 답해요'}</small></div><button class="game-control quit-control" id="quit-game"><span aria-hidden="true">■</span>그만하기</button></div>
-<div class="pokemon-stage ${g.difficulty==='hard'?'silhouette':''}"><span class="stage-tag">WHO’S THAT POKÉMON?</span><span id="question-image-slot"></span></div>
+<div class="pokemon-stage ${g.difficulty==='hard'?'silhouette':''}"><span class="stage-tag">WHO’S THAT POKÉMON?</span><span id="question-image-slot"></span><span id="judgement-effect" class="judgement-effect" aria-hidden="true" hidden></span></div>
 <div class="question-score"><div class="game-stats"><span><strong id="score">${g.score.toLocaleString()}</strong> 점</span><span>${g.mode==='time'?`연속 <b id="streak">${g.streak}</b> 정답`:`${g.total+1} / 10 문제`}</span>${timeState?`<span class="time">⏱ <strong id="time">${timeState.seconds}</strong> 초</span>`:''}</div>${timeState?`<div class="progress" role="progressbar" aria-label="남은 시간" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${timeState.percent}"><div id="timer-bar" style="width:${timeState.percent}%"></div></div>`:''}</div>
 ${g.mode==='time'?`<div class="choices">${g.options.map((p,i)=>`<button class="choice" data-answer="${p.id}" disabled><span>${i+1}</span>${p.name}</button>`).join('')}</div>`:`<form class="text-form" id="answer-form"><input id="answer-input" autocomplete="off" maxlength="30" placeholder="포켓몬 이름" aria-label="포켓몬 이름" disabled><button class="primary" type="submit" disabled>확인</button></form>`}
 <div id="feedback" class="feedback" role="status" aria-live="polite">포켓몬을 불러오는 중…</div><div class="play-actions">${g.mode==='time'?'<span class="result-note">키보드 1–4로도 선택할 수 있어요</span>':'<button class="game-control skip-control" id="skip-question"><span aria-hidden="true">?</span>모르겠어요</button>'}</div>`;
@@ -111,8 +124,9 @@ function tick(){if(!game||game.status!=='playing'||game.mode!=='time')return;con
 function submitAnswer(value,skipped=false){const g=game;if(!g||g.status!=='playing'||g.locked||!g.imageReady)return;if(g.mode==='time'&&performance.now()>=g.deadline){endGame();return;}
 const correct=!skipped&&(g.mode==='time'?Number(value)===g.question.id:normalize(value)===normalize(g.question.name));const feedback=document.querySelector('#feedback');
 // A wrong typed guess leaves the same question open for another try.
-if(g.mode==='write'&&!correct&&!skipped){feedback.className='feedback bad';feedback.textContent='다시 도전해 보세요!';const input=document.querySelector('#answer-input');input.focus({preventScroll:true});input.select();return;}
+if(g.mode==='write'&&!correct&&!skipped){g.streak=0;showJudgement(false);feedback.className='feedback bad';feedback.textContent='다시 도전해 보세요!';const input=document.querySelector('#answer-input');input.focus({preventScroll:true});input.select();return;}
 g.locked=true;g.total++;if(correct){g.correct++;g.streak++;g.maxStreak=Math.max(g.maxStreak,g.streak);g.score+=g.mode==='time'?100+Math.min(g.streak-1,10)*10:100*difficulties[g.difficulty].multiplier;}else g.streak=0;
+showJudgement(correct);
 const answerRevealed=g.mode==='time'||correct||skipped;g.history.push({pokemon:g.question,correct,answer:String(value),answerRevealed});feedback.className='feedback '+(correct?'good':'bad');feedback.textContent=g.mode==='write'?(correct?'정답이에요! 잘 알고 있네요!':`정답은 ${g.question.name}! 다음 문제에 도전해 보세요!`):(correct?`정답! ${g.question.name}, 잘 알고 있네요!`:`괜찮아요! 정답은 ${g.question.name}`);
 if(answerRevealed)document.querySelector('.pokemon-stage')?.classList.add('reveal');document.querySelectorAll('[data-answer]').forEach(b=>{b.disabled=true;if(Number(b.dataset.answer)===g.question.id)b.classList.add('correct');else if(Number(b.dataset.answer)===Number(value))b.classList.add('wrong');});document.querySelectorAll('.text-form input,.text-form button,#skip-question').forEach(b=>b.disabled=true);document.querySelector('#score').textContent=g.score.toLocaleString();const streak=document.querySelector('#streak');if(streak)streak.textContent=g.streak;
 advance=setTimeout(nextQuestion,correct?550:1300);}
