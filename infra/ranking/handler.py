@@ -90,11 +90,11 @@ def parse_submission(event):
 
 def board(storage, mode):
     item = storage.get_item(Key={'mode': mode}, ConsistentRead=True).get('Item')
-    return item, list(item.get('entries', [])) if item else []
+    return item, sorted(item.get('entries', []), key=sort_key) if item else []
 
 
 def sort_key(record):
-    return (-record['score'], -record['correct'], record['date'], record['id'])
+    return (-record['score'], -datetime.fromisoformat(record['date'].replace('Z', '+00:00')).timestamp(), record['id'])
 
 
 def save(storage, submitted):

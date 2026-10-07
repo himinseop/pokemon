@@ -36,6 +36,22 @@ test('ranking uses two mode tabs and three difficulties without showing old devi
   for(const [i,level] of ['easy','normal','hard'].entries()){h.click(`[data-ranking-difficulty="${level}"]`);await flush();assert.equal(h.w.qa('recordTab'),expected[i]);assert.equal(h.$(`[data-ranking-difficulty="${level}"]`).getAttribute('aria-pressed'),'true');}
  }
 });
+test('equal scores show newer friends first even when older friends answered more questions',async t=>{
+ const shared=server(),entry=(id,score,correct,date)=>({id,name:id,mode:'time-easy',score,correct,total:10,date});
+ shared.boards.set('time-easy',[
+  entry('older',500,8,'2026-10-07T00:00:00Z'),
+  entry('newer',500,5,'2026-10-07T01:00:00Z'),
+  entry('highest',600,6,'2026-10-06T00:00:00Z'),
+ ]);
+ const h=await harness(shared);t.after(h.close);h.click('[data-nav="records"]');await flush();
+ assert.deepEqual([...h.w.document.querySelectorAll('.ranking tbody .trainer-name-text')].map(node=>node.textContent),['highest','newer','older']);
+ assert.ok(h.$('#app').textContent.includes('최근에 도전한 친구'));
+ const own=entry('mine',500,4,'2026-10-07T01:30:00Z');
+ assert.equal(h.w.qa(`rankOf(${JSON.stringify(own)})`),2);
+ // The preview and final name entry use the same tie rule.
+ h.click('[data-nav="play"]');await h.finish();h.w.qa('game.record.score=500;game.score=500;game.record.correct=4;game.record.date="2026-10-07T01:30:00Z";game.rank=rankOf(game.record);showRankingEntry()');
+ assert.equal(h.$('.my-entry td:first-child .rank-medal').getAttribute('aria-label'),'2등');
+});
 test('a score saved in one browser appears in another and markup in a name is escaped',async t=>{
  const shared=server(),first=await harness(shared),second=await harness(shared);t.after(first.close);t.after(second.close);
  await first.finish();assert.ok(first.$('#high-score').open);await first.save('<탐험가>');assert.equal(first.w.qa('game.saved'),true);

@@ -34,7 +34,11 @@ function syncMasterKeyboard(){
 function fitLayersToViewport(){
  const viewport=window.visualViewport,root=document.documentElement;
  root.style.setProperty('--layer-viewport-height',`${Math.min(window.innerHeight,viewport?.height||window.innerHeight)}px`);
+ root.style.setProperty('--layer-viewport-width',`${Math.min(window.innerWidth,viewport?.width||window.innerWidth)}px`);
+ root.style.setProperty('--layer-viewport-left',`${viewport?.offsetLeft||0}px`);
  root.style.setProperty('--layer-viewport-top',`${viewport?.offsetTop||0}px`);syncMasterKeyboard();
+ document.querySelector('#high-score')?.classList.toggle('compact-ranking',Math.min(window.innerHeight,viewport?.height||window.innerHeight)<450);
+ if(document.activeElement?.id==='trainer-name')document.querySelector('#high-score .my-entry')?.scrollIntoView({block:'nearest'});
 }
 fitLayersToViewport();window.addEventListener('resize',fitLayersToViewport);window.visualViewport?.addEventListener('resize',fitLayersToViewport);window.visualViewport?.addEventListener('scroll',fitLayersToViewport);
 const TRAINER_KEY='pokemon-play-trainer-name';
@@ -71,7 +75,7 @@ function rankingDate(date,now=new Date()){
 }
 const rankingModes=['time-easy','time','time-hard','easy','normal','hard'];
 let records=[],lastSavedId=null;
-function compareRecords(a,b){return b.score-a.score||b.correct-a.correct||a.date.localeCompare(b.date)||(a.id<b.id?-1:a.id>b.id?1:0);}
+function compareRecords(a,b){return b.score-a.score||Date.parse(b.date)-Date.parse(a.date)||(a.id<b.id?-1:a.id>b.id?1:0);}
 function leaderboard(key,items=records){return items.filter(r=>r.mode===key).sort(compareRecords).slice(0,RANKING_LIMIT);}
 function rankOf(record,items=records){return leaderboard(record.mode,[...items,record]).indexOf(record)+1;}
 function rankingLabel(key){return key==='time'||key.startsWith('time-')?`타임어택 · ${difficulties[key==='time'?'normal':key.slice(5)].label}`:`마스터 · ${difficulties[key].label}`;}
@@ -387,7 +391,7 @@ async function showRelatedDetail(uid){
 }
 function renderRecords(){
  const key=recordTab,list=leaderboard(key),state=rankingStates.get(key)||{status:'idle'},kind=rankingMode(key),level=rankingDifficulty(key);
- const content=state.status==='idle'||state.status==='loading'?'<div class="ranking-status" role="status"><span class="quiz-spinner" aria-hidden="true"></span><p>친구들의 멋진 기록을 가져오고 있어…</p></div>':state.status==='error'?`<div class="ranking-status" role="status"><p>${escapeHTML(state.message)}</p><button class="secondary" id="retry-rankings">다시 불러오기</button></div>`:list.length?`<table class="ranking"><thead><tr><th>순위</th><th>트레이너</th><th>점수</th><th>정답</th><th>날짜</th></tr></thead><tbody>${list.map((r,i)=>`<tr class="${r.id===lastSavedId?'new-record':''}"><td>${rankBadge(i+1)}</td><td><span class="trainer-name-label" title="${escapeHTML(r.name)}"><span class="trainer-name-text">${escapeHTML(r.name)}</span>${r.id===lastSavedId?'<span class="my-tag">나</span>':''}</span></td><td class="score">${r.score.toLocaleString()}</td><td>${r.correct} / ${r.total}</td><td class="record-date"><time datetime="${escapeHTML(r.date)}" title="${escapeHTML(recordDate.format(new Date(r.date)))}">${rankingDate(r.date)}</time></td></tr>`).join('')}</tbody></table><p class="result-note">${rankingLabel(key)} TOP 20 · 같은 점수라면 더 많이 맞힌 친구, 먼저 기록한 친구 순이야.</p>`:`<div class="empty"><div style="font-size:38px;margin-bottom:14px">🏆</div>아직 기록이 없어. 네가 첫 번째 주인공이 되어볼까?<div style="margin-top:23px"><button class="primary" data-play-record="${key}">도전 시작하기</button></div></div>`;
+ const content=state.status==='idle'||state.status==='loading'?'<div class="ranking-status" role="status"><span class="quiz-spinner" aria-hidden="true"></span><p>친구들의 멋진 기록을 가져오고 있어…</p></div>':state.status==='error'?`<div class="ranking-status" role="status"><p>${escapeHTML(state.message)}</p><button class="secondary" id="retry-rankings">다시 불러오기</button></div>`:list.length?`<table class="ranking"><thead><tr><th>순위</th><th>트레이너</th><th>점수</th><th>정답</th><th>날짜</th></tr></thead><tbody>${list.map((r,i)=>`<tr class="${r.id===lastSavedId?'new-record':''}"><td>${rankBadge(i+1)}</td><td><span class="trainer-name-label" title="${escapeHTML(r.name)}"><span class="trainer-name-text">${escapeHTML(r.name)}</span>${r.id===lastSavedId?'<span class="my-tag">나</span>':''}</span></td><td class="score">${r.score.toLocaleString()}</td><td>${r.correct} / ${r.total}</td><td class="record-date"><time datetime="${escapeHTML(r.date)}" title="${escapeHTML(recordDate.format(new Date(r.date)))}">${rankingDate(r.date)}</time></td></tr>`).join('')}</tbody></table><p class="result-note">${rankingLabel(key)} TOP 20 · 같은 점수라면 최근에 도전한 친구가 먼저 보여.</p>`:`<div class="empty"><div style="font-size:38px;margin-bottom:14px">🏆</div>아직 기록이 없어. 네가 첫 번째 주인공이 되어볼까?<div style="margin-top:23px"><button class="primary" data-play-record="${key}">도전 시작하기</button></div></div>`;
  app.innerHTML=`<button class="text-button back-to-game" data-nav="play"><img src="assets/ui/pokeball.svg" alt="" width="24" height="24">도전하러가기!</button><section class="intro ranking-intro"><div><h1>우리들의 랭킹</h1><p>친구들과 함께 멋진 기록을 만들어보자!</p></div></section><section class="ranking-controls" aria-label="랭킹 모드와 난이도"><div class="game-tabs ranking-mode-tabs" role="group" aria-label="게임 모드">${[['time','⏱️ 타임어택'],['write','🏆 마스터']].map(([value,label])=>`<button class="game-tab ${kind===value?'active':''}" data-ranking-mode="${value}" aria-pressed="${kind===value}">${label}</button>`).join('')}</div><div class="ranking-difficulties" role="group" aria-label="난이도">${Object.entries(difficulties).map(([value,d])=>`<button data-ranking-difficulty="${value}" class="${level===value?'active':''}" aria-pressed="${level===value}">${d.label}</button>`).join('')}</div></section><div class="shared-ranking-board" aria-live="polite">${content}</div>`;
  if(state.status==='idle')loadRankings(key).catch(()=>{});
 }

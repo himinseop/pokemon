@@ -2,6 +2,7 @@ import copy
 import importlib.util
 import json
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -115,6 +116,29 @@ class Rankings(unittest.TestCase):
         before = copy.deepcopy(self.table.items)
         status, data = self.submit(id='below-cutoff-record', results=[True])
         self.assertEqual(status, 200); self.assertFalse(data['qualified']); self.assertEqual(self.table.items, before)
+    def test_existing_ties_are_read_newest_first_without_rewriting_the_board(self):
+        older = {'id': 'older-record-0001', 'name': '이브이', 'mode': 'easy', 'score': 100, 'correct': 2, 'total': 3, 'date': '2026-10-07T00:00:00.000Z'}
+        newer = {**older, 'id': 'newer-record-0001', 'correct': 1, 'date': '2026-10-07T01:00:00.000Z'}
+        self.table.items['easy'] = {'mode': 'easy', 'version': 1, 'entries': [older, newer]}
+        status, data = self.request(mode='easy')
+        self.assertEqual(status, 200)
+        self.assertEqual([r['id'] for r in data['entries']], [newer['id'], older['id']])
+        self.assertEqual(self.table.writes, 0)
+    def test_new_tie_enters_full_board_first_and_retry_returns_the_same_rank(self):
+        self.table.items['easy'] = {'mode': 'easy', 'version': 1, 'entries': [
+            {'id': f'older-record-{i:08d}', 'name': '이브이', 'mode': 'easy', 'score': 100, 'correct': 2, 'total': 3, 'date': f'2026-10-07T00:00:{i:02d}.000Z'} for i in range(20)
+        ]}
+        with patch.object(handler, 'timestamp', return_value='2026-10-07T01:00:00.000Z'):
+            status, data = self.submit(mode='easy', results=[True])
+        self.assertEqual(status, 200)
+        self.assertTrue(data['qualified'])
+        self.assertEqual(data['rank'], 1)
+        self.assertEqual(len(data['entries']), 20)
+        self.assertNotIn('older-record-00000000', [r['id'] for r in data['entries']])
+        again = self.submit(mode='easy', results=[True])[1]
+        self.assertEqual(again['rank'], 1)
+        self.assertEqual(again['record'], data['record'])
+        self.assertEqual(self.table.writes, 1)
     def test_invalid_requests_do_not_write_to_the_database(self):
         for payload in [{'mode': 'bad'}, {'results': []}, {'results': [1]}, {'results': [False]*10}, {'results': [True]*111}, {'mode': 'hard', 'results': [True]*11}, {'name': 'x'*13}, {'name': 'a\nb'}, {'id': '<bad>'}]:
             self.assertEqual(self.submit(**payload)[0], 400)

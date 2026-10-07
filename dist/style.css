@@ -266,12 +266,17 @@ body.trainer-entry #app{display:grid;place-items:center;max-width:none;min-heigh
 @media screen{
  :root{--layer-height:calc(var(--layer-viewport-height,100dvh) - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
  dialog{position:fixed;inset:auto;top:calc(var(--layer-viewport-top,0px) + var(--layer-viewport-height,100dvh)/2);left:50%;margin:0;transform:translate(-50%,-50%);max-width:calc(100vw - 24px);max-height:var(--layer-height);overflow:auto;overscroll-behavior:contain}
- #high-score{max-height:var(--layer-height);padding:0;overflow:hidden}
- .leaderboard-entry{display:flex;flex-direction:column;max-height:var(--layer-height);padding:22px 18px 18px}
+ #high-score{width:min(660px,calc(var(--layer-viewport-width,100vw) - 24px));max-width:calc(var(--layer-viewport-width,100vw) - 24px);min-width:0;left:calc(var(--layer-viewport-left,0px) + var(--layer-viewport-width,100vw)/2);max-height:var(--layer-height);padding:0;overflow:hidden}
+ .leaderboard-entry{display:flex;flex-direction:column;width:100%;min-width:0;max-width:100%;max-height:var(--layer-height);padding:22px 18px 18px}
  .leaderboard-entry h2,.leaderboard-entry .entry-summary,.leaderboard-entry #save-message,.leaderboard-entry #ranking-replay{flex-shrink:0}
  .leaderboard-entry .entry-summary{margin-bottom:12px}
- .leaderboard-entry .entry-list{min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain}
+ .leaderboard-entry .entry-list{min-width:0;max-width:100%;min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain}
+ .leaderboard-entry .entry-input{min-width:0;max-width:100%}
+ .leaderboard-entry .entry-input input{font-size:16px}
  .leaderboard-entry #ranking-replay{margin-top:14px;min-height:48px}
+ #high-score.compact-ranking .leaderboard-entry{padding-top:12px;padding-bottom:12px}
+ #high-score.compact-ranking h2{margin-bottom:8px}
+ #high-score.compact-ranking .entry-summary{padding-top:8px;padding-bottom:8px;gap:4px;margin-bottom:8px}
  .entry-ranking th:first-child,.entry-ranking td:first-child,.ranking th:first-child,.ranking td:first-child{text-align:center;white-space:nowrap}
  .trainer-name-label{display:inline-flex;max-width:100%;align-items:center;gap:5px;white-space:nowrap;vertical-align:middle}
  .trainer-name-text{min-width:0;overflow:hidden;text-overflow:ellipsis}
@@ -292,7 +297,7 @@ body.trainer-entry #app{display:grid;place-items:center;max-width:none;min-heigh
   .entry-ranking .entry-date{font-size:11px}
   .entry-ranking .entry-input{gap:4px}
   .entry-ranking th,.entry-ranking td{padding:10px 5px}
-  .leaderboard-entry .entry-input input{padding:9px 5px;font-size:13px}
+  .leaderboard-entry .entry-input input{padding:9px 5px;font-size:16px}
   .entry-input .save-name{width:28px;font-size:19px}
   .my-tag{font-size:9px;padding:2px 4px}
  }
@@ -394,9 +399,11 @@ body.game-focused .play-actions:has(.hint-control){align-items:stretch}
 /* Glass tools float over the card; bottom padding keeps its final content clear. */
 @media screen{
  .dex-detail .detail-scroll{max-height:var(--layer-height);border-radius:22px;border-bottom:8px solid #e9c45b}
- .dex-detail .pokemon-detail-card{padding-bottom:96px}
- .dex-detail .detail-tools{position:absolute;inset:auto 0 14px;z-index:4;display:flex;justify-content:center;gap:12px;padding:0;border:0;border-radius:0;background:transparent;pointer-events:none}
+ .dex-detail{--detail-tool-size:44px;--detail-tool-gap:20px;--detail-border-size:8px}
+ .dex-detail .pokemon-detail-card{padding-bottom:calc(var(--detail-tool-size) + var(--detail-tool-gap)*2)}
+ .dex-detail .detail-tools{position:absolute;inset:auto 0 calc(var(--detail-border-size) + var(--detail-tool-gap));z-index:4;display:flex;justify-content:center;gap:12px;padding:0;border:0;border-radius:0;background:transparent;pointer-events:none}
+ .dex-detail .detail-tool{width:var(--detail-tool-size);height:var(--detail-tool-size)}
  .dex-detail .detail-tool,.dex-detail .detail-tool.coloring-tool{pointer-events:auto;background:#ffffffb8;border-color:#ffffffa6;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 3px 15px #14223b26}
  .dex-detail .detail-tool:hover{background:#fffffff0}
- @media(max-width:600px){.dex-detail .detail-scroll{border-bottom-width:6px}}
+ @media(max-width:600px){.dex-detail{--detail-border-size:6px}.dex-detail .detail-scroll{border-bottom-width:var(--detail-border-size)}}
 }
