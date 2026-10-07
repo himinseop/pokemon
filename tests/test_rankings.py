@@ -78,6 +78,30 @@ class Rankings(unittest.TestCase):
             self.assertEqual(data['record']['score'], unit * 3 // 2)
             self.assertEqual(data['record']['hintsUsed'], 2)
             self.assertEqual(data['record']['correct'], 2)
+    def test_master_time_bonus_matches_elapsed_time_and_ignores_hints_and_misses(self):
+        for mode, unit in [('easy', 100), ('normal', 200), ('hard', 300)]:
+            status, data = self.submit(mode=mode, results=[True, True, True, True, False], hints=[False, False, False, True, False], elapsedMs=[0, 10000, 20000, 0, 0], score=999999)
+            self.assertEqual(status, 200)
+            self.assertEqual(data['record']['timeBonus'], unit * 3 // 4)
+            self.assertEqual(data['record']['score'], unit * 17 // 4)
+    def test_invalid_bonus_arrays_do_not_write_and_time_attack_cannot_claim_master_bonus(self):
+        for elapsed in [None, {}, [0], [True]*4, [0.5]*4, [-1]*4, [20001]*4]:
+            self.assertEqual(self.submit(mode='easy', elapsedMs=elapsed)[0], 400)
+        self.assertEqual(self.submit(elapsedMs=[0]*4)[0], 400)
+        self.assertEqual(self.table.writes, 0)
+    def test_bonus_submission_is_idempotent_and_cannot_change_an_existing_score(self):
+        first = self.submit(mode='hard', results=[True], elapsedMs=[0])[1]['record']
+        self.assertEqual(first['score'], 450)
+        self.assertEqual(self.submit(mode='hard', results=[True], elapsedMs=[0])[1]['record'], first)
+        self.assertEqual(self.submit(mode='hard', results=[True], elapsedMs=[20000])[0], 409)
+        self.assertEqual(self.table.writes, 1)
+    def test_legacy_master_submission_and_retry_have_no_time_bonus(self):
+        record = self.submit(mode='hard', results=[True])[1]['record']
+        self.assertEqual(record['score'], 300)
+        self.assertEqual(record['timeBonus'], 0)
+        self.table.items['hard']['entries'][0].pop('timeBonus')
+        self.assertEqual(self.submit(mode='hard', results=[True])[0], 200)
+        self.assertEqual(self.table.writes, 1)
     def test_invalid_hint_arrays_and_time_attack_hints_do_not_write(self):
         for hints in [None, {}, [True], [1, False, False, False], [True, False, False, False]]:
             self.assertEqual(self.submit(hints=hints)[0], 400)

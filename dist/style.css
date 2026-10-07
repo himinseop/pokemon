@@ -402,3 +402,36 @@ body.game-focused .master-tools .game-control:disabled{background:#fff;opacity:.
  .dex-detail .detail-tool:hover{background:#fffffff0}
  @media(max-width:600px){.dex-detail{--detail-border-size:6px}.dex-detail .detail-scroll{border-bottom-width:var(--detail-border-size)}}
 }
+
+/* Master keeps the same floating answer layout with or without the keyboard. */
+@media screen{
+ body.game-focused[data-game-mode="write"] .game-body{position:relative;height:min(700px,calc(var(--master-visible-height,100svh) - 24px));grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;gap:10px}
+ body.game-focused[data-game-mode="write"] .pokemon-stage{grid-row:1;grid-column:1;height:100%;min-height:0;border-radius:22px}
+ body.game-focused[data-game-mode="write"] #question-image{height:calc(100% - 84px);max-height:400px;transform:translateY(-38px)}
+ body.game-focused[data-game-mode="write"] .text-form{grid-column:1;grid-row:1;position:absolute;top:var(--master-answer-top,10px);left:10px;right:10px;z-index:4;padding:6px;border:1px solid #e2e7ef;border-radius:18px;background:#ffffffeb;box-shadow:0 5px 18px #27344814;backdrop-filter:blur(8px);gap:8px}
+ body.game-focused[data-game-mode="write"] .text-form .primary{min-width:78px;min-height:48px;padding:10px 12px;border-radius:12px;font-size:14px}
+ body.game-focused[data-game-mode="write"] .answer-slot{height:48px;font-size:21px;border-radius:10px}
+ body.game-focused[data-game-mode="write"] .judgement-effect{bottom:var(--master-judgement-bottom,88px);height:var(--master-judgement-height,112px)}
+ body.game-focused[data-game-mode="write"] .question-score{grid-row:2;grid-column:1}
+ body.game-focused[data-game-mode="write"] .game-stats{min-height:44px}
+ .master-score{min-width:64px;text-align:right}
+ .question-count{font-variant-numeric:tabular-nums}
+ body.game-focused[data-game-mode="write"] .feedback-area{grid-row:3;grid-column:1;min-height:20px}
+ body.game-focused[data-game-mode="write"] .feedback{min-height:20px;line-height:20px;font-size:12px}
+ body.game-focused .stage-hint{position:absolute;top:12px;left:12px;z-index:3;display:grid;place-items:center;width:44px;height:44px;min-height:44px;padding:10px;border:1px solid #ffffffa6;border-radius:50%;background:#ffffffb8;color:#eab522;box-shadow:0 3px 12px #27344814;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+ .stage-hint svg{width:24px;height:24px}
+ body.game-focused .stage-hint:hover:not(:disabled){background:#ffffffe0;box-shadow:0 3px 12px #27344814}
+ body.game-focused .stage-hint:disabled{background:#ffffffb8;color:#d5b76d;opacity:.65;box-shadow:none}
+ .master-bonus{display:grid;gap:5px;margin:0 0 8px}
+ .master-bonus[hidden]{display:none!important}
+ .bonus-label{font-size:11px;font-weight:700;color:#a97d20;text-align:center;line-height:16px}
+ .bonus-track{height:5px;background:#f3eee0;border-radius:8px;overflow:hidden}
+ .bonus-fill{height:100%;width:100%;background:linear-gradient(90deg,#f4bc3b,#f7d567);border-radius:8px;transition:width .1s linear}
+ .bonus-earned .bonus-label{color:#25885c}
+ .bonus-earned .bonus-fill{background:#53b98c}
+ .bonus-expired .bonus-label{color:#8b96a5}
+ .answer-slot.checked-correct{border-color:#74bd9a;background:#e9f8ee;color:#21734e;box-shadow:none}
+ .answer-slot.checked-wrong{border-color:#ee8b85;background:#fff0ee;color:#bf4d47;box-shadow:none}
+ @media(max-width:700px) and (orientation:portrait){body.game-focused[data-game-mode="write"] #app{align-items:stretch}body.game-focused[data-game-mode="write"] .play-grid,body.game-focused[data-game-mode="write"] .game-card{height:100%}body.game-focused[data-game-mode="write"] .game-body{height:100%}}
+ @media(max-width:340px){body.game-focused[data-game-mode="write"] .answer-slot{font-size:18px}.question-count{font-size:11px}}
+}

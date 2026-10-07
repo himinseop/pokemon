@@ -11,6 +11,7 @@ from pathlib import Path
 
 MODES = ('time-easy', 'time', 'time-hard', 'easy', 'normal', 'hard')
 LIMIT = 20
+BONUS_DURATION = 20000
 _TABLE = None
 NAMES = json.loads((Path(__file__).parent / 'pokemon-names.json').read_text(encoding='utf-8'))
 
@@ -75,17 +76,26 @@ def parse_submission(event):
     hints = data.get('hints', [False] * len(results))
     if not isinstance(hints, list) or len(hints) != len(results) or any(type(value) is not bool for value in hints) or (timed and any(hints)):
         raise RequestError(400, '힌트를 쓴 문제를 확인하지 못했어. 다시 저장해줘.')
+    elapsed = data.get('elapsedMs', [BONUS_DURATION] * len(results))
+    if not isinstance(elapsed, list) or len(elapsed) != len(results) or any(type(value) is not int or not 0 <= value <= BONUS_DURATION for value in elapsed) or (timed and 'elapsedMs' in data):
+        raise RequestError(400, '보너스 시간을 확인하지 못했어. 다시 저장해줘.')
     correct = sum(results)
     if not correct:
         raise RequestError(400, '한 문제라도 맞히면 랭킹에 이름을 남길 수 있어!')
-    score, streak = 0, 0
-    for answered, hinted in zip(results, hints):
+    score, streak, time_bonus = 0, 0, 0
+    for answered, hinted, duration in zip(results, hints, elapsed):
         if not answered:
             streak = 0
             continue
         streak += 1
-        score += 100 + min(streak - 1, 10) * 10 if timed else {'easy': 100, 'normal': 200, 'hard': 300}[mode] // (2 if hinted else 1)
-    return {'id': record_id, 'name': name, 'mode': mode, 'score': score, 'correct': correct, 'total': len(results), 'hintsUsed': sum(hints)}
+        if timed:
+            score += 100 + min(streak - 1, 10) * 10
+        else:
+            unit = {'easy': 100, 'normal': 200, 'hard': 300}[mode]
+            bonus = 0 if hinted else (BONUS_DURATION - duration) * 50 // BONUS_DURATION * (unit // 100)
+            score += unit // (2 if hinted else 1) + bonus
+            time_bonus += bonus
+    return {'id': record_id, 'name': name, 'mode': mode, 'score': score, 'correct': correct, 'total': len(results), 'hintsUsed': sum(hints), 'timeBonus': time_bonus}
 
 
 def board(storage, mode):
@@ -104,7 +114,7 @@ def save(storage, submitted):
         existing = next((entry for entry in entries if entry['id'] == record['id']), None)
         if existing:
             fields = ['score', 'correct', 'total', 'mode'] + (['name'] if submitted['name'] else [])
-            if any(existing[field] != submitted[field] for field in fields) or existing.get('hintsUsed', 0) != submitted['hintsUsed']:
+            if any(existing[field] != submitted[field] for field in fields) or existing.get('hintsUsed', 0) != submitted['hintsUsed'] or existing.get('timeBonus', 0) != submitted['timeBonus']:
                 raise RequestError(409, '이 기록은 이미 저장됐어. 랭킹에서 확인해봐.')
             return {'qualified': True, 'rank': entries.index(existing) + 1, 'record': existing, 'entries': entries}
         if not record['name']:

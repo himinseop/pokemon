@@ -23,8 +23,8 @@ async function harness(){
  const start=async(mode='time',difficulty='easy')=>{w.qa(`mode='${mode}';difficulty='${difficulty}';startGame()`);await flush();assert.equal(game().status,'playing');};
  const run=async delay=>{const entry=[...timers].find(([,timer])=>timer.delay===delay);assert.ok(entry,`timer ${delay}`);timers.delete(entry[0]);entry[1].fn();await flush();};
  const correct=()=>game().mode==='time'?$(`[data-answer="${game().question.id}"]`).click():submit(game().question.name);
- const submit=value=>{$('#answer-input').value=value;$('#answer-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));};
- return {w,$,game,start,run,correct,submit,timers,clock:value=>now=value,close:()=>dom.window.close()};
+ const submit=value=>{$('#answer-input').value=value;$('#answer-input').dispatchEvent(new w.InputEvent('input',{bubbles:true}));$('#answer-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));};
+ return {w,$,game,start,run,correct,submit,next:async()=>{$('#answer-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await flush();},timers,clock:value=>now=value,close:()=>dom.window.close()};
 }
 
 test('all five judgement assets are alpha-channel PNGs',()=>{
@@ -49,13 +49,13 @@ test('each correct answer selects its streak tier, and a miss restarts at GOOD w
 
 test('typed retries reset the streak, stay on the same question, and replay FAIL; skipping also resets',async t=>{
  const h=await harness();t.after(h.close);await h.start('write');
- for(let i=0;i<3;i++){h.correct();await h.run(550);}
+ for(let i=0;i<3;i++){h.correct();await h.next();}
  const question=h.game().question;h.submit('없는포켓몬');const oldImage=h.$('.judgement-image');
- assert.equal(h.game().streak,0);assert.equal(h.game().score,300);assert.equal(h.game().total,3);assert.equal(h.game().locked,false);
+ assert.equal(h.game().streak,0);assert.equal(h.game().score,450);assert.equal(h.game().total,3);assert.equal(h.game().locked,false);
  assert.equal(h.game().question,question);assert.equal(h.$('#judgement-effect').dataset.judgement,'fail');
- assert.equal(h.$('#feedback').textContent,'괜찮아! 한 번 더 맞혀봐.');
+ assert.equal(h.$('#feedback').textContent,'괜찮아! 다시 해보자!');
  h.submit('없는포켓몬');assert.notEqual(h.$('.judgement-image'),oldImage);assert.equal([...h.timers.values()].filter(x=>x.delay===500).length,1);
- h.correct();assert.equal(h.$('#judgement-effect').dataset.judgement,'good');assert.equal(h.game().streak,1);await h.run(550);
+ h.correct();assert.equal(h.$('#judgement-effect').dataset.judgement,'good');assert.equal(h.game().streak,1);await h.next();
  h.$('#skip-question').click();assert.equal(h.$('#judgement-effect').dataset.judgement,'fail');assert.equal(h.game().streak,0);
 });
 
@@ -90,8 +90,8 @@ test('each new question clears the last selection and preserves the timer bar',a
 
 test('master questions keep the same focused input across answers and skips',async t=>{
  const h=await harness();t.after(h.close);await h.start('write');const input=h.$('#answer-input'),form=h.$('#answer-form');let blurs=0;input.addEventListener('blur',()=>blurs++);
- h.correct();assert.equal(input.disabled,false);assert.equal(input.readOnly,false);await h.run(550);assert.equal(h.$('#answer-input'),input);assert.equal(h.$('#answer-form'),form);assert.equal(h.w.document.activeElement,input);assert.equal(input.value,'');assert.equal(blurs,0);
- h.$('#skip-question').click();await h.run(1300);assert.equal(h.$('#answer-input'),input);assert.equal(h.w.document.activeElement,input);assert.equal(blurs,0);
+ h.correct();assert.equal(input.disabled,false);assert.equal(input.readOnly,true);await h.next();assert.equal(input.readOnly,false);assert.equal(h.$('#answer-input'),input);assert.equal(h.$('#answer-form'),form);assert.equal(h.w.document.activeElement,input);assert.equal(input.value,'');assert.equal(blurs,0);
+ h.$('#skip-question').click();await h.next();assert.equal(h.$('#answer-input'),input);assert.equal(h.w.document.activeElement,input);assert.equal(blurs,0);
 });
 test('master keyboard follows the visual viewport and restores the input on dismissal',async t=>{
  const h=await harness();t.after(h.close);Object.defineProperty(h.w,'innerWidth',{value:375});Object.defineProperty(h.w,'innerHeight',{value:667});
@@ -107,7 +107,7 @@ test('master syllable boxes preserve Korean composition and ignore premature sub
  assert.equal(h.w.document.querySelectorAll('.answer-slot').length,length);assert.equal([...h.w.document.querySelectorAll('.answer-slot')].map(cell=>cell.textContent).join(''),'');
  input.dispatchEvent(new h.w.CompositionEvent('compositionstart',{bubbles:true}));input.value='ㅍ';input.dispatchEvent(new h.w.InputEvent('input',{bubbles:true,isComposing:true}));h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.game().total,0);assert.equal(input.value,'ㅍ');
  input.value=h.game().question.name;input.dispatchEvent(new h.w.InputEvent('input',{bubbles:true,isComposing:true}));input.dispatchEvent(new h.w.CompositionEvent('compositionend',{bubbles:true}));
- assert.equal([...h.w.document.querySelectorAll('.answer-slot')].map(cell=>cell.textContent).join(''),input.value);h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.game().correct,1);await h.run(550);assert.equal(h.$('#answer-input'),input);assert.equal(h.w.document.activeElement,input);assert.equal([...h.w.document.querySelectorAll('.answer-slot')].map(cell=>cell.textContent).join(''),'');
+ assert.equal([...h.w.document.querySelectorAll('.answer-slot')].map(cell=>cell.textContent).join(''),input.value);h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.game().correct,1);await h.next();assert.equal(h.$('#answer-input'),input);assert.equal(h.w.document.activeElement,input);assert.equal([...h.w.document.querySelectorAll('.answer-slot')].map(cell=>cell.textContent).join(''),'');
 });
 test('syllable boxes accept spaced paste and show deletion without exposing answer letters',async t=>{
  const h=await harness();t.after(h.close);await h.start('write');const input=h.$('#answer-input'),answer=h.game().question.name;
@@ -122,11 +122,11 @@ test('one hint per master question reveals the correct position and halves only 
   h.w.Math.random=()=>.73;h.$('#hint-question').click();const expected=level==='hard'?Math.floor(letters.length*.73):0;
   assert.equal(h.game().hint.index,expected);assert.equal(h.game().hint.letter,letters[expected]);assert.equal(h.$('#hint-question').disabled,true);assert.equal(h.game().score,0);assert.equal(h.w.document.querySelectorAll('.answer-slot')[expected].textContent,letters[expected]);assert.equal(h.w.document.querySelectorAll('.hint-target').length,1);assert.equal(h.w.document.activeElement,input);
   h.submit('없는포켓몬');assert.equal(h.game().question,question);assert.equal(h.game().hintUsed,true);h.w.qa('showQuestionHint()');assert.equal(h.game().hint.index,expected);
-  h.correct();assert.equal(h.game().score,unit/2);assert.equal(h.game().history[0].hintUsed,true);await h.run(550);assert.equal(h.game().hintUsed,false);assert.equal(h.$('#hint-question').disabled,false);assert.equal(h.$('#hint-message').hidden,true);h.correct();assert.equal(h.game().score,unit*1.5);
+  h.correct();assert.equal(h.game().score,unit/2);assert.equal(h.game().history[0].hintUsed,true);await h.next();assert.equal(h.game().hintUsed,false);assert.equal(h.$('#hint-question').disabled,false);assert.equal(h.$('#hint-message').hidden,true);h.correct();assert.equal(h.game().score,unit*2);
  }
 });
 test('skipping after a hint awards no points and the next question gets a fresh hint',async t=>{
- const h=await harness();t.after(h.close);await h.start('write');h.$('#hint-question').click();h.$('#skip-question').click();assert.equal(h.game().score,0);assert.equal(h.game().history[0].correct,false);assert.equal(h.game().history[0].hintUsed,true);await h.run(1300);assert.equal(h.game().hintUsed,false);assert.equal(h.$('#hint-question').disabled,false);
+ const h=await harness();t.after(h.close);await h.start('write');h.$('#hint-question').click();h.$('#skip-question').click();assert.equal(h.game().score,0);assert.equal(h.game().history[0].correct,false);assert.equal(h.game().history[0].hintUsed,true);await h.next();assert.equal(h.game().hintUsed,false);assert.equal(h.$('#hint-question').disabled,false);
 });
 test('skipping fills every answer cell, clears the answer message and restores editable blank cells next question',async t=>{
  for(const hinted of [false,true]){
@@ -136,7 +136,7 @@ test('skipping fills every answer cell, clears the answer message and restores e
   assert.equal(h.$('#feedback').textContent,'');assert.equal(h.$('#hint-message').hidden,true);
   assert.equal(input.value,'파라블레이즈');assert.equal(input.readOnly,true);assert.equal(h.$('#answer-slots').textContent,'파라블레이즈');assert.equal(h.w.document.querySelectorAll('.revealed-answer').length,6);assert.equal(h.w.document.querySelectorAll('.hint-target,.answer-slot.active,.answer-slot.selected').length,0);
   assert.equal(h.game().score,0);assert.equal(h.game().history[0].correct,false);assert.equal(h.game().history[0].answerRevealed,true);assert.equal(h.game().history[0].hintUsed,hinted);
-  await h.run(1300);assert.equal(h.$('#answer-input'),input);assert.equal(input.value,'');assert.equal(input.readOnly,false);assert.equal(h.$('#answer-slots').textContent,'');assert.equal(h.w.document.querySelectorAll('.revealed-answer').length,0);assert.equal(h.w.document.activeElement,input);
+  await h.next();assert.equal(h.$('#answer-input'),input);assert.equal(input.value,'');assert.equal(input.readOnly,false);assert.equal(h.$('#answer-slots').textContent,'');assert.equal(h.w.document.querySelectorAll('.revealed-answer').length,0);assert.equal(h.w.document.activeElement,input);
  }
 });
 
@@ -150,4 +150,29 @@ test('a one-letter Pokemon hint is filled and can be confirmed without further t
 });
 test('requesting a hint while composing commits existing letters and retains input focus',async t=>{
  const h=await harness();t.after(h.close);await h.start('write','normal');h.w.qa("game.deck.push(pokemon.find(p=>p.name==='파라블레이즈'));nextQuestion()");await flush();const input=h.$('#answer-input');input.value='파라';input.dispatchEvent(new h.w.CompositionEvent('compositionstart',{bubbles:true}));h.$('#hint-question').click();assert.equal(h.game().answerComposing,false);assert.equal(input.value,'라');assert.equal(h.$('#answer-slots').textContent,'파라');assert.equal(h.w.document.activeElement,input);
+});
+
+test('master holds each judgement until next, marks each letter, and lets edits retry without counting a miss',async t=>{
+ const h=await harness();t.after(h.close);await h.start('write','normal');h.w.qa("game.deck.push(pokemon.find(p=>p.name==='파라블레이즈'));nextQuestion()");await flush();const input=h.$('#answer-input'),question=h.game().question;
+ h.submit('파리블레이즈');assert.equal(h.$('#feedback').textContent,'괜찮아! 다시 해보자!');assert.equal(h.$('#answer-form button').textContent,'다음문제');assert.equal(h.w.document.querySelectorAll('.checked-correct').length,5);assert.equal(h.w.document.querySelectorAll('.checked-wrong').length,1);assert.equal(h.w.document.querySelectorAll('.checked-wrong')[0].textContent,'리');assert.equal(h.game().total,0);
+ await h.run(500);assert.equal(h.game().question,question);assert.equal(h.game().awaitingNext,true);assert.ok(![...h.timers.values()].some(timer=>[550,1300].includes(timer.delay)));
+ input.value='파라블레이즈';input.dispatchEvent(new h.w.InputEvent('input',{bubbles:true}));assert.equal(h.$('#answer-form button').textContent,'확인');assert.equal(h.w.document.querySelectorAll('.checked-correct,.checked-wrong').length,0);h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));
+ assert.equal(h.game().correct,1);assert.equal(h.game().total,1);assert.equal(h.game().score,300);assert.equal(h.w.document.querySelectorAll('.checked-correct').length,6);assert.equal(h.$('#answer-form button').textContent,'다음문제');await h.run(500);assert.equal(h.game().question,question);assert.equal(h.game().score,300);await h.next();assert.equal(h.game().questionNumber,2);assert.equal(h.$('#answer-input'),input);assert.equal(input.value,'');assert.equal(h.w.document.querySelectorAll('.checked-correct,.checked-wrong').length,0);
+});
+test('moving on from a wrong answer records one miss without revealing its full name, and quitting counts it too',async t=>{
+ const h=await harness();t.after(h.close);await h.start('write');h.submit('오답');assert.equal(h.game().answerRevealed,false);await h.next();assert.equal(h.game().total,1);assert.equal(h.game().history.length,1);assert.equal(h.game().history[0].correct,false);assert.equal(h.game().history[0].answerRevealed,false);
+ h.submit('오답');h.$('#quit-game').click();await flush();assert.equal(h.game().status,'ended');assert.equal(h.game().total,2);assert.equal(h.game().history.length,2);
+});
+test('master time bonus starts with image readiness, decreases for twenty seconds and never ends a slow question',async t=>{
+ for(const [level,unit] of [['easy',100],['normal',200],['hard',300]]){
+  const h=await harness();t.after(h.close);await h.start('write',level);assert.equal(h.game().questionStartedAt,0);h.clock(10000);h.w.qa('tick()');assert.equal(h.w.qa('masterBonus(game)'),unit/4);assert.equal(h.$('.bonus-fill').style.width,'50%');h.correct();assert.equal(h.game().score,unit*1.25);assert.equal(h.game().history[0].elapsedMs,10000);assert.equal(h.game().bonusAwarded,unit/4);
+  await h.next();h.clock(40000);h.w.qa('tick()');assert.equal(h.game().status,'playing');assert.equal(h.w.qa('masterBonus(game)'),0);assert.equal(h.$('.bonus-fill').style.width,'0%');h.correct();assert.equal(h.game().score,unit*2.25);assert.equal(h.game().history[1].elapsedMs,20000);
+ }
+});
+test('a hint immediately removes all time bonus and its next question restores it',async t=>{
+ const h=await harness();t.after(h.close);await h.start('write','hard');assert.equal(h.w.qa('masterBonus(game)'),150);h.$('#hint-question').click();assert.equal(h.$('#master-bonus').hidden,true);assert.equal(h.w.qa('masterBonus(game)'),0);h.correct();assert.equal(h.game().score,150);assert.equal(h.game().bonusAwarded,0);await h.next();assert.equal(h.$('#master-bonus').hidden,false);assert.equal(h.w.qa('masterBonus(game)'),150);
+});
+test('the tenth master answer also waits for next before finishing, without duplicate points',async t=>{
+ const h=await harness();t.after(h.close);await h.start('write');for(let i=0;i<10;i++){assert.equal(h.game().questionNumber,i+1);h.correct();assert.equal(h.game().status,'playing');if(i<9)await h.next();}
+ assert.equal(h.game().score,1500);h.w.qa('submitAnswer(game.question.name)');assert.equal(h.game().score,1500);assert.equal(h.game().total,10);await h.next();assert.equal(h.game().status,'ended');assert.equal(h.game().history.length,10);
 });

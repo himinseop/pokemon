@@ -2,6 +2,7 @@
 const app=document.querySelector('#app');
 const difficulties={easy:{label:'쉬움',multiplier:1},normal:{label:'보통',multiplier:2},hard:{label:'어려움',multiplier:3}};
 const familiar=[1,2,3,4,5,6,7,8,9,12,16,25,26,35,37,39,52,54,58,63,66,74,79,92,94,95,104,113,129,130,131,132,133,134,135,136,143,144,145,146,149,150,151];
+const MASTER_BONUS_DURATION=20000;
 let pokemon=[],pokedexManifest=null,view='play',mode='time',difficulty='easy',game=null,ticker=null,advance=null,judgementTimer=null,recordTab='time-easy',search='',typeFilter='',sort='number',regionFilter='',regionGroups=[];
 const judgementAssets={good:'assets/judgements/good.png',great:'assets/judgements/great.png',perfect:'assets/judgements/perfect.png',awesome:'assets/judgements/awesome.png',fail:'assets/judgements/fail.png'};
 const judgementPreloads=Object.values(judgementAssets).map(src=>{const image=new Image();image.src=src;return image;});
@@ -21,15 +22,15 @@ const shuffle=xs=>{const a=[...xs];for(let i=a.length-1;i>0;i--){const j=Math.fl
 const normalize=s=>s.normalize('NFKC').replace(/\s+/g,'').toLocaleLowerCase('ko');
 let masterViewportHeight=0,masterViewportWidth=0;
 function syncMasterKeyboard(){
- const viewport=window.visualViewport,root=document.documentElement,master=view==='play'&&game?.mode==='write'&&game.status==='playing'&&window.innerWidth<=700;
+ const viewport=window.visualViewport,root=document.documentElement,master=view==='play'&&game?.mode==='write'&&game.status==='playing';
  if(!master){document.body.classList.remove('master-keyboard');masterViewportHeight=0;masterViewportWidth=0;return;}
  const height=viewport?.height||window.innerHeight;
  if(masterViewportWidth!==window.innerWidth){masterViewportWidth=window.innerWidth;masterViewportHeight=Math.max(window.innerHeight,height);}
  masterViewportHeight=Math.max(masterViewportHeight,window.innerHeight,height);
- const open=!!viewport&&Math.abs((viewport.scale||1)-1)<.05&&masterViewportHeight-height>120;
+ const open=window.innerWidth<=700&&!!viewport&&Math.abs((viewport.scale||1)-1)<.05&&masterViewportHeight-height>120;
  root.style.setProperty('--master-visible-height',`${height}px`);root.style.setProperty('--master-viewport-top',`${viewport?.offsetTop||0}px`);
  document.body.classList.toggle('master-keyboard',open);
- if(open){const stage=document.querySelector('.pokemon-stage'),body=document.querySelector('#game-body'),form=document.querySelector('#answer-form');if(stage&&body&&form){
+ {const stage=document.querySelector('.pokemon-stage'),body=document.querySelector('#game-body'),form=document.querySelector('#answer-form');if(stage&&body&&form){
   const stageRect=stage.getBoundingClientRect(),bodyRect=body.getBoundingClientRect(),answerTop=Math.max(8,stageRect.bottom-bodyRect.top-form.offsetHeight-10);
   root.style.setProperty('--master-answer-top',`${answerTop}px`);
   root.style.setProperty('--master-judgement-bottom',`${stageRect.bottom-bodyRect.top-answerTop+16}px`);
@@ -182,7 +183,7 @@ function prepareQuestionImage(g,p,priority){
 }
 function selectQuestion(g){
  if(!g.deck.length)g.deck=shuffle(g.pool.filter(p=>p.id!==g.question?.id));
- g.question=g.deck.pop();g.answerLength=Array.from(normalize(g.question.name)).length;g.answerComposing=false;g.answerRevealed=false;g.hintUsed=false;g.hint=null;g.selectedAnswer=null;g.locked=false;g.imageReady=false;prepareQuestionImages(g);
+ g.question=g.deck.pop();g.questionNumber=g.total+1;g.questionStartedAt=null;g.elapsedAtAnswer=null;g.bonusAwarded=0;g.judgement=null;g.awaitingNext=false;g.checkedLetters=null;g.lastAttempt='';g.answerLength=Array.from(normalize(g.question.name)).length;g.answerComposing=false;g.answerRevealed=false;g.hintUsed=false;g.hint=null;g.selectedAnswer=null;g.locked=false;g.imageReady=false;prepareQuestionImages(g);
  g.options=shuffle([g.question,...shuffle(g.pool.filter(p=>p.id!==g.question.id)).slice(0,3)]);
 }
 function startGame(){if(!trainerName||document.body.classList.contains('trainer-entry'))return;cleanup();const pool=difficulty==='easy'?pokemon.filter(p=>familiar.includes(p.id)):pokemon;
@@ -192,13 +193,36 @@ function startGame(){if(!trainerName||document.body.classList.contains('trainer-
 function prepareFirstQuestion(g){
  if(game!==g||g.status!=='loading')return;selectQuestion(g);renderGameBody();
  const entry=g.images.get(g.question.id);
- const begin=()=>{if(game!==g||g.status!=='loading')return;g.status='playing';g.deadline=g.mode==='time'?performance.now()+60000:null;renderGameBody();if(g.mode==='time')ticker=setInterval(tick,100);};
+ const begin=()=>{if(game!==g||g.status!=='loading')return;g.status='playing';g.deadline=g.mode==='time'?performance.now()+60000:null;renderGameBody();ticker=setInterval(tick,100);};
  const failed=()=>{if(game!==g||g.status!=='loading')return;g.imageFailures++;if(g.imageFailures>=5){g.imageError=true;endGame('error');}else prepareFirstQuestion(g);};
  if(entry.ready)begin();else entry.loaded.then(ok=>ok?begin():failed());
 }
 function nextQuestion(){if(!game||game.status!=='playing')return;if(game.mode==='write'&&game.total>=10){endGame();return;}if(game.mode==='time'&&performance.now()>=game.deadline){endGame();return;}
  selectQuestion(game);renderGameBody();}
 function timerState(g){const duration=60000;const remaining=Math.max(0,g.deadline-performance.now());return {seconds:Math.ceil(remaining/1000),percent:Math.min(100,remaining/duration*100)};}
+function masterElapsed(g){return Math.min(MASTER_BONUS_DURATION,Math.max(0,Math.floor(performance.now()-(g.questionStartedAt??performance.now()))));}
+function masterBonus(g,elapsed=masterElapsed(g)){return g.hintUsed?0:Math.floor((MASTER_BONUS_DURATION-elapsed)*50/MASTER_BONUS_DURATION)*difficulties[g.difficulty].multiplier;}
+function updateMasterBonus(g){
+ const gauge=document.querySelector('#master-bonus');if(!gauge)return;gauge.hidden=!!g.hintUsed||g.judgement==='skipped';
+ const elapsed=g.elapsedAtAnswer??masterElapsed(g),remaining=MASTER_BONUS_DURATION-elapsed,points=g.locked?g.bonusAwarded:masterBonus(g,elapsed);
+ const percent=g.hintUsed?0:remaining/MASTER_BONUS_DURATION*100;
+ gauge.querySelector('.bonus-fill').style.width=percent+'%';gauge.querySelector('[role="progressbar"]').setAttribute('aria-valuenow',percent);
+ gauge.querySelector('.bonus-label').textContent=g.locked?(points?`+${points}점 보너스!`:'기본 점수로 도전 완료!'):points?`빨리 맞히면 +${points}점`:'천천히 맞혀도 괜찮아!';
+ gauge.classList.toggle('bonus-earned',g.locked&&points>0);gauge.classList.toggle('bonus-expired',!remaining);
+}
+function resetMasterAttempt(){
+ const g=game;if(!g||g.mode!=='write'||g.locked)return;g.judgement=null;g.awaitingNext=false;g.checkedLetters=null;
+ const button=document.querySelector('#answer-form button');if(button)button.textContent='확인';
+ const feedback=document.querySelector('#feedback');if(feedback)feedback.textContent='';clearJudgement();
+}
+function completeMasterMiss(g){
+ if(g?.mode!=='write'||g.judgement!=='wrong')return;
+ g.total++;g.history.push({pokemon:g.question,correct:false,answer:g.lastAttempt,answerRevealed:false,hintUsed:!!g.hintUsed,elapsedMs:masterElapsed(g)});g.judgement='passed';
+}
+function advanceMasterQuestion(){
+ const g=game;if(!g||g.mode!=='write'||g.status!=='playing'||!g.awaitingNext||g.answerComposing)return;
+ g.awaitingNext=false;completeMasterMiss(g);nextQuestion();
+}
 const typedLetters=value=>Array.from(value.normalize('NFKC').replace(/\s+/g,''));
 function masterAnswer(g,value){
  if(!g?.hintUsed)return value;
@@ -221,8 +245,8 @@ function updateAnswerSlots(limit=false){
  const value=typedLetters(input.value),start=typedLetters(input.value.slice(0,input.selectionStart??input.value.length)).length,end=typedLetters(input.value.slice(0,input.selectionEnd??input.value.length)).length;
  if(slots.children.length!==length)slots.replaceChildren(...Array.from({length},()=>{const span=document.createElement('span');span.className='answer-slot';return span;}));
  input.parentElement.style.setProperty('--answer-length',length);input.maxLength=allowed?30:0;input.setAttribute('aria-label',revealed?'정답 포켓몬 이름':fixedHint?`포켓몬 이름, 남은 ${allowed}글자`:`포켓몬 이름, ${length}글자`);
- const focused=document.activeElement===input&&!input.disabled&&!revealed,active=editable[Math.min(start,allowed-1)];
- [...slots.children].forEach((cell,index)=>{const hinted=fixedHint&&game.hint.index===index,position=editable.indexOf(index),letter=hinted?game.hint.letter:(value[position]||'');cell.textContent=letter;cell.classList.toggle('filled',!!letter);cell.classList.toggle('hint-target',hinted);cell.classList.toggle('revealed-answer',!!revealed);cell.classList.toggle('active',!hinted&&focused&&start===end&&index===active);cell.classList.toggle('selected',!hinted&&focused&&start!==end&&position>=start&&position<end);});
+ const focused=document.activeElement===input&&!input.disabled&&!revealed&&!game.locked,active=editable[Math.min(start,allowed-1)],answerLetters=Array.from(normalize(game.question.name));
+ [...slots.children].forEach((cell,index)=>{const hinted=fixedHint&&game.hint.index===index,position=editable.indexOf(index),letter=hinted?game.hint.letter:(value[position]||''),checked=!!game.checkedLetters,matched=checked&&game.checkedLetters[index]===answerLetters[index];cell.textContent=letter;cell.classList.toggle('filled',!!letter);cell.classList.toggle('hint-target',hinted);cell.classList.toggle('revealed-answer',!!revealed);cell.classList.toggle('checked-correct',checked&&matched);cell.classList.toggle('checked-wrong',checked&&!matched);cell.classList.toggle('active',!hinted&&focused&&start===end&&index===active);cell.classList.toggle('selected',!hinted&&focused&&start!==end&&position>=start&&position<end);});
 }
 function focusAnswerSlot(event){
  const input=event.target;if(input.id!=='answer-input'||input.disabled)return;
@@ -235,18 +259,20 @@ function focusAnswerSlot(event){
 const masterPoints=(g,hinted=false)=>100*difficulties[g.difficulty].multiplier/(hinted?2:1);
 function showQuestionHint(){
  const g=game;if(!g||g.status!=='playing'||g.mode!=='write'||g.locked||!g.imageReady||g.hintUsed)return;
- finishAnswerComposition();const input=document.querySelector('#answer-input'),entered=typedLetters(input.value),caret=typedLetters(input.value.slice(0,input.selectionStart??input.value.length)).length;
+ finishAnswerComposition();resetMasterAttempt();const input=document.querySelector('#answer-input'),entered=typedLetters(input.value),caret=typedLetters(input.value.slice(0,input.selectionStart??input.value.length)).length;
  const letters=Array.from(normalize(g.question.name)),index=g.difficulty==='hard'?Math.floor(Math.random()*letters.length):0;
  g.hintUsed=true;g.hint={index,letter:Array.from(g.question.name.normalize('NFKC').replace(/\s+/g,''))[index]};
  if(entered.length>index)entered.splice(index,1);input.value=entered.join('');const nextCaret=Math.min(input.value.length,Math.max(0,caret-(caret>index?1:0)));input.setSelectionRange(nextCaret,nextCaret);
  const hint=document.querySelector('#hint-message'),button=document.querySelector('#hint-question');
  hint.textContent='힌트는 채웠어! 빈칸을 적어봐.';hint.hidden=false;button.disabled=true;button.classList.add('used');button.setAttribute('aria-label','힌트 사용 완료');button.title='이 문제의 힌트는 이미 사용했어.';
- updateAnswerSlots();fitLayersToViewport();
+ updateAnswerSlots();updateMasterBonus(g);fitLayersToViewport();
 }
-function masterControls(g){return `<div class="master-tools" role="group" aria-label="도움 버튼"><button class="game-control hint-control" id="hint-question" aria-label="힌트 · 맞히면 ${masterPoints(g,true)}점" title="힌트 · 맞히면 ${masterPoints(g,true)}점" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15c0-2-3-2-3-6a6 6 0 0 1 12 0c0 4-3 4-3 6ZM9 18h6m-5 3h4"/></svg><span class="control-label">힌트</span></button><button class="game-control skip-control" id="skip-question" aria-label="패스 · 정답 보기" title="패스 · 정답 보기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 5 8 7-8 7M18 5v14"/></svg><span class="control-label">패스</span></button></div>`;}
+function masterHint(g){return `<button class="game-control hint-control stage-hint" id="hint-question" aria-label="힌트 · 시간 보너스 없이 ${masterPoints(g,true)}점" title="힌트 · 시간 보너스 없이 ${masterPoints(g,true)}점" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15c0-2-3-2-3-6a6 6 0 0 1 12 0c0 4-3 4-3 6ZM9 18h6m-5 3h4"/></svg></button>`;}
+function masterControls(){return `<div class="master-tools"><button class="game-control skip-control" id="skip-question" aria-label="패스 · 정답 보기" title="패스 · 정답 보기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 5 8 7-8 7M18 5v14"/></svg><span class="control-label">패스</span></button></div>`;}
+function masterScore(g){return `<div class="master-bonus" id="master-bonus"><span class="bonus-label">빨리 맞히면 보너스!</span><div class="bonus-track" role="progressbar" aria-label="시간 보너스" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div class="bonus-fill"></div></div></div><div class="game-stats"><span class="question-count">${g.questionNumber} / 10 문제</span>${masterControls()}<span class="master-score"><strong id="score">${g.score.toLocaleString()}</strong> 점</span></div>`;}
 function renderQuestion(body){clearJudgement();const g=game;const timeState=g.mode==='time'?timerState(g):null;const previousProgress=g.mode==='time'?body.querySelector('.progress'):null,previousForm=g.mode==='write'?body.querySelector('#answer-form'):null;
-const markup=`<div class="pokemon-stage ${g.difficulty==='hard'?'silhouette':''}">${gameExit()}<span id="question-image-slot"></span><span id="judgement-effect" class="judgement-effect" aria-hidden="true" hidden></span></div>
-<div class="question-score"><div class="game-stats"><span><strong id="score">${g.score.toLocaleString()}</strong> 점</span>${g.mode==='write'?masterControls(g):''}<span>${g.mode==='time'?`연속 <b id="streak">${g.streak}</b> 정답`:`${g.total+1} / 10 문제`}</span>${timeState?`<span class="time">⏱ <strong id="time">${timeState.seconds}</strong> 초</span>`:''}</div>${timeState?`<div class="progress" role="progressbar" aria-label="남은 시간" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${timeState.percent}"><div id="timer-bar" style="width:${timeState.percent}%"></div></div>`:''}</div>
+const markup=`<div class="pokemon-stage ${g.difficulty==='hard'?'silhouette':''}">${gameExit()}${g.mode==='write'?masterHint(g):''}<span id="question-image-slot"></span><span id="judgement-effect" class="judgement-effect" aria-hidden="true" hidden></span></div>
+<div class="question-score">${g.mode==='write'?masterScore(g):`<div class="game-stats"><span><strong id="score">${g.score.toLocaleString()}</strong> 점</span><span>연속 <b id="streak">${g.streak}</b> 정답</span><span class="time">⏱ <strong id="time">${timeState.seconds}</strong> 초</span></div><div class="progress" role="progressbar" aria-label="남은 시간" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${timeState.percent}"><div id="timer-bar" style="width:${timeState.percent}%"></div></div>`}</div>
 ${g.mode==='time'?`<div class="choices">${g.options.map((p,i)=>`<button class="choice" data-answer="${p.id}" data-question="${g.question.id}" aria-pressed="false" disabled><span>${i+1}</span>${p.name}</button>`).join('')}</div>`:`<form class="text-form" id="answer-form"><div class="letter-entry"><div class="answer-slots" id="answer-slots" aria-hidden="true"></div><input id="answer-input" name="pokemon-answer" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" maxlength="30" placeholder="포켓몬 이름" aria-label="포켓몬 이름" disabled></div><button class="primary" type="submit" disabled>확인</button></form>`}
 <div class="feedback-area"><div id="feedback" class="feedback" role="status" aria-live="polite">포켓몬이 오고 있어…</div>${g.mode==='write'?'<p id="hint-message" class="hint-message" role="status" hidden></p>':''}</div>`;
 // Preserve the focused input so the keyboard stays open across questions.
@@ -254,7 +280,7 @@ if(previousForm){
  const template=document.createElement('template');template.innerHTML=markup;
  for(const child of [...body.children])if(child!==previousForm)child.remove();
  let afterForm=false;for(const child of [...template.content.children]){if(child.id==='answer-form'){afterForm=true;continue;}if(afterForm)body.appendChild(child);else body.insertBefore(child,previousForm);}
- const input=previousForm.querySelector('input');input.value='';previousForm.querySelector('button').disabled=true;
+ const input=previousForm.querySelector('input');input.value='';input.readOnly=false;previousForm.querySelector('button').disabled=true;previousForm.querySelector('button').textContent='확인';
 }else body.innerHTML=markup;
 if(g.mode==='write')updateAnswerSlots();
 // Keep the time-attack bar itself alive when replacing the question.
@@ -262,24 +288,35 @@ if(previousProgress){body.querySelector('.progress').replaceWith(previousProgres
 const current=g.question.id,entry=g.images.get(current),img=entry.image;
 img.id='question-image';body.querySelector('#question-image-slot').replaceWith(img);
 const active=()=>game===g&&g.status==='playing'&&g.question.id===current&&!g.locked&&body.querySelector('#question-image')===img;
-const ready=()=>{if(!active())return;g.imageReady=true;body.querySelectorAll('.choice,.text-form input,.text-form button').forEach(b=>b.disabled=false);const hintButton=body.querySelector('#hint-question');if(hintButton)hintButton.disabled=g.hintUsed;body.querySelector('#feedback').textContent='';if(g.mode==='write'){const input=body.querySelector('#answer-input');input.readOnly=false;if(document.activeElement!==input)input.focus({preventScroll:true});updateAnswerSlots();}fitLayersToViewport();};
+const ready=()=>{if(!active())return;g.imageReady=true;body.querySelectorAll('.choice,.text-form input,.text-form button').forEach(b=>b.disabled=false);const hintButton=body.querySelector('#hint-question');if(hintButton)hintButton.disabled=g.hintUsed;body.querySelector('#feedback').textContent='';if(g.mode==='write'){if(g.questionStartedAt===null)g.questionStartedAt=performance.now();updateMasterBonus(g);const input=body.querySelector('#answer-input');input.readOnly=false;if(document.activeElement!==input)input.focus({preventScroll:true});updateAnswerSlots();}fitLayersToViewport();};
 const failed=()=>{if(!active())return;g.imageFailures++;if(g.imageFailures>=5){g.imageError=true;endGame();}else nextQuestion();};
 if(entry.ready)ready();else entry.loaded.then(ok=>ok?ready():failed());}
-function tick(){if(!game||game.status!=='playing'||game.mode!=='time')return;const state=timerState(game);const time=document.querySelector('#time');if(time)time.textContent=state.seconds;const bar=document.querySelector('#timer-bar');if(bar){bar.style.width=state.percent+'%';bar.parentElement.setAttribute('aria-valuenow',state.percent);}if(state.seconds<=0)endGame();}
+function tick(){if(!game||game.status!=='playing')return;if(game.mode==='write'){if(game.imageReady)updateMasterBonus(game);return;}const state=timerState(game);const time=document.querySelector('#time');if(time)time.textContent=state.seconds;const bar=document.querySelector('#timer-bar');if(bar){bar.style.width=state.percent+'%';bar.parentElement.setAttribute('aria-valuenow',state.percent);}if(state.seconds<=0)endGame();}
+function submitMasterAnswer(value,skipped){
+ const g=game,correct=!skipped&&normalize(value)===normalize(g.question.name),feedback=document.querySelector('#feedback'),input=document.querySelector('#answer-input'),button=document.querySelector('#answer-form button');
+ g.lastAttempt=String(value);g.checkedLetters=skipped?null:Array.from(normalize(value));g.awaitingNext=true;g.judgement=correct?'correct':skipped?'skipped':'wrong';button.textContent='다음문제';
+ const hintMessage=document.querySelector('#hint-message');if(hintMessage)hintMessage.hidden=true;
+ if(!correct&&!skipped){
+  g.streak=0;showJudgement(false);feedback.className='feedback bad';feedback.textContent='괜찮아! 다시 해보자!';input.focus({preventScroll:true});updateAnswerSlots();fitLayersToViewport();return;
+ }
+ g.locked=true;g.total++;g.elapsedAtAnswer=masterElapsed(g);g.bonusAwarded=correct?masterBonus(g,g.elapsedAtAnswer):0;
+ if(correct){g.correct++;g.streak++;g.maxStreak=Math.max(g.maxStreak,g.streak);g.score+=masterPoints(g,g.hintUsed)+g.bonusAwarded;}else g.streak=0;
+ g.answerRevealed=true;input.readOnly=true;g.history.push({pokemon:g.question,correct,answer:String(value),answerRevealed:true,hintUsed:!!g.hintUsed,elapsedMs:g.elapsedAtAnswer});
+ showJudgement(correct);feedback.className='feedback '+(correct?'good':'bad');feedback.textContent=correct?'잘했어! 정답이야!':'';
+ document.querySelector('.pokemon-stage')?.classList.add('reveal');document.querySelectorAll('#skip-question,#hint-question').forEach(control=>control.disabled=true);
+ document.querySelector('#score').textContent=g.score.toLocaleString();updateAnswerSlots();updateMasterBonus(g);fitLayersToViewport();
+}
 function submitAnswer(value,skipped=false){const g=game;if(!g||g.status!=='playing'||g.locked||!g.imageReady)return;if(g.mode==='time'&&performance.now()>=g.deadline){endGame();return;}
-if(g.mode==='write'&&skipped)finishAnswerComposition();
-const correct=!skipped&&(g.mode==='time'?Number(value)===g.question.id:normalize(value)===normalize(g.question.name));const feedback=document.querySelector('#feedback');
-// A wrong typed guess leaves the same question open for another try.
-if(g.mode==='write'&&!correct&&!skipped){g.streak=0;showJudgement(false);feedback.className='feedback bad';feedback.textContent='괜찮아! 한 번 더 맞혀봐.';const input=document.querySelector('#answer-input');input.focus({preventScroll:true});input.select();updateAnswerSlots();return;}
-g.locked=true;g.selectedAnswer=g.mode==='time'?Number(value):null;g.total++;if(correct){g.correct++;g.streak++;g.maxStreak=Math.max(g.maxStreak,g.streak);g.score+=g.mode==='time'?100+Math.min(g.streak-1,10)*10:masterPoints(g,g.hintUsed);}else g.streak=0;
-if(g.mode==='write'&&skipped){g.answerRevealed=true;updateAnswerSlots();const hintMessage=document.querySelector('#hint-message');if(hintMessage)hintMessage.hidden=true;}
-showJudgement(correct);
-const answerRevealed=g.mode==='time'||correct||skipped;g.history.push({pokemon:g.question,correct,answer:String(value),answerRevealed,hintUsed:!!g.hintUsed});feedback.className='feedback '+(correct?'good':'bad');feedback.textContent=g.mode==='write'?(correct?'잘했어! 정답이야!':''):(correct?`정답! ${g.question.name}, 정말 잘 맞혔어!`:'');
-if(answerRevealed)document.querySelector('.pokemon-stage')?.classList.add('reveal');document.querySelectorAll('[data-answer]').forEach(b=>{b.disabled=true;b.setAttribute('aria-pressed',String(Number(b.dataset.answer)===g.selectedAnswer));if(Number(b.dataset.answer)===g.question.id)b.classList.add('correct');else if(Number(b.dataset.answer)===Number(value))b.classList.add('wrong');});document.querySelectorAll('.text-form button,#skip-question,#hint-question').forEach(b=>b.disabled=true);document.querySelector('#score').textContent=g.score.toLocaleString();const streak=document.querySelector('#streak');if(streak)streak.textContent=g.streak;
-advance=setTimeout(nextQuestion,correct?550:1300);}
+ if(g.mode==='write'){if(skipped)finishAnswerComposition();submitMasterAnswer(value,skipped);return;}
+ const correct=Number(value)===g.question.id,feedback=document.querySelector('#feedback');
+ g.locked=true;g.selectedAnswer=Number(value);g.total++;if(correct){g.correct++;g.streak++;g.maxStreak=Math.max(g.maxStreak,g.streak);g.score+=100+Math.min(g.streak-1,10)*10;}else g.streak=0;
+ showJudgement(correct);g.history.push({pokemon:g.question,correct,answer:String(value),answerRevealed:true,hintUsed:false});feedback.className='feedback '+(correct?'good':'bad');feedback.textContent=correct?`정답! ${g.question.name}, 정말 잘 맞혔어!`:'';
+ document.querySelector('.pokemon-stage')?.classList.add('reveal');document.querySelectorAll('[data-answer]').forEach(b=>{b.disabled=true;b.setAttribute('aria-pressed',String(Number(b.dataset.answer)===g.selectedAnswer));if(Number(b.dataset.answer)===g.question.id)b.classList.add('correct');else if(Number(b.dataset.answer)===Number(value))b.classList.add('wrong');});document.querySelector('#score').textContent=g.score.toLocaleString();const streak=document.querySelector('#streak');if(streak)streak.textContent=g.streak;
+ advance=setTimeout(nextQuestion,correct?550:1300);
+}
 function endGame(reason='complete'){
  if(!game||game.status==='ended')return;
- cleanup();game.status='ended';game.quit=reason==='quit';game.completed=reason==='complete'||game.quit;
+ completeMasterMiss(game);cleanup();game.status='ended';game.quit=reason==='quit';game.completed=reason==='complete'||game.quit;
  game.record={id:typeof crypto.randomUUID==='function'?crypto.randomUUID():`${Date.now()}-${Math.random()}`,score:game.score,correct:game.correct,total:game.total,mode:rankingKey(game),date:new Date().toISOString()};
  game.rank=0;
  // Replace an open details/navigation panel with the end-of-game registration.
@@ -323,7 +360,7 @@ async function saveRecord(){
  const name=input.value.normalize('NFKC').trim()||pokemon[Math.floor(Math.random()*pokemon.length)].name;if(!validTrainerName(name)){input.setCustomValidity('이름을 12자 안으로 적어줘.');input.reportValidity();return;}input.setCustomValidity('');input.value=name;g.rankingName=name;
  g.saving=true;input.disabled=true;button.disabled=true;if(replay)replay.disabled=true;message.textContent='네 이름을 기록에 남기고 있어…';
  try{
-  const data=await rankingRequest('/api/scores',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:g.record.id,name,mode:g.record.mode,results:g.history.map(answer=>answer.correct),hints:g.history.map(answer=>!!answer.hintUsed)})});
+  const data=await rankingRequest('/api/scores',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:g.record.id,name,mode:g.record.mode,results:g.history.map(answer=>answer.correct),hints:g.history.map(answer=>!!answer.hintUsed),...(g.mode==='write'?{elapsedMs:g.history.map(answer=>answer.elapsedMs??MASTER_BONUS_DURATION)}:{})})});
   if(typeof data.qualified!=='boolean')throw Error('이름이 저장됐는지 확인하지 못했어. 다시 눌러줘.');
   const entries=sharedEntries(g.record.mode,data.entries);updateBoard(g.record.mode,entries);
   if(game!==g||g.status!=='ended')return;
@@ -405,11 +442,11 @@ function renderRecords(){
  if(state.status==='idle')loadRankings(key).catch(()=>{});
 }
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.id==='edit-trainer'){showTrainerEntry();return;}if(b.id==='print-coloring'){if(!b.disabled)window.print();return;}if(b.dataset.nav){navigate(b.dataset.nav);return;}if(b.dataset.mode){const switchMode=()=>{cleanup();game=null;mode=b.dataset.mode;renderPlay();};if(activeGame())confirmLeave(switchMode);else switchMode();return;}if(b.dataset.difficulty){difficulty=b.dataset.difficulty;renderPlay();return;}if(b.id==='start-game'||b.hasAttribute('data-start')){startGame();return;}if(b.dataset.answer){if(b.dataset.question===String(game?.question.id))submitAnswer(b.dataset.answer);return;}if(b.id==='hint-question'){showQuestionHint();return;}if(b.id==='skip-question'){submitAnswer('',true);return;}if(b.id==='quit-game'){endGame('quit');return;}if(b.id==='retry-ranking'){prepareRanking(game);return;}if(b.id==='retry-rankings'){if(!rankingRequests.has(recordTab)){rankingStates.delete(recordTab);renderRecords();}return;}if(b.dataset.rankingMode){recordTab=rankingBoard(b.dataset.rankingMode,rankingDifficulty(recordTab));renderRecords();return;}if(b.dataset.rankingDifficulty){recordTab=rankingBoard(rankingMode(recordTab),b.dataset.rankingDifficulty);renderRecords();return;}if(b.id==='enter-ranking'){showRankingEntry();return;}if(b.id==='close-ranking'){document.querySelector('#high-score').close();return;}if(b.id==='ranking-replay'){saveRankingAndReturnHome();return;}if(b.id==='result-replay'){returnToLobby();return;}if(b.id==='keep-playing'){leaveAction=null;document.querySelector('#detail').close();return;}if(b.id==='leave-game'){const action=leaveAction;leaveAction=null;document.querySelector('#detail').close();if(action)action();return;}if(b.dataset.dexUid){showRelatedDetail(b.dataset.dexUid);return;}if(b.hasAttribute('data-description')){const dialog=document.querySelector('#detail');dialog.querySelectorAll('[data-description]').forEach(button=>{const selected=button===b;button.classList.toggle('active',selected);button.setAttribute('aria-pressed',selected);});dialog.querySelectorAll('[data-description-text]').forEach(text=>text.hidden=text.dataset.descriptionText!==b.dataset.description);return;}if(b.dataset.colorPokemon){const p=pokemon.find(p=>p.uid===b.dataset.colorUid)||extraDetails?.[b.dataset.colorUid];if(p)showColoring(p);return;}if(b.dataset.pokemon){showDetail(b.dataset.pokemon);return;}if(b.id==='close-detail'){document.querySelector('#detail').close();return;}if(b.dataset.recordTab){recordTab=b.dataset.recordTab;renderRecords();return;}if(b.dataset.playRecord){const key=b.dataset.playRecord;mode=key==='time'||key.startsWith('time-')?'time':'write';difficulty=mode==='time'?(key==='time'?'normal':key.slice(5)):key;view='play';game=null;render();return;}});
-document.addEventListener('submit',e=>{if(e.target.id==='trainer-entry-form'){e.preventDefault();enterTrainer();return;}if(e.target.id==='answer-form'){e.preventDefault();if(game?.answerComposing)return;const value=masterAnswer(game,document.querySelector('#answer-input').value.trim());if(value)submitAnswer(value);}if(e.target.id==='save-form'){e.preventDefault();saveRecord();}});
-document.addEventListener('input',e=>{if(e.target.id==='search'){search=e.target.value;renderDexResults();}if(e.target.id==='answer-input')updateAnswerSlots(!e.isComposing);if(e.target.id==='trainer-name'){e.target.setCustomValidity('');if(game)game.rankingName=e.target.value;}if(e.target.id==='entry-trainer-name')e.target.setCustomValidity('');});
+document.addEventListener('submit',e=>{if(e.target.id==='trainer-entry-form'){e.preventDefault();enterTrainer();return;}if(e.target.id==='answer-form'){e.preventDefault();if(game?.answerComposing)return;if(game?.awaitingNext){advanceMasterQuestion();return;}const value=masterAnswer(game,document.querySelector('#answer-input').value.trim());if(value)submitAnswer(value);}if(e.target.id==='save-form'){e.preventDefault();saveRecord();}});
+document.addEventListener('input',e=>{if(e.target.id==='search'){search=e.target.value;renderDexResults();}if(e.target.id==='answer-input'){if(game?.judgement==='wrong')resetMasterAttempt();updateAnswerSlots(!e.isComposing);}if(e.target.id==='trainer-name'){e.target.setCustomValidity('');if(game)game.rankingName=e.target.value;}if(e.target.id==='entry-trainer-name')e.target.setCustomValidity('');});
 document.addEventListener('pointerdown',e=>{if(e.target.id==='answer-input'){focusAnswerSlot(e);return;}if(document.activeElement?.id==='answer-input'&&e.target.closest('#answer-form button,#skip-question,#hint-question')){finishAnswerComposition();e.preventDefault();}});
 document.addEventListener('focusin',e=>{if(e.target.id==='answer-input'){updateAnswerSlots();fitLayersToViewport();}});
-document.addEventListener('compositionstart',e=>{if(e.target.id==='answer-input'&&game)game.answerComposing=true;});
+document.addEventListener('compositionstart',e=>{if(e.target.id==='answer-input'&&game){if(game.judgement==='wrong')resetMasterAttempt();game.answerComposing=true;}});
 document.addEventListener('compositionend',e=>{if(e.target.id==='answer-input'&&game){game.answerComposing=false;updateAnswerSlots(true);}});
 document.addEventListener('selectionchange',()=>{if(document.activeElement?.id==='answer-input')updateAnswerSlots();});
 document.addEventListener('select',e=>{if(e.target.id==='answer-input')updateAnswerSlots();},true);
