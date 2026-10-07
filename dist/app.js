@@ -26,16 +26,45 @@ const rankPosition=rank=>rank<=3?rankBadge(rank):rank+'위';
 const rankingDate=date=>recordDate.format(new Date(date)).replace(/\s/g,'').replace(/\.$/,'');
 const rankingModes=['time-easy','time','time-hard','easy','normal','hard'];
 let records=[],lastSavedId=null;
-function readRecords(){const stored=JSON.parse(localStorage.getItem('pokemon-play-records')||'[]');return Array.isArray(stored)?stored.filter(r=>r&&typeof r.name==='string'&&Number.isFinite(r.score)&&Number.isFinite(r.correct)&&Number.isFinite(r.total)&&typeof r.date==='string'&&Number.isFinite(Date.parse(r.date))&&rankingModes.includes(r.mode)):[];}
-function compareRecords(a,b){return b.score-a.score||b.correct-a.correct||a.date.localeCompare(b.date);}
+function compareRecords(a,b){return b.score-a.score||b.correct-a.correct||a.date.localeCompare(b.date)||(a.id<b.id?-1:a.id>b.id?1:0);}
 function leaderboard(key,items=records){return items.filter(r=>r.mode===key).sort(compareRecords).slice(0,RANKING_LIMIT);}
 function rankOf(record,items=records){return leaderboard(record.mode,[...items,record]).indexOf(record)+1;}
 function rankingLabel(key){return key==='time'||key.startsWith('time-')?`타임어택 · ${difficulties[key==='time'?'normal':key.slice(5)].label}`:`마스터 · ${difficulties[key].label}`;}
 function rankingKey(g){return g.mode==='time'?(g.difficulty==='normal'?'time':`time-${g.difficulty}`):g.difficulty;}
-try{records=readRecords();}catch{}
+try{lastSavedId=localStorage.getItem('pokemon-play-last-shared-id');}catch{}
+const rankingStates=new Map(),rankingRequests=new Map();
 const rankingMode=key=>key==='time'||key.startsWith('time-')?'time':'write';
 const rankingDifficulty=key=>key==='time'?'normal':key.startsWith('time-')?key.slice(5):key;
 const rankingBoard=(kind,level)=>kind==='time'?(level==='normal'?'time':`time-${level}`):level;
+function sharedEntries(key,rows){
+ if(!Array.isArray(rows)||rows.length>RANKING_LIMIT||!rows.every(r=>r&&typeof r.id==='string'&&typeof r.name==='string'&&r.name.length<=24&&r.mode===key&&Number.isInteger(r.score)&&r.score>0&&Number.isInteger(r.correct)&&r.correct>0&&Number.isInteger(r.total)&&r.total>=r.correct&&typeof r.date==='string'&&Number.isFinite(Date.parse(r.date))))throw Error('랭킹 데이터를 읽지 못했어요. 다시 시도해 주세요.');
+ if(new Set(rows.map(r=>r.id)).size!==rows.length)throw Error('랭킹 데이터를 읽지 못했어요.');
+ return rows;
+}
+async function rankingRequest(url,options={}){
+ const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
+ try{const result=await fetch(url,{...options,signal:controller.signal,cache:'no-store'});const data=await result.json();if(!result.ok)throw Error(typeof data.error==='string'?data.error:'랭킹 서버에 연결하지 못했어요. 다시 시도해 주세요.');return data;}
+ catch(error){if(error.name==='AbortError')throw Error('랭킹 서버의 응답이 늦어지고 있어요. 다시 시도해 주세요.');if(error instanceof TypeError)throw Error('랭킹 서버에 연결하지 못했어요. 다시 시도해 주세요.');throw error;}
+ finally{clearTimeout(timeout);}
+}
+function updateBoard(key,entries,serverTime){
+ records=[...records.filter(r=>r.mode!==key),...sharedEntries(key,entries)];
+ const state={status:'ready',updated:Date.now(),serverTime};rankingStates.set(key,state);return state;
+}
+function loadRankings(key,force=false){
+ if(rankingRequests.has(key))return rankingRequests.get(key);
+ const state=rankingStates.get(key);
+ if(!force&&state?.status==='ready'&&Date.now()-state.updated<15000)return Promise.resolve(state);
+ rankingStates.set(key,{status:'loading'});
+ const request=rankingRequest(`/api/rankings?mode=${encodeURIComponent(key)}`).then(data=>{if(data.mode!==key)throw Error('다른 난이도의 기록을 받았어요. 다시 시도해 주세요.');return updateBoard(key,data.entries,data.serverTime);}).catch(error=>{rankingStates.set(key,{status:'error',message:error.message});throw error;}).finally(()=>{rankingRequests.delete(key);if(view==='records'&&recordTab===key)renderRecords();});
+ rankingRequests.set(key,request);return request;
+}
+async function prepareRanking(g){
+ if(game!==g||g.status!=='ended'||!g.completed||g.imageError||g.score<=0||g.rankLoading)return;
+ g.rankLoading=true;g.rankingError=false;renderGameBody();
+ try{const state=await loadRankings(g.record.mode,true);if(game!==g||g.status!=='ended')return;if(Number.isFinite(Date.parse(state.serverTime)))g.record.date=state.serverTime;g.rank=rankOf(g.record);g.rankLoading=false;renderGameBody();if(g.rank)showRankingEntry();}
+ catch{if(game!==g||g.status!=='ended')return;g.rankLoading=false;g.rankingError=true;renderGameBody();}
+}
 const number=p=>String(p.id).padStart(4,'0');
 const typeMeta={"노말":{"icon":"assets/ui/type-normal.png","color":"#999999"},"불꽃":{"icon":"assets/ui/type-fire.png","color":"#ff612c"},"물":{"icon":"assets/ui/type-water.png","color":"#2992ff"},"전기":{"icon":"assets/ui/type-electric.png","color":"#ffdb00"},"풀":{"icon":"assets/ui/type-grass.png","color":"#42bf24"},"얼음":{"icon":"assets/ui/type-ice.png","color":"#42d8ff"},"격투":{"icon":"assets/ui/type-fighting.png","color":"#ffa202"},"독":{"icon":"assets/ui/type-poison.png","color":"#994dcf"},"땅":{"icon":"assets/ui/type-ground.png","color":"#ab7939"},"비행":{"icon":"assets/ui/type-flying.png","color":"#95c9ff"},"에스퍼":{"icon":"assets/ui/type-psychic.png","color":"#ff637f"},"벌레":{"icon":"assets/ui/type-bug.png","color":"#9fa424"},"바위":{"icon":"assets/ui/type-rock.png","color":"#bcb889"},"고스트":{"icon":"assets/ui/type-ghost.png","color":"#6e4570"},"드래곤":{"icon":"assets/ui/type-dragon.png","color":"#5462d6"},"악":{"icon":"assets/ui/type-dark.png","color":"#4f4747"},"강철":{"icon":"assets/ui/type-steel.png","color":"#6aaed3"},"페어리":{"icon":"assets/ui/type-fairy.png","color":"#ffb1ff"}};
 const badges=p=>p.types.map(t=>`<span class="type" data-type="${t}" style="--type-color:${typeMeta[t]?.color||'#777'}">${typeMeta[t]?`<img class="type-icon" src="${typeMeta[t].icon}" alt="" width="20" height="20">`:''}${escapeHTML(t)}</span>`).join('');
@@ -143,13 +172,14 @@ function endGame(reason='complete'){
  if(!game||game.status==='ended')return;
  cleanup();game.status='ended';game.completed=reason==='complete';
  game.record={id:typeof crypto.randomUUID==='function'?crypto.randomUUID():`${Date.now()}-${Math.random()}`,score:game.score,correct:game.correct,total:game.total,mode:rankingKey(game),date:new Date().toISOString()};
- try{records=readRecords();}catch{}
- game.rank=game.completed&&!game.imageError&&game.score>0?rankOf(game.record):0;
+ game.rank=0;
  // Replace an open details/navigation panel with the end-of-game registration.
  leaveAction=null;document.querySelector('#detail').close();
- renderGameBody();if(game.rank)showRankingEntry();
+ renderGameBody();if(game.completed&&!game.imageError&&game.score>0)prepareRanking(game);
 }
 function resultRanking(g){
+ if(g.rankLoading)return '<p class="result-note" role="status">공유 랭킹을 확인하고 있어요…</p>';
+ if(g.rankingError)return '<p class="result-note" role="status">랭킹을 불러오지 못했어요.</p><button class="secondary" id="retry-ranking">다시 확인하기</button>';
  if(g.imageError)return '<p class="result-note">인터넷 연결을 확인하고 다시 도전해 주세요.</p>';
  if(!g.completed)return '<p class="result-note">끝까지 플레이하면 랭킹에 도전할 수 있어요.</p>';
  if(g.saved)return `<div class="rank-banner saved"><span>🏆</span><div><strong>랭킹 ${rankPosition(g.savedRank)}에 이름을 남겼어요!</strong><p>${escapeHTML(g.record.name)} · ${rankingLabel(g.record.mode)}</p></div></div>`;
@@ -169,19 +199,23 @@ function showRankingEntry(){
  const input=dialog.querySelector('#trainer-name');if(input)input.focus({preventScroll:true});
  const ownRow=dialog.querySelector('.my-entry');if(ownRow)ownRow.scrollIntoView({block:'nearest'});
 }
-function saveRecord(){
- if(!game||game.status!=='ended'||game.saved||!game.rank)return;
- const input=document.querySelector('#trainer-name');if(!input)return;
+async function saveRecord(){
+ if(!game||game.status!=='ended'||game.saved||!game.rank||game.saving)return;
+ const g=game,input=document.querySelector('#trainer-name'),message=document.querySelector('#save-message'),button=document.querySelector('.save-name');if(!input)return;
  const name=input.value.trim()||pokemon[Math.floor(Math.random()*pokemon.length)].name;if(name.length>12){input.setCustomValidity('이름은 12자까지 적어 주세요.');input.reportValidity();return;}input.setCustomValidity('');input.value=name;
- const record={...game.record,name};
+ g.saving=true;input.disabled=true;button.disabled=true;message.textContent='이름을 저장하고 있어요…';
  try{
-  // Recheck the current board, including scores saved in another tab.
-  const latest=readRecords();const rank=rankOf(record,latest);
-  if(!rank){records=latest;game.rank=0;document.querySelector('#high-score').close();renderGameBody();return;}
-  const updated=rankingModes.flatMap(key=>leaderboard(key,[...latest,record]));
-  localStorage.setItem('pokemon-play-records',JSON.stringify(updated));records=updated;game.record=record;game.saved=true;game.savedRank=rank;lastSavedId=record.id;recordTab=record.mode;
+  const data=await rankingRequest('/api/scores',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:g.record.id,name,mode:g.record.mode,results:g.history.map(answer=>answer.correct)})});
+  if(typeof data.qualified!=='boolean')throw Error('저장 결과를 확인하지 못했어요. 다시 눌러 주세요.');
+  const entries=sharedEntries(g.record.mode,data.entries);updateBoard(g.record.mode,entries);
+  if(game!==g||g.status!=='ended')return;
+  if(!data.qualified){g.rank=0;document.querySelector('#high-score').close();renderGameBody();return;}
+  const saved=entries.find(row=>row.id===g.record.id);if(!saved||!Number.isInteger(data.rank)||data.rank<1||data.rank>RANKING_LIMIT||entries[data.rank-1]?.id!==saved.id)throw Error('저장된 순위를 확인하지 못했어요. 다시 눌러 주세요.');
+  g.record=saved;g.score=saved.score;g.saved=true;g.savedRank=data.rank;lastSavedId=saved.id;recordTab=saved.mode;
+  try{localStorage.setItem('pokemon-play-last-shared-id',saved.id);}catch{}
   renderGameBody();showRankingEntry();
- }catch{document.querySelector('#save-message').textContent='랭킹을 저장하지 못했어요. 브라우저의 저장 설정을 확인한 뒤 다시 눌러 주세요.';}
+ }catch(error){if(game===g&&document.querySelector('#high-score').open)message.textContent=error.message||'랭킹을 저장하지 못했어요. 다시 눌러 주세요.';}
+ finally{g.saving=false;input.disabled=false;button.disabled=false;}
 }
 
 let coloringRequest=0;
@@ -246,8 +280,13 @@ async function showRelatedDetail(uid){
   if(!details[uid])throw Error('entry');renderDexDetail(details[uid]);
  }catch{if(request!==detailRequest||!dialog.open)return;dialog.innerHTML=detailShell(`<p>포켓몬 정보를 불러오지 못했어요.</p><button class="secondary" data-dex-uid="${uid}">다시 불러오기</button>`);}
 }
-function renderRecords(){try{records=readRecords();}catch{}const key=recordTab,kind=rankingMode(key),level=rankingDifficulty(key),list=leaderboard(key);app.innerHTML=`<button class="text-button back-to-game" data-nav="play"><span aria-hidden="true">&lt;</span> 퀴즈도전</button><section class="intro ranking-intro"><div><h1>우리들의 랭킹</h1><p>친구와 번갈아 도전하고, 같은 기기에서 기록을 비교해 보세요.</p></div><button class="ranking-refresh" id="refresh-rankings" aria-label="랭킹 새로고침" title="새로고침" ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 19.7 10M4.3 14A8 8 0 0 0 17.9 17.9"/></svg></button></section><section class="ranking-controls" aria-label="랭킹 모드와 난이도"><div class="game-tabs ranking-mode-tabs" role="group" aria-label="게임 모드">${[['time','⏱️ 타임어택'],['write','🏆 마스터']].map(([value,label])=>`<button class="game-tab ${kind===value?'active':''}" data-ranking-mode="${value}" aria-pressed="${kind===value}">${label}</button>`).join('')}</div><div class="ranking-difficulties" role="group" aria-label="난이도">${Object.entries(difficulties).map(([value,d])=>`<button data-ranking-difficulty="${value}" class="${level===value?'active':''}" aria-pressed="${level===value}">${d.label}</button>`).join('')}</div></section>${list.length?`<table class="ranking"><thead><tr><th>순위</th><th>트레이너</th><th>점수</th><th>정답</th><th>날짜</th></tr></thead><tbody>${list.map((r,i)=>`<tr class="${r.id&&r.id===lastSavedId?'new-record':''}"><td>${rankBadge(i+1)}</td><td>${escapeHTML(r.name)}</td><td class="score">${r.score.toLocaleString()}</td><td>${r.correct} / ${r.total}</td><td class="record-date"><time datetime="${escapeHTML(r.date)}">${rankingDate(r.date)}</time></td></tr>`).join('')}</tbody></table><p class="result-note">모드와 난이도별 TOP 20 · 같은 점수는 정답 수, 먼저 세운 기록 순이에요. 브라우저 데이터를 삭제하면 랭킹도 사라져요.</p>`:`<div class="empty"><div style="font-size:38px;margin-bottom:14px">🏆</div>첫 번째 기록의 주인공이 되어 보세요!<div style="margin-top:23px"><button class="primary" data-play-record="${recordTab}">도전 시작하기</button></div></div>`}`;}
-document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.id==='print-coloring'){if(!b.disabled)window.print();return;}if(b.dataset.nav){navigate(b.dataset.nav);return;}if(b.dataset.mode){const switchMode=()=>{cleanup();game=null;mode=b.dataset.mode;renderPlay();};if(activeGame())confirmLeave(switchMode);else switchMode();return;}if(b.dataset.difficulty){difficulty=b.dataset.difficulty;renderPlay();return;}if(b.id==='start-game'||b.hasAttribute('data-start')){startGame();return;}if(b.dataset.answer){submitAnswer(b.dataset.answer);return;}if(b.id==='skip-question'){submitAnswer('',true);return;}if(b.id==='quit-game'){endGame('quit');return;}if(b.id==='enter-ranking'){showRankingEntry();return;}if(b.id==='close-ranking'){document.querySelector('#high-score').close();return;}if(b.id==='ranking-replay'){document.querySelector('#high-score').close();startGame();return;}if(b.id==='keep-playing'){leaveAction=null;document.querySelector('#detail').close();return;}if(b.id==='leave-game'){const action=leaveAction;leaveAction=null;document.querySelector('#detail').close();if(action)action();return;}if(b.dataset.dexUid){showRelatedDetail(b.dataset.dexUid);return;}if(b.hasAttribute('data-description')){const dialog=document.querySelector('#detail');dialog.querySelectorAll('[data-description]').forEach(button=>{const selected=button===b;button.classList.toggle('active',selected);button.setAttribute('aria-pressed',selected);});dialog.querySelectorAll('[data-description-text]').forEach(text=>text.hidden=text.dataset.descriptionText!==b.dataset.description);return;}if(b.dataset.colorPokemon){const p=pokemon.find(p=>p.uid===b.dataset.colorUid)||extraDetails?.[b.dataset.colorUid];if(p)showColoring(p);return;}if(b.dataset.pokemon){showDetail(b.dataset.pokemon);return;}if(b.id==='close-detail'){document.querySelector('#detail').close();return;}if(b.id==='refresh-rankings'){renderRecords();return;}if(b.dataset.rankingMode){recordTab=rankingBoard(b.dataset.rankingMode,rankingDifficulty(recordTab));renderRecords();return;}if(b.dataset.rankingDifficulty){recordTab=rankingBoard(rankingMode(recordTab),b.dataset.rankingDifficulty);renderRecords();return;}if(b.dataset.recordTab){recordTab=b.dataset.recordTab;renderRecords();return;}if(b.dataset.playRecord){const key=b.dataset.playRecord;mode=key==='time'||key.startsWith('time-')?'time':'write';difficulty=mode==='time'?(key==='time'?'normal':key.slice(5)):key;view='play';game=null;render();return;}});
+function renderRecords(){
+ const key=recordTab,list=leaderboard(key),state=rankingStates.get(key)||{status:'idle'},kind=rankingMode(key),level=rankingDifficulty(key);
+ const content=state.status==='idle'||state.status==='loading'?'<div class="ranking-status" role="status"><span class="quiz-spinner" aria-hidden="true"></span><p>트레이너들의 기록을 불러오는 중이에요…</p></div>':state.status==='error'?`<div class="ranking-status" role="status"><p>${escapeHTML(state.message)}</p><button class="secondary" id="retry-rankings">다시 불러오기</button></div>`:list.length?`<table class="ranking"><thead><tr><th>순위</th><th>트레이너</th><th>점수</th><th>정답</th><th>날짜</th></tr></thead><tbody>${list.map((r,i)=>`<tr class="${r.id===lastSavedId?'new-record':''}"><td>${rankBadge(i+1)}</td><td>${escapeHTML(r.name)}</td><td class="score">${r.score.toLocaleString()}</td><td>${r.correct} / ${r.total}</td><td class="record-date"><time datetime="${escapeHTML(r.date)}">${rankingDate(r.date)}</time></td></tr>`).join('')}</tbody></table><p class="result-note">${rankingLabel(key)} TOP 20 · 같은 점수는 정답 수, 먼저 세운 기록 순이에요.</p>`:`<div class="empty"><div style="font-size:38px;margin-bottom:14px">🏆</div>첫 번째 기록의 주인공이 되어 보세요!<div style="margin-top:23px"><button class="primary" data-play-record="${key}">도전 시작하기</button></div></div>`;
+ app.innerHTML=`<button class="text-button back-to-game" data-nav="play"><span aria-hidden="true">&lt;</span> 퀴즈도전</button><section class="intro ranking-intro"><div><h1>우리들의 랭킹</h1><p>다른 트레이너들과 함께 최고 기록에 도전해 보세요.</p></div><button class="ranking-refresh" id="refresh-rankings" aria-label="랭킹 새로고침" title="새로고침" ${state.status==='loading'?'disabled':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 19.7 10M4.3 14A8 8 0 0 0 17.9 17.9"/></svg></button></section><section class="ranking-controls" aria-label="랭킹 모드와 난이도"><div class="game-tabs ranking-mode-tabs" role="group" aria-label="게임 모드">${[['time','⏱️ 타임어택'],['write','🏆 마스터']].map(([value,label])=>`<button class="game-tab ${kind===value?'active':''}" data-ranking-mode="${value}" aria-pressed="${kind===value}">${label}</button>`).join('')}</div><div class="ranking-difficulties" role="group" aria-label="난이도">${Object.entries(difficulties).map(([value,d])=>`<button data-ranking-difficulty="${value}" class="${level===value?'active':''}" aria-pressed="${level===value}">${d.label}</button>`).join('')}</div></section><div class="shared-ranking-board" aria-live="polite">${content}</div>`;
+ if(state.status==='idle')loadRankings(key).catch(()=>{});
+}
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.id==='print-coloring'){if(!b.disabled)window.print();return;}if(b.dataset.nav){navigate(b.dataset.nav);return;}if(b.dataset.mode){const switchMode=()=>{cleanup();game=null;mode=b.dataset.mode;renderPlay();};if(activeGame())confirmLeave(switchMode);else switchMode();return;}if(b.dataset.difficulty){difficulty=b.dataset.difficulty;renderPlay();return;}if(b.id==='start-game'||b.hasAttribute('data-start')){startGame();return;}if(b.dataset.answer){submitAnswer(b.dataset.answer);return;}if(b.id==='skip-question'){submitAnswer('',true);return;}if(b.id==='quit-game'){endGame('quit');return;}if(b.id==='retry-ranking'){prepareRanking(game);return;}if(b.id==='refresh-rankings'||b.id==='retry-rankings'){if(!rankingRequests.has(recordTab)){rankingStates.delete(recordTab);renderRecords();}return;}if(b.dataset.rankingMode){recordTab=rankingBoard(b.dataset.rankingMode,rankingDifficulty(recordTab));renderRecords();return;}if(b.dataset.rankingDifficulty){recordTab=rankingBoard(rankingMode(recordTab),b.dataset.rankingDifficulty);renderRecords();return;}if(b.id==='enter-ranking'){showRankingEntry();return;}if(b.id==='close-ranking'){document.querySelector('#high-score').close();return;}if(b.id==='ranking-replay'){document.querySelector('#high-score').close();startGame();return;}if(b.id==='keep-playing'){leaveAction=null;document.querySelector('#detail').close();return;}if(b.id==='leave-game'){const action=leaveAction;leaveAction=null;document.querySelector('#detail').close();if(action)action();return;}if(b.dataset.dexUid){showRelatedDetail(b.dataset.dexUid);return;}if(b.hasAttribute('data-description')){const dialog=document.querySelector('#detail');dialog.querySelectorAll('[data-description]').forEach(button=>{const selected=button===b;button.classList.toggle('active',selected);button.setAttribute('aria-pressed',selected);});dialog.querySelectorAll('[data-description-text]').forEach(text=>text.hidden=text.dataset.descriptionText!==b.dataset.description);return;}if(b.dataset.colorPokemon){const p=pokemon.find(p=>p.uid===b.dataset.colorUid)||extraDetails?.[b.dataset.colorUid];if(p)showColoring(p);return;}if(b.dataset.pokemon){showDetail(b.dataset.pokemon);return;}if(b.id==='close-detail'){document.querySelector('#detail').close();return;}if(b.dataset.recordTab){recordTab=b.dataset.recordTab;renderRecords();return;}if(b.dataset.playRecord){const key=b.dataset.playRecord;mode=key==='time'||key.startsWith('time-')?'time':'write';difficulty=mode==='time'?(key==='time'?'normal':key.slice(5)):key;view='play';game=null;render();return;}});
 document.addEventListener('submit',e=>{if(e.target.id==='answer-form'){e.preventDefault();const value=document.querySelector('#answer-input').value.trim();if(value)submitAnswer(value);}if(e.target.id==='save-form'){e.preventDefault();saveRecord();}});
 document.addEventListener('input',e=>{if(e.target.id==='search'){search=e.target.value;renderDexResults();}if(e.target.id==='trainer-name')e.target.setCustomValidity('');});
 document.addEventListener('change',e=>{if(e.target.id==='region-filter'){regionFilter=e.target.value;renderDexResults();}if(e.target.id==='type-filter'){typeFilter=e.target.value;renderDexResults();}if(e.target.id==='sort'){sort=e.target.value;renderDexResults();}});

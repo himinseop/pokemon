@@ -23,7 +23,7 @@ def validate_release(source):
     return manifest
 
 
-def publish(source=ROOT / 'dist-aws', profile=None, run=subprocess.run):
+def publish(source=ROOT / 'dist-aws', profile=None, run=subprocess.run, ranking_source=ROOT / 'exports'):
     source = Path(source)
     manifest = validate_release(source)
     config = json.loads((ROOT / 'infra/config.json').read_text(encoding='utf-8'))
@@ -45,6 +45,16 @@ def publish(source=ROOT / 'dist-aws', profile=None, run=subprocess.run):
     bucket, distribution = outputs['WebBucketName'], outputs['DistributionId']
     if not bucket or not distribution:
         raise ValueError('Missing CloudFormation bucket/distribution outputs.')
+    # Deploy the matching backend package before switching the frontend.
+    ranking_package = Path(ranking_source) / 'ranking-function.zip'
+    ranking_manifest = json.loads((Path(ranking_source) / 'ranking-release.json').read_text(encoding='utf-8'))
+    if ranking_manifest['revision'] != manifest['revision'] or hashlib.sha256(ranking_package.read_bytes()).hexdigest() != ranking_manifest['sha256']:
+        raise ValueError('The ranking package must match the verified web release.')
+    function_name = outputs['RankingFunctionName']
+    if function_name != 'pokemon-play-prod-rankings':
+        raise ValueError('Unexpected ranking function; no files uploaded.')
+    aws(['lambda', 'update-function-code', '--function-name', function_name, '--zip-file', 'fileb://'+str(ranking_package), '--no-publish'], True)
+    aws(['lambda', 'wait', 'function-updated', '--function-name', function_name])
     destination = f's3://{bucket}'
     # Size-only is safe for content-addressed images: any content change gets a new key.
     aws(['s3', 'sync', str(source / 'assets'), destination+'/assets', '--size-only', '--cache-control', 'public,max-age=31536000,immutable', '--only-show-errors'])

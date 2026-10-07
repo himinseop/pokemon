@@ -14,7 +14,8 @@
     "aws:diff": "cdk diff PokemonPlayProd",
     "aws:deploy": "cdk deploy PokemonPlayProd --outputs-file exports/aws-outputs.json",
     "aws:publish": "python3 scripts/deploy-aws.py",
-    "ci": "npm run check && npm test && npm run aws:build:web && npm run aws:synth"
+    "ci": "npm run check && npm test && npm run aws:build:web && npm run aws:build:ranking && npm run aws:synth",
+    "aws:build:ranking": "python3 scripts/build-ranking.py"
   },
   "devDependencies": {
     "aws-cdk": "2.1139.0",

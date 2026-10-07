@@ -14,7 +14,7 @@ test('private retained S3 and CloudFront OAC serve only HTTPS',()=>{
  const d=resources(t,'AWS::CloudFront::Distribution')[0].Properties.DistributionConfig;
  assert.equal(d.DefaultCacheBehavior.ViewerProtocolPolicy,'redirect-to-https');assert.deepEqual(d.DefaultCacheBehavior.AllowedMethods,['GET','HEAD']);assert.deepEqual(d.Aliases,['pokemon.pir.kr']);
  assert.equal(d.DefaultRootObject,'index.html');assert.ok(!d.CustomErrorResponses);
- assert.equal(resources(t,'AWS::DynamoDB::Table').length,0);assert.equal(resources(t,'AWS::SQS::Queue').length,0);
+ assert.equal(resources(t,'AWS::DynamoDB::Table').length,1);assert.equal(resources(t,'AWS::SQS::Queue').length,0);
 });
 test('GitHub OIDC trusts only the specific production environment, including immutable IDs',()=>{
  const t=template(),role=resources(t,'AWS::IAM::Role').find(r=>r.Properties.RoleName==='pokemon-play-prod-github-deploy');
@@ -25,7 +25,7 @@ test('GitHub OIDC trusts only the specific production environment, including imm
  const policy=resources(t,'AWS::IAM::Policy').find(r=>r.Properties.PolicyName.startsWith('GitHubDeployRole'));
  const statements=policy.Properties.PolicyDocument.Statement;
  const actions=statements.flatMap(s=>[].concat(s.Action));
- assert.deepEqual(actions.sort(),['s3:ListBucket','s3:GetBucketLocation','s3:GetObject','s3:PutObject','cloudfront:CreateInvalidation','cloudfront:GetInvalidation','cloudformation:DescribeStacks'].sort());
+ assert.deepEqual(actions.sort(),['s3:ListBucket','s3:GetBucketLocation','s3:GetObject','s3:PutObject','cloudfront:CreateInvalidation','cloudfront:GetInvalidation','cloudformation:DescribeStacks','lambda:UpdateFunctionCode','lambda:GetFunctionConfiguration'].sort());
  assert.ok(statements.every(s=>s.Resource!=='*'));
 });
 test('existing certificate and account-wide OIDC provider can be reused',()=>{
@@ -38,4 +38,18 @@ test('configuration rejects wrong certificate region, other account provider and
  assert.throws(()=>validateConfig({...config,githubOidcProviderArn:'arn:aws:iam::111111111111:oidc-provider/token.actions.githubusercontent.com'}));
  assert.throws(()=>validateConfig({...config,githubRepository:'himinseop/*'}));
  assert.throws(()=>validateConfig({...config,githubRepositoryId:''}));
+});
+
+test('shared rankings use one retained on-demand board table and uncached API requests',()=>{
+ const t=template(),table=resources(t,'AWS::DynamoDB::Table')[0];
+ assert.equal(table.DeletionPolicy,'Retain');assert.equal(table.Properties.BillingMode,'PAY_PER_REQUEST');assert.deepEqual(table.Properties.KeySchema,[{AttributeName:'mode',KeyType:'HASH'}]);
+ const fn=resources(t,'AWS::Lambda::Function').find(r=>r.Properties.FunctionName==='pokemon-play-prod-rankings');
+ assert.equal(fn.Properties.Runtime,'python3.13');assert.equal(fn.Properties.ReservedConcurrentExecutions,5);assert.equal(fn.Properties.Timeout,5);
+ const api=resources(t,'AWS::ApiGatewayV2::Api')[0];assert.equal(api.Properties.ProtocolType,'HTTP');
+ const routes=resources(t,'AWS::ApiGatewayV2::Route').map(r=>r.Properties.RouteKey).sort();assert.deepEqual(routes,['GET /api/rankings','POST /api/scores']);
+ const d=resources(t,'AWS::CloudFront::Distribution')[0].Properties.DistributionConfig;
+ const behavior=d.CacheBehaviors.find(b=>b.PathPattern==='api/*');assert.ok(behavior);assert.ok(behavior.AllowedMethods.includes('POST'));
+ assert.equal(behavior.CachePolicyId,'4135ea2d-6df8-44a3-9df3-4b5a84be39ad');
+ const execution=resources(t,'AWS::IAM::Policy').find(r=>r.Properties.PolicyName.startsWith('RankingFunction'));
+ const data=execution.Properties.PolicyDocument.Statement.find(s=>[].concat(s.Action).includes('dynamodb:GetItem'));assert.deepEqual([].concat(data.Action).sort(),['dynamodb:GetItem','dynamodb:PutItem']);assert.notEqual(data.Resource,'*');
 });

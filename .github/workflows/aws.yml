@@ -28,6 +28,7 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run aws:build:web
+      - run: npm run aws:build:ranking
       - run: npm run aws:synth
       - name: Store the verified release
         if: github.event_name != 'pull_request'
@@ -35,6 +36,17 @@ jobs:
         with:
           name: pokemon-release
           path: dist-aws/
+          retention-days: 3
+          if-no-files-found: error
+
+      - name: Store the verified ranking function
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: pokemon-ranking-function
+          path: |
+            exports/ranking-function.zip
+            exports/ranking-release.json
           retention-days: 3
           if-no-files-found: error
 
@@ -71,6 +83,10 @@ jobs:
         with:
           name: pokemon-release
           path: dist-aws/
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: pokemon-ranking-function
+          path: exports/
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
@@ -88,5 +104,11 @@ jobs:
           python3 - <<'PY'
           import json
           assert json.load(open('/tmp/pokemon-manifest.json'))['speciesCount'] == 1025
+          PY
+          curl --fail --silent --show-error --retry 5 --retry-delay 5 'https://pokemon.pir.kr/api/rankings?mode=time-easy' -o /tmp/pokemon-rankings.json
+          python3 - <<'PY'
+          import json
+          rankings = json.load(open('/tmp/pokemon-rankings.json'))
+          assert rankings['mode'] == 'time-easy' and isinstance(rankings['entries'], list)
           PY
           echo '### Published https://pokemon.pir.kr' >> "$GITHUB_STEP_SUMMARY"

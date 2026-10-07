@@ -46,7 +46,7 @@ class ReleaseTests(unittest.TestCase):
             self.assertEqual(len(calls),1);self.assertIn('get-caller-identity',calls[0])
     def test_publish_retains_old_assets_switches_index_last_and_waits_for_invalidation(self):
         config=json.loads((ROOT/'infra/config.json').read_text());calls=[]
-        outputs={'SiteUrl':'https://pokemon.pir.kr','WebBucketName':'pokemon-web-test','DistributionId':'EXAMPLE'}
+        outputs={'SiteUrl':'https://pokemon.pir.kr','WebBucketName':'pokemon-web-test','DistributionId':'EXAMPLE','RankingFunctionName':'pokemon-play-prod-rankings'}
         def run(args,**kwargs):
             calls.append(args)
             if 'get-caller-identity' in args:payload={'Account':config['account']}
@@ -55,9 +55,9 @@ class ReleaseTests(unittest.TestCase):
             else:payload={}
             return subprocess.CompletedProcess(args,0,json.dumps(payload))
         with tempfile.TemporaryDirectory() as folder:
-            root=Path(folder);self.release(root);deployer.publish(root,run=run)
-        self.assertEqual(len(calls),7)
-        self.assertIn('--size-only',calls[2]);self.assertIn('no-cache',calls[3]);self.assertIn('index.html',str(calls[4]))
+            root=Path(folder)/'web';root.mkdir();self.release(root);backend=Path(folder)/'backend';backend.mkdir();(backend/'ranking-function.zip').write_bytes(b'code');(backend/'ranking-release.json').write_text(json.dumps({'revision':'test','sha256':hashlib.sha256(b'code').hexdigest()}));deployer.publish(root,run=run,ranking_source=backend)
+        self.assertEqual(len(calls),9)
+        self.assertIn('update-function-code',calls[2]);self.assertIn('function-updated',calls[3]);self.assertIn('--size-only',calls[4]);self.assertIn('no-cache',calls[5]);self.assertIn('index.html',str(calls[6]))
         self.assertIn('invalidation-completed',calls[-1]);self.assertTrue(all('--delete' not in args for args in calls))
     def test_invalid_stack_domain_prevents_uploads(self):
         config=json.loads((ROOT/'infra/config.json').read_text());calls=[]
@@ -68,4 +68,17 @@ class ReleaseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);self.release(root)
             with self.assertRaises(ValueError):deployer.publish(root,run=run)
+        self.assertEqual(len(calls),2)
+
+    def test_mismatched_backend_release_never_updates_a_function_or_uploads_files(self):
+        config=json.loads((ROOT/'infra/config.json').read_text());calls=[]
+        def run(args,**kwargs):
+            calls.append(args)
+            payload={'Account':config['account']} if 'get-caller-identity' in args else {'Stacks':[{'StackStatus':'CREATE_COMPLETE','Outputs':[{'OutputKey':k,'OutputValue':v} for k,v in {'SiteUrl':'https://pokemon.pir.kr','WebBucketName':'test','DistributionId':'test','RankingFunctionName':'pokemon-play-prod-rankings'}.items()]}]}
+            return subprocess.CompletedProcess(args,0,json.dumps(payload))
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)/'web';root.mkdir();self.release(root);backend=Path(folder)/'backend';backend.mkdir()
+            (backend/'ranking-function.zip').write_bytes(b'code')
+            (backend/'ranking-release.json').write_text(json.dumps({'revision':'different','sha256':hashlib.sha256(b'code').hexdigest()}))
+            with self.assertRaises(ValueError):deployer.publish(root,run=run,ranking_source=backend)
         self.assertEqual(len(calls),2)

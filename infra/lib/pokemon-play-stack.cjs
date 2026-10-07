@@ -1,5 +1,6 @@
 const cdk=require('aws-cdk-lib');
-const {aws_s3:s3,aws_cloudfront:cloudfront,aws_cloudfront_origins:origins,aws_certificatemanager:acm,aws_route53:route53,aws_route53_targets:targets,aws_iam:iam}=cdk;
+const {aws_s3:s3,aws_cloudfront:cloudfront,aws_cloudfront_origins:origins,aws_certificatemanager:acm,aws_route53:route53,aws_route53_targets:targets,aws_iam:iam,aws_dynamodb:dynamodb,aws_lambda:lambda,aws_logs:logs,aws_apigatewayv2:apigateway,aws_apigatewayv2_integrations:integrations}=cdk;
+const path=require('node:path');
 function validateConfig(config){
  if(!/^\d{12}$/.test(config.account)||!/^ap-northeast-2$/.test(config.region))throw Error('AWS 계정과 서울 리전을 확인하세요.');
  if(!/^[a-z0-9-]+\.pir\.kr$/.test(config.domainName)||config.zoneName!=='pir.kr'||!/^Z[A-Z0-9]+$/.test(config.hostedZoneId))throw Error('도메인과 기존 Route 53 영역을 확인하세요.');
@@ -16,7 +17,19 @@ class PokemonPlayStack extends cdk.Stack{
   const certificate=config.certificateArn?acm.Certificate.fromCertificateArn(this,'Certificate',config.certificateArn):new acm.DnsValidatedCertificate(this,'Certificate',{domainName:config.domainName,hostedZone:zone,region:'us-east-1',cleanupRoute53Records:false});
   const bucket=new s3.Bucket(this,'WebBucket',{blockPublicAccess:s3.BlockPublicAccess.BLOCK_ALL,objectOwnership:s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,enforceSSL:true,encryption:s3.BucketEncryption.S3_MANAGED,removalPolicy:cdk.RemovalPolicy.RETAIN,autoDeleteObjects:false});
   const cache=new cloudfront.CachePolicy(this,'StaticCache',{minTtl:cdk.Duration.seconds(0),defaultTtl:cdk.Duration.minutes(1),maxTtl:cdk.Duration.days(365),enableAcceptEncodingGzip:true,enableAcceptEncodingBrotli:true,cookieBehavior:cloudfront.CacheCookieBehavior.none(),headerBehavior:cloudfront.CacheHeaderBehavior.none(),queryStringBehavior:cloudfront.CacheQueryStringBehavior.none()});
+  const rankings=new dynamodb.Table(this,'RankingsTable',{tableName:'pokemon-play-prod-rankings',partitionKey:{name:'mode',type:dynamodb.AttributeType.STRING},billingMode:dynamodb.BillingMode.PAY_PER_REQUEST,removalPolicy:cdk.RemovalPolicy.RETAIN});
+  const rankingLogs=new logs.LogGroup(this,'RankingLogs',{retention:logs.RetentionDays.ONE_WEEK,removalPolicy:cdk.RemovalPolicy.DESTROY});
+  const rankingFunction=new lambda.Function(this,'RankingFunction',{functionName:'pokemon-play-prod-rankings',runtime:lambda.Runtime.PYTHON_3_13,architecture:lambda.Architecture.ARM_64,handler:'handler.handle',code:lambda.Code.fromAsset(path.join(__dirname,'../ranking'),{exclude:['__pycache__','*.pyc']}),memorySize:128,timeout:cdk.Duration.seconds(5),reservedConcurrentExecutions:5,logGroup:rankingLogs,environment:{TABLE_NAME:rankings.tableName,ALLOWED_ORIGINS:JSON.stringify([`https://${config.domainName}`])}});
+  rankingFunction.addToRolePolicy(new iam.PolicyStatement({actions:['dynamodb:GetItem','dynamodb:PutItem'],resources:[rankings.tableArn]}));
+  const rankingApi=new apigateway.HttpApi(this,'RankingApi',{apiName:'pokemon-play-rankings',createDefaultStage:false});
+  new apigateway.HttpStage(this,'RankingStage',{httpApi:rankingApi,stageName:'$default',autoDeploy:true,throttle:{rateLimit:10,burstLimit:20}});
+  const rankingIntegration=new integrations.HttpLambdaIntegration('RankingIntegration',rankingFunction);
+  rankingApi.addRoutes({path:'/api/rankings',methods:[apigateway.HttpMethod.GET],integration:rankingIntegration});
+  rankingApi.addRoutes({path:'/api/scores',methods:[apigateway.HttpMethod.POST],integration:rankingIntegration});
+  const rankingOrigin=new origins.HttpOrigin(`${rankingApi.apiId}.execute-api.${config.region}.amazonaws.com`,{protocolPolicy:cloudfront.OriginProtocolPolicy.HTTPS_ONLY});
+  const rankingRequests=new cloudfront.OriginRequestPolicy(this,'RankingRequests',{queryStringBehavior:cloudfront.OriginRequestQueryStringBehavior.all(),cookieBehavior:cloudfront.OriginRequestCookieBehavior.none(),headerBehavior:cloudfront.OriginRequestHeaderBehavior.allowList('content-type','origin')});
   const distribution=new cloudfront.Distribution(this,'Distribution',{defaultRootObject:'index.html',domainNames:[config.domainName],certificate,minimumProtocolVersion:cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,priceClass:cloudfront.PriceClass.PRICE_CLASS_200,enableLogging:false,defaultBehavior:{origin:origins.S3BucketOrigin.withOriginAccessControl(bucket),viewerProtocolPolicy:cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,allowedMethods:cloudfront.AllowedMethods.ALLOW_GET_HEAD,compress:true,cachePolicy:cache,responseHeadersPolicy:cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS}});
+  distribution.addBehavior('api/*',rankingOrigin,{viewerProtocolPolicy:cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,allowedMethods:cloudfront.AllowedMethods.ALLOW_ALL,cachePolicy:cloudfront.CachePolicy.CACHING_DISABLED,originRequestPolicy:rankingRequests,responseHeadersPolicy:cloudfront.ResponseHeadersPolicy.SECURITY_HEADERS});
   const recordName=config.domainName.slice(0,-(config.zoneName.length+1));
   new route53.ARecord(this,'AliasA',{zone,recordName,target:route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution))});
   new route53.AaaaRecord(this,'AliasAAAA',{zone,recordName,target:route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution))});
@@ -28,7 +41,8 @@ class PokemonPlayStack extends cdk.Stack{
   role.addToPolicy(new iam.PolicyStatement({actions:['s3:GetObject','s3:PutObject'],resources:[bucket.arnForObjects('*')]}));
   role.addToPolicy(new iam.PolicyStatement({actions:['cloudfront:CreateInvalidation','cloudfront:GetInvalidation'],resources:[`arn:aws:cloudfront::${config.account}:distribution/${distribution.distributionId}`]}));
   role.addToPolicy(new iam.PolicyStatement({actions:['cloudformation:DescribeStacks'],resources:[`arn:aws:cloudformation:${config.region}:${config.account}:stack/${config.stackName}/*`]}));
-  for(const [key,value] of Object.entries({SiteUrl:`https://${config.domainName}`,WebBucketName:bucket.bucketName,DistributionId:distribution.distributionId,DistributionDomain:distribution.distributionDomainName,GitHubDeployRoleArn:role.roleArn}))new cdk.CfnOutput(this,key,{value});
+  role.addToPolicy(new iam.PolicyStatement({actions:['lambda:UpdateFunctionCode','lambda:GetFunctionConfiguration'],resources:[rankingFunction.functionArn]}));
+  for(const [key,value] of Object.entries({SiteUrl:`https://${config.domainName}`,WebBucketName:bucket.bucketName,DistributionId:distribution.distributionId,DistributionDomain:distribution.distributionDomainName,GitHubDeployRoleArn:role.roleArn,RankingFunctionName:rankingFunction.functionName,RankingFunctionArn:rankingFunction.functionArn,RankingsTableName:rankings.tableName,RankingApiUrl:rankingApi.apiEndpoint}))new cdk.CfnOutput(this,key,{value});
   cdk.Tags.of(this).add('Project','pokemon-play');cdk.Tags.of(this).add('Environment','production');
  }
 }
