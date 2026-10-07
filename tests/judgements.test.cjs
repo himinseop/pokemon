@@ -87,3 +87,17 @@ test('each new question clears the last selection and preserves the timer bar',a
  for(const button of h.w.document.querySelectorAll('.choice')){assert.equal(button.getAttribute('aria-pressed'),'false');assert.equal(button.classList.contains('correct'),false);assert.equal(button.classList.contains('wrong'),false);assert.equal(button.disabled,false);assert.equal(button.matches(':focus'),false);}
  h.$(`[data-answer="${h.game().options.find(p=>p.id!==h.game().question.id).id}"]`).click();await h.run(1300);assert.equal(h.game().selectedAnswer,null);assert.equal(h.$('.wrong,.correct'),null);
 });
+
+test('master questions keep the same focused input across answers and skips',async t=>{
+ const h=await harness();t.after(h.close);await h.start('write');const input=h.$('#answer-input'),form=h.$('#answer-form');let blurs=0;input.addEventListener('blur',()=>blurs++);
+ h.correct();assert.equal(input.disabled,false);assert.equal(input.readOnly,false);await h.run(550);assert.equal(h.$('#answer-input'),input);assert.equal(h.$('#answer-form'),form);assert.equal(h.w.document.activeElement,input);assert.equal(input.value,'');assert.equal(blurs,0);
+ h.$('#skip-question').click();await h.run(1300);assert.equal(h.$('#answer-input'),input);assert.equal(h.w.document.activeElement,input);assert.equal(blurs,0);
+});
+test('master keyboard follows the visual viewport and restores the input on dismissal',async t=>{
+ const h=await harness();t.after(h.close);Object.defineProperty(h.w,'innerWidth',{value:375});Object.defineProperty(h.w,'innerHeight',{value:667});
+ const viewport=new h.w.EventTarget();Object.assign(viewport,{height:667,offsetTop:0,scale:1});Object.defineProperty(h.w,'visualViewport',{value:viewport});await h.start('write');
+ viewport.height=590;h.w.qa('fitLayersToViewport()');assert.equal(h.w.document.body.classList.contains('master-keyboard'),false);
+ viewport.height=333;h.w.qa('fitLayersToViewport()');assert.equal(h.w.document.body.classList.contains('master-keyboard'),true);assert.equal(h.w.document.documentElement.style.getPropertyValue('--master-visible-height'),'333px');assert.ok(h.$('.question-score'));assert.ok(h.$('#skip-question'));
+ viewport.height=667;h.w.qa('fitLayersToViewport()');assert.equal(h.w.document.body.classList.contains('master-keyboard'),false);assert.ok(h.$('#answer-input'));
+ viewport.height=333;viewport.scale=2;h.w.qa('fitLayersToViewport()');assert.equal(h.w.document.body.classList.contains('master-keyboard'),false);
+});

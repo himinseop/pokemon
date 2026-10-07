@@ -308,3 +308,24 @@ body.trainer-entry #app{display:grid;place-items:center;max-width:none;min-heigh
  .ranking th:last-child{width:60px}
  .ranking td:nth-child(2) .my-tag{margin:0}
 }
+
+/* Keep the master quiz anchored while the software keyboard covers the screen. */
+body.game-focused .skip-control{min-height:56px;padding:14px 23px;border-radius:16px;font-size:17px;gap:10px}
+body.game-focused .skip-control span{flex-basis:30px;height:30px;border-radius:10px;font-size:22px}
+@media screen and (max-width:700px) and (orientation:portrait){
+ body.game-focused[data-game-mode="write"]{position:fixed;inset:0;width:100%;overflow:hidden;overscroll-behavior:none}
+ body.game-focused[data-game-mode="write"] #app{position:fixed;top:var(--master-viewport-top,0px);left:0;height:var(--master-visible-height,100svh);min-height:0;overflow:hidden}
+ body.game-focused[data-game-mode="write"] .pokemon-stage{height:clamp(140px,calc(var(--master-visible-height,100svh) - 280px),420px)}
+ body.game-focused .text-form input{font-size:18px}
+ body.master-keyboard #app{align-items:stretch}
+ body.master-keyboard .play-grid,body.master-keyboard .game-card{height:100%}
+ body.master-keyboard .game-body{height:100%;position:relative;grid-template-rows:minmax(0,1fr) auto auto auto;gap:10px}
+ body.master-keyboard[data-game-mode="write"] .pokemon-stage{height:100%;min-height:0;border-radius:22px}
+ body.master-keyboard #question-image{height:calc(100% - 72px);max-height:none;transform:translateY(-32px)}
+ body.master-keyboard .text-form{position:absolute;top:var(--master-answer-top,10px);left:10px;right:10px;z-index:4;padding:6px;border:1px solid #e2e7ef;border-radius:18px;background:#ffffffeb;box-shadow:0 5px 18px #27344814;backdrop-filter:blur(8px);gap:8px}
+ body.master-keyboard .text-form input{min-height:48px;padding:10px 12px;background:#fff;border-radius:12px;outline-offset:0}
+ body.master-keyboard .text-form .primary{min-height:48px;border-radius:12px;padding:10px 16px}
+ body.master-keyboard .question-score{position:relative}
+ body.master-keyboard .feedback{min-height:20px;line-height:20px;font-size:12px}
+ body.master-keyboard .skip-control{min-height:52px;padding:11px 23px}
+}
