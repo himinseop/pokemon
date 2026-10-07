@@ -70,6 +70,25 @@ class Rankings(unittest.TestCase):
         self.assertEqual(data['record']['score'], 600)
         self.assertEqual(data['record']['total'], 3)
         self.assertEqual(data['record']['correct'], 2)
+    def test_master_hint_penalty_is_calculated_by_server_for_each_difficulty(self):
+        for mode, unit in [('easy', 100), ('normal', 200), ('hard', 300)]:
+            status, data = self.submit(mode=mode, results=[True, True, False], hints=[True, False, True], score=999999)
+            self.assertEqual(status, 200)
+            self.assertEqual(data['record']['score'], unit * 3 // 2)
+            self.assertEqual(data['record']['hintsUsed'], 2)
+            self.assertEqual(data['record']['correct'], 2)
+    def test_invalid_hint_arrays_and_time_attack_hints_do_not_write(self):
+        for hints in [None, {}, [True], [1, False, False, False], [True, False, False, False]]:
+            self.assertEqual(self.submit(hints=hints)[0], 400)
+        self.assertEqual(self.submit(mode='easy', results=[True], hints=[False, True])[0], 400)
+        self.assertEqual(self.table.writes, 0)
+    def test_legacy_records_without_hint_metadata_remain_idempotent(self):
+        first = self.submit()[1]['record']
+        self.table.items['time-easy']['entries'][0].pop('hintsUsed')
+        status, again = self.submit()
+        self.assertEqual(status, 200)
+        self.assertEqual(again['record']['id'], first['id'])
+        self.assertEqual(self.table.writes, 1)
     def test_duplicate_submission_is_idempotent_and_cannot_rename_another_record(self):
         first = self.submit()[1]
         again = self.submit()[1]

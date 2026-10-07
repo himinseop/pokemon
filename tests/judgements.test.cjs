@@ -115,3 +115,16 @@ test('syllable boxes accept spaced paste and show deletion without exposing answ
  input.value='';input.dispatchEvent(new h.w.InputEvent('input',{bubbles:true,inputType:'deleteContentBackward'}));assert.equal([...h.w.document.querySelectorAll('.answer-slot')].map(cell=>cell.textContent).join(''),'');
  input.value=answer;input.dispatchEvent(new h.w.InputEvent('input',{bubbles:true}));h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.game().correct,1);
 });
+
+test('one hint per master question reveals the correct position and halves only that answer score',async t=>{
+ for(const [level,unit] of [['easy',100],['normal',200],['hard',300]]){
+  const h=await harness();t.after(h.close);await h.start('write',level);const input=h.$('#answer-input'),question=h.game().question,letters=Array.from(question.name);
+  h.w.Math.random=()=>.73;h.$('#hint-question').click();const expected=level==='hard'?Math.floor(letters.length*.73):0;
+  assert.equal(h.game().hint.index,expected);assert.equal(h.game().hint.letter,letters[expected]);assert.equal(h.$('#hint-question').disabled,true);assert.equal(h.game().score,0);assert.ok(h.$('#hint-message').textContent.includes(letters[expected]));assert.equal(h.w.document.querySelectorAll('.hint-target').length,1);assert.equal(h.w.document.activeElement,input);
+  h.submit('없는포켓몬');assert.equal(h.game().question,question);assert.equal(h.game().hintUsed,true);h.w.qa('showQuestionHint()');assert.equal(h.game().hint.index,expected);
+  h.correct();assert.equal(h.game().score,unit/2);assert.equal(h.game().history[0].hintUsed,true);await h.run(550);assert.equal(h.game().hintUsed,false);assert.equal(h.$('#hint-question').disabled,false);assert.equal(h.$('#hint-message').hidden,true);h.correct();assert.equal(h.game().score,unit*1.5);
+ }
+});
+test('skipping after a hint awards no points and the next question gets a fresh hint',async t=>{
+ const h=await harness();t.after(h.close);await h.start('write');h.$('#hint-question').click();h.$('#skip-question').click();assert.equal(h.game().score,0);assert.equal(h.game().history[0].correct,false);assert.equal(h.game().history[0].hintUsed,true);await h.run(1300);assert.equal(h.game().hintUsed,false);assert.equal(h.$('#hint-question').disabled,false);
+});

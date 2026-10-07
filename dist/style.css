@@ -349,3 +349,23 @@ body.game-focused .letter-entry #answer-input{position:absolute;inset:0;width:10
 .letter-entry #answer-input::placeholder{color:transparent}
 body.master-keyboard .answer-slot{height:48px;font-size:21px;border-radius:10px}
 @media(max-width:380px){.answer-slots{gap:5px}.answer-slot{font-size:21px}}
+
+.trainer-greeting{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 8px;margin-bottom:14px!important;line-height:1.6}
+.trainer-name-group{display:inline-flex;align-items:center;gap:4px;color:#47556c;white-space:nowrap}
+.trainer-edit{display:grid;place-items:center;flex-shrink:0;width:44px;height:44px;border:0;background:transparent;color:#748094;border-radius:50%}
+.trainer-edit svg{width:15px;height:15px}
+.trainer-edit:hover{background:#fff0ee;color:#d5524a}
+.hint-control{background:#edf5ff;border-color:#c4d8f6;color:#3f73b7;box-shadow:0 3px 0 #c4d8f6}
+.hint-control .control-label{display:flex;flex-direction:column;gap:2px;text-align:left;line-height:1.3}
+.hint-control strong{font:inherit}
+.hint-control small{font-size:11px;font-weight:600}
+.hint-message{margin:0;min-height:24px;line-height:24px;text-align:center;font-size:13px;font-weight:700;color:#987019}
+.hint-message[hidden]{display:none}
+.feedback-area:has(.hint-message:not([hidden])) .feedback:empty{display:none}
+.answer-slot.hint-target{background:#fff7da;border-color:#e8c675}
+body.game-focused .play-actions:has(.hint-control){gap:10px;justify-content:center}
+body.game-focused .play-actions:has(.hint-control) .game-control{flex:1;min-width:0;min-height:56px;padding:10px 8px;font-size:16px;gap:7px}
+body.game-focused .play-actions:has(.hint-control) .game-control>span{flex-basis:26px;height:26px;font-size:21px}
+body.master-keyboard .play-actions:has(.hint-control) .game-control{min-height:52px}
+body.game-focused .play-actions:has(.hint-control){align-items:stretch}
+.hint-control.used:disabled{opacity:1;background:#f5f7fa;border-color:#e2e7ef;color:#748094;box-shadow:none}

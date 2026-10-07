@@ -72,17 +72,20 @@ def parse_submission(event):
         raise RequestError(400, '맞힌 문제를 확인하지 못했어. 다시 저장해줘.')
     if (timed and not 1 <= len(results) <= 110) or (not timed and not 1 <= len(results) <= 10):
         raise RequestError(400, '게임이 끝난 뒤에 기록을 남겨줘.')
+    hints = data.get('hints', [False] * len(results))
+    if not isinstance(hints, list) or len(hints) != len(results) or any(type(value) is not bool for value in hints) or (timed and any(hints)):
+        raise RequestError(400, '힌트를 쓴 문제를 확인하지 못했어. 다시 저장해줘.')
     correct = sum(results)
     if not correct:
         raise RequestError(400, '한 문제라도 맞히면 랭킹에 이름을 남길 수 있어!')
     score, streak = 0, 0
-    for answered in results:
+    for answered, hinted in zip(results, hints):
         if not answered:
             streak = 0
             continue
         streak += 1
-        score += 100 + min(streak - 1, 10) * 10 if timed else {'easy': 100, 'normal': 200, 'hard': 300}[mode]
-    return {'id': record_id, 'name': name, 'mode': mode, 'score': score, 'correct': correct, 'total': len(results)}
+        score += 100 + min(streak - 1, 10) * 10 if timed else {'easy': 100, 'normal': 200, 'hard': 300}[mode] // (2 if hinted else 1)
+    return {'id': record_id, 'name': name, 'mode': mode, 'score': score, 'correct': correct, 'total': len(results), 'hintsUsed': sum(hints)}
 
 
 def board(storage, mode):
@@ -101,7 +104,7 @@ def save(storage, submitted):
         existing = next((entry for entry in entries if entry['id'] == record['id']), None)
         if existing:
             fields = ['score', 'correct', 'total', 'mode'] + (['name'] if submitted['name'] else [])
-            if any(existing[field] != submitted[field] for field in fields):
+            if any(existing[field] != submitted[field] for field in fields) or existing.get('hintsUsed', 0) != submitted['hintsUsed']:
                 raise RequestError(409, '이 기록은 이미 저장됐어. 랭킹에서 확인해봐.')
             return {'qualified': True, 'rank': entries.index(existing) + 1, 'record': existing, 'entries': entries}
         if not record['name']:
