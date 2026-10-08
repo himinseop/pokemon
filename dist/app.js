@@ -68,6 +68,17 @@ function enterTrainer(){
  trainerName=name;try{localStorage.setItem(TRAINER_KEY,name);}catch{}
  window.PokemonAccess?.reportTrainer();document.body.classList.remove('trainer-entry');if(pokemonLoading||pokemonLoadError)renderSiteLoading();else render();
 }
+let rankingSpinnerId=0;
+function rankingSpinner(){const id=`ranking-spinner-${++rankingSpinnerId}`;return `<svg xmlns="http://www.w3.org/2000/svg" class="ranking-pokeball" width="80" height="80" role="img" aria-label="포켓볼" viewBox="0 0 160 160">
+<defs><clipPath id="${id}-clip"><circle cx="80" cy="76" r="61"/></clipPath><linearGradient id="${id}-red" x2="0" y2="1"><stop stop-color="#ff7770"/><stop offset="1" stop-color="#ef4c46"/></linearGradient></defs>
+<ellipse cx="80" cy="146" rx="42" ry="6" fill="#e9edf3"/>
+<g class="pokeball-spinner"><g transform="rotate(-12 80 76)">
+<circle cx="80" cy="76" r="61" fill="#fff"/>
+<g clip-path="url(#${id}-clip)"><path d="M15 15h130v61H15z" fill="url(#${id}-red)"/><path d="M15 76h130" stroke="#273448" stroke-width="8"/><path d="M38 49a48 48 0 0 1 33-20" fill="none" stroke="#ffb0a8" stroke-width="7" stroke-linecap="round"/></g>
+<circle cx="80" cy="76" r="61" fill="none" stroke="#273448" stroke-width="7"/>
+<circle cx="80" cy="76" r="19" fill="#fff" stroke="#273448" stroke-width="7"/>
+<circle cx="80" cy="76" r="9" fill="#f4f7fb" stroke="#dce4ee" stroke-width="2"/>
+</g></g></svg>`;}
 const RANKING_LIMIT=20;
 const recordDate=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'});
 const rankBadge=rank=>rank<=3?`<span class="rank-medal" role="img" aria-label="${rank}등">${['🥇','🥈','🥉'][rank-1]}</span>`:String(rank);
@@ -340,7 +351,7 @@ function endGame(reason='complete'){
  renderGameBody();if(game.completed&&!game.imageError&&(game.score>0||game.quit))prepareRanking(game);
 }
 function resultRanking(g){
- if(g.rankLoading)return '<p class="result-note" role="status">친구들의 기록을 살펴보고 있어…</p>';
+ if(g.rankLoading)return `<div class="ranking-result-loading" role="status">${rankingSpinner()}<p class="result-note">친구들의 기록을 살펴보고 있어…</p></div>`;
  if(g.rankingError)return '<p class="result-note" role="status">랭킹을 가져오지 못했어. 다시 확인해볼까?</p><button class="secondary" id="retry-ranking">다시 확인하기</button>';
  if(g.imageError)return '<p class="result-note">연결이 잠깐 끊겼나 봐. 한 번 더 도전해볼까?</p>';
  if(!g.completed)return '<p class="result-note">도전을 마치면 랭킹에 이름을 남길 수 있어!</p>';
@@ -452,7 +463,7 @@ async function showRelatedDetail(uid){
 }
 function renderRecords(){if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;
  const key=recordTab,list=leaderboard(key),state=rankingStates.get(key)||{status:'idle'},kind=rankingMode(key),level=rankingDifficulty(key);
- const content=state.status==='idle'||state.status==='loading'?'<div class="ranking-status" role="status"><span class="quiz-spinner" aria-hidden="true"></span><p>친구들의 멋진 기록을 가져오고 있어…</p></div>':state.status==='error'?`<div class="ranking-status" role="status"><p>${escapeHTML(state.message)}</p><button class="secondary" id="retry-rankings">다시 불러오기</button></div>`:list.length?`<table class="ranking"><thead><tr><th>순위</th><th>트레이너</th><th>점수</th><th>정답</th><th>날짜</th></tr></thead><tbody>${list.map((r,i)=>`<tr class="${r.id===lastSavedId?'new-record':''}"><td>${rankBadge(i+1)}</td><td><span class="trainer-name-label" title="${escapeHTML(r.name)}"><span class="trainer-name-text">${escapeHTML(r.name)}</span>${r.id===lastSavedId?'<span class="my-tag">나</span>':''}</span></td><td class="score">${r.score.toLocaleString()}</td><td>${r.correct} / ${r.total}</td><td class="record-date"><time datetime="${escapeHTML(r.date)}" title="${escapeHTML(recordDate.format(new Date(r.date)))}">${rankingDate(r.date)}</time></td></tr>`).join('')}</tbody></table><p class="result-note">${rankingLabel(key)} TOP 20 · 같은 점수라면 최근에 도전한 친구가 먼저 보여.</p>`:`<div class="empty"><div style="font-size:38px;margin-bottom:14px">🏆</div>아직 기록이 없어. 네가 첫 번째 주인공이 되어볼까?<div style="margin-top:23px"><button class="primary" data-play-record="${key}">도전 시작하기</button></div></div>`;
+ const content=state.status==='idle'||state.status==='loading'?`<div class="ranking-status" role="status">${rankingSpinner()}<p>친구들의 멋진 기록을 가져오고 있어…</p></div>`:state.status==='error'?`<div class="ranking-status" role="status"><p>${escapeHTML(state.message)}</p><button class="secondary" id="retry-rankings">다시 불러오기</button></div>`:list.length?`<table class="ranking"><thead><tr><th>순위</th><th>트레이너</th><th>점수</th><th>정답</th><th>날짜</th></tr></thead><tbody>${list.map((r,i)=>`<tr class="${r.id===lastSavedId?'new-record':''}"><td>${rankBadge(i+1)}</td><td><span class="trainer-name-label" title="${escapeHTML(r.name)}"><span class="trainer-name-text">${escapeHTML(r.name)}</span>${r.id===lastSavedId?'<span class="my-tag">나</span>':''}</span></td><td class="score">${r.score.toLocaleString()}</td><td>${r.correct} / ${r.total}</td><td class="record-date"><time datetime="${escapeHTML(r.date)}" title="${escapeHTML(recordDate.format(new Date(r.date)))}">${rankingDate(r.date)}</time></td></tr>`).join('')}</tbody></table><p class="result-note">${rankingLabel(key)} TOP 20 · 같은 점수라면 최근에 도전한 친구가 먼저 보여.</p>`:`<div class="empty"><div style="font-size:38px;margin-bottom:14px">🏆</div>아직 기록이 없어. 네가 첫 번째 주인공이 되어볼까?<div style="margin-top:23px"><button class="primary" data-play-record="${key}">도전 시작하기</button></div></div>`;
  app.innerHTML=`<button class="text-button back-to-game" data-nav="play"><img src="assets/ui/pokeball.svg" alt="" width="24" height="24">도전하러가기!</button><section class="intro ranking-intro"><div><h1>우리들의 랭킹</h1><p>친구들과 함께 멋진 기록을 만들어보자!</p></div></section><section class="ranking-controls" aria-label="랭킹 모드와 난이도"><div class="game-tabs ranking-mode-tabs" role="group" aria-label="게임 모드">${[['time','⏱️ 타임어택'],['write','🏆 마스터']].map(([value,label])=>`<button class="game-tab ${kind===value?'active':''}" data-ranking-mode="${value}" aria-pressed="${kind===value}">${label}</button>`).join('')}</div><div class="ranking-difficulties" role="group" aria-label="난이도">${Object.entries(difficulties).map(([value,d])=>`<button data-ranking-difficulty="${value}" class="${level===value?'active':''}" aria-pressed="${level===value}">${d.label}</button>`).join('')}</div></section><div class="shared-ranking-board" aria-live="polite">${content}</div>`;
  if(state.status==='idle')loadRankings(key).catch(()=>{});
 }

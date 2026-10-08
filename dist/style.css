@@ -453,3 +453,6 @@ body.game-focused .master-tools .game-control:disabled{background:#fff;opacity:.
  .dex-detail .detail-tool,.dex-detail .detail-tool.coloring-tool,.dex-detail .detail-tool:hover,.dex-detail .detail-tool:active{background:#ffffffb8;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
  button:focus,button:focus-visible{outline:none!important;outline-offset:0}
 }
+
+/* Match the invitation Poke Ball while ranking requests are pending. */
+.ranking-pokeball{display:block;width:80px;height:80px;flex-shrink:0}.pokeball-spinner{transform-box:fill-box;transform-origin:center;animation:pokeball-spin 1.4s linear infinite}@keyframes pokeball-spin{to{transform:rotate(360deg)}}.ranking-result-loading{display:flex;flex-direction:column;align-items:center;gap:6px;margin:12px 0}.ranking-result-loading .ranking-pokeball{width:56px;height:56px}.ranking-result-loading p{margin:0}@media(prefers-reduced-motion:reduce){.pokeball-spinner{animation:none}}
