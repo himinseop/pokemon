@@ -80,5 +80,6 @@ test('enabled invitations protect all game assets at the edge while the envelope
 test('separate share domain redirects onto the main origin before browser storage is used',()=>{
  const t=template({shareDomainName:'pokemin.pir.kr'}),edge=resources(t,'AWS::CloudFront::Function')[0].Properties.FunctionCode,vm=require('node:vm'),ctx={};vm.createContext(ctx);vm.runInContext(edge,ctx);
  const path='/'+ 'a'.repeat(43),result=ctx.handler({request:{uri:path,headers:{host:{value:'pokemin.pir.kr'}}}});assert.equal(result.statusCode,302);assert.equal(result.headers.location.value,'https://pokemon.pir.kr'+path);
+ const fn=resources(t,'AWS::Lambda::Function').find(r=>r.Properties.FunctionName==='pokemon-play-prod-rankings');assert.equal(fn.Properties.Environment.Variables.SHARE_ORIGIN,'https://pokemon.pir.kr');assert.equal(t.Outputs.ShareOrigin.Value,'https://pokemon.pir.kr');
  assert.equal(resources(t,'AWS::Route53::RecordSet').length,4);
 });

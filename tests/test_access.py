@@ -38,7 +38,7 @@ class MemoryStore:
         return self.update(device['id'],values)
     def visit(self,device,row):
         if self.race:self.race(self);self.race=None
-        if self.items.get(device['id'],{}).get('status')!='active' or self.items[device['id']].get('lastVisitAt',0)>row['visitedAt']-access.VISIT_SECONDS:raise Conflict()
+        if self.items.get(device['id'],{}).get('status')!='active' or (self.items[device['id']].get('lastVisitAt',0)>row['visitedAt']-access.VISIT_SECONDS and self.items[device['id']].get('trainerName','')==row['trainerName']):raise Conflict()
         self.put(row);self.update(device['id'],{'lastVisitId':row['id'],'lastVisitAt':row['visitedAt'],'lastSeenAt':row['createdAt'],'visitCount':device.get('visitCount',0)+1,'trainerName':row['trainerName'],'userAgent':row['userAgent']})
 
 
@@ -80,7 +80,7 @@ class AccessTests(unittest.TestCase):
         self.assertEqual(self.db.get('device#'+device['deviceId'])['trainerName'],'피카츄')
         self.assertEqual(self.call('/api/admin/visits','GET',admin=True)[1]['items'][0]['trainerName'],'피카츄')
         self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'지우','recordVisit':True},now=self.now+60)
-        self.assertEqual(len(self.db.list('visit')[0]),1);self.assertEqual(self.db.get('device#'+device['deviceId'])['trainerName'],'지우')
+        self.assertEqual(len(self.db.list('visit')[0]),2);self.assertEqual(self.db.get('device#'+device['deviceId'])['trainerName'],'지우')
     def test_block_delete_and_unblock_recheck_key_and_clear_signed_cookies(self):
         _,key,device=self.device();url='/api/admin/devices/'+device['deviceId'];self.call(url,'PATCH',{'action':'block'},admin=True)
         result=handler.handle(event('/api/access/validate',data={'deviceKey':key}),access_storage=self.db)
@@ -120,6 +120,18 @@ class AccessTests(unittest.TestCase):
         self.assertEqual(self.call('/api/admin/visits','GET',admin=True)[1]['items'][0]['trainerName'],'지우')
         self.call('/api/admin/devices/'+device['deviceId'],'PATCH',{'action':'block'},admin=True)
         with self.assertRaises(access.AccessError):self.call('/api/access/profile',data={'deviceKey':key,'recordVisit':True})
+    def test_name_changes_append_new_history_immediately_without_changing_previous_names(self):
+        _,key,device=self.device()
+        for seconds,name,record in [(0,'지우',True),(10,'이슬',True),(11,'이슬',True),(20,'지우',False)]:
+            self.call('/api/access/profile',data={'deviceKey':key,'trainerName':name,'recordVisit':record},now=self.now+seconds)
+        visits=self.db.list('visit')[0]
+        self.assertEqual([r['trainerName'] for r in visits],['지우','이슬','지우'])
+        self.assertEqual(self.db.get('device#'+device['deviceId'])['visitCount'],3)
+        self.assertEqual(self.db.get('device#'+device['deviceId'])['trainerName'],'지우')
+        self.call('/api/access/profile',data={'deviceKey':key,'trainerName':' 지우 ','recordVisit':True},now=self.now+30)
+        self.assertEqual(len(self.db.list('visit')[0]),3)
+        self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'','recordVisit':True},now=self.now+40)
+        self.assertEqual(len(self.db.list('visit')[0]),3)
     def test_admin_can_filter_visits_by_device_and_bad_filters_are_rejected(self):
         _,key,first=self.device();self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'지우','recordVisit':True})
         _,key,second=self.device();self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'이슬','recordVisit':True})
@@ -149,7 +161,7 @@ class AccessTests(unittest.TestCase):
         _,key,device=self.device()
         def race(db):
             db.put({'id':'visit#other','kind':'visit','deviceId':device['deviceId'],'trainerName':'지우','createdAt':access.iso(self.now)})
-            db.update('device#'+device['deviceId'],{'lastVisitAt':self.now,'visitCount':1})
+            db.update('device#'+device['deviceId'],{'lastVisitAt':self.now,'visitCount':1,'trainerName':'지우'})
         self.db.race=race
         self.assertTrue(self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'지우','recordVisit':True})[1]['valid'])
         self.assertEqual(len(self.db.list('visit')[0]),1);self.assertEqual(self.db.get('device#'+device['deviceId'])['visitCount'],1)

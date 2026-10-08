@@ -111,10 +111,10 @@ class DynamoStore:
     def visit(self, device, visit):
         serialize = lambda value: self.serializer.serialize(value)
         updates = {'lastSeenAt':visit['createdAt'], 'lastVisitId':visit['id'], 'lastVisitAt':visit['visitedAt'], 'trainerName':visit['trainerName'], 'userAgent':visit['userAgent']}
-        names = {'#status':'status',**{f'#n{i}':key for i,key in enumerate(updates)}}
-        values = {':active':serialize('active'),':one':serialize(1),':cutoff':serialize(visit['visitedAt']-VISIT_SECONDS),**{f':v{i}':serialize(v) for i,v in enumerate(updates.values())}}
+        names = {'#status':'status','#trainer':'trainerName',**{f'#n{i}':key for i,key in enumerate(updates)}}
+        values = {':active':serialize('active'),':one':serialize(1),':cutoff':serialize(visit['visitedAt']-VISIT_SECONDS),':trainer':serialize(visit['trainerName']),**{f':v{i}':serialize(v) for i,v in enumerate(updates.values())}}
         self.client.transact_write_items(TransactItems=[
-            {'Update': {'TableName':self.name,'Key':{'id':serialize(device['id'])},'UpdateExpression':'SET '+', '.join(f'#n{i}=:v{i}' for i in range(len(updates)))+' ADD visitCount :one','ConditionExpression':'#status=:active AND (attribute_not_exists(lastVisitAt) OR lastVisitAt<=:cutoff)','ExpressionAttributeNames':names,'ExpressionAttributeValues':values}},
+            {'Update': {'TableName':self.name,'Key':{'id':serialize(device['id'])},'UpdateExpression':'SET '+', '.join(f'#n{i}=:v{i}' for i in range(len(updates)))+' ADD visitCount :one','ConditionExpression':'#status=:active AND (attribute_not_exists(lastVisitAt) OR lastVisitAt<=:cutoff OR attribute_not_exists(#trainer) OR #trainer<>:trainer)','ExpressionAttributeNames':names,'ExpressionAttributeValues':values}},
             {'Put': {'TableName':self.name,'Item':{k:serialize(v) for k,v in visit.items()},'ConditionExpression':'attribute_not_exists(id)'}}
         ])
 
@@ -230,19 +230,20 @@ def dispatch(event, storage=None, now=None, signer=None):
     if method=='POST' and path in ['/api/access/validate','/api/access/profile']:
         device=require_device(data.get('deviceKey'),storage,now)
         name=trainer_name(data.get('trainerName',device.get('trainerName','')))
-        if path.endswith('/profile') and not data.get('recordVisit',False):
+        name_changed=bool(name) and name!=device.get('trainerName','')
+        if path.endswith('/profile') and not data.get('recordVisit',False) and not name_changed:
             row=storage.update(device['id'],{'trainerName':name})
             previous=storage.get(device['lastVisitId']) if device.get('lastVisitId') else None
             if previous and not previous.get('trainerName'):storage.update(previous['id'],{'trainerName':name})
             return 200,{'valid':True,'device':public_device(row)},None
-        if data.get('recordVisit',True) and name:
+        if (data.get('recordVisit',True) or name_changed) and name:
             visit={'id':'visit#'+uuid.uuid4().hex,'kind':'visit','deviceId':device['deviceId'],'trainerName':name,'createdAt':iso(now),'visitedAt':now,'userAgent':str(headers.get('user-agent',''))[:240]}
             def touch(current):
                 try:return storage.touch(current,{'lastSeenAt':visit['createdAt'],'trainerName':name,'userAgent':visit['userAgent']})
                 except Exception as error:
                     if getattr(error,'response',{}).get('Error',{}).get('Code')=='ConditionalCheckFailedException':raise AccessError(403,'파티 초대장이 필요합니다','invalid_device')
                     raise
-            if device.get('lastVisitAt',0)>now-VISIT_SECONDS:
+            if not name_changed and device.get('lastVisitAt',0)>now-VISIT_SECONDS:
                 device=touch(device)
             else:
                 try:
@@ -250,9 +251,9 @@ def dispatch(event, storage=None, now=None, signer=None):
                     device={**device,'trainerName':name,'lastSeenAt':visit['createdAt'],'lastVisitAt':now,'visitCount':device.get('visitCount',0)+1}
                 except Exception as error:
                     if getattr(error,'response',{}).get('Error',{}).get('Code') not in ['TransactionCanceledException','ConditionalCheckFailedException']:raise
-                    # Concurrent reloads must not create separate visits in the same window.
+                    # Concurrent reports of the same name must not duplicate a visit.
                     current=require_device(data.get('deviceKey'),storage,now)
-                    if current.get('lastVisitAt',0)<=now-VISIT_SECONDS:raise
+                    if current.get('lastVisitAt',0)<=now-VISIT_SECONDS or current.get('trainerName','')!=name:raise
                     device=touch(current)
         return 200,{'valid':True,'device':public_device(device)},None if path.endswith('/profile') else signed_cookies(now,signer)
     if method=='POST' and path=='/api/access/logout':return 200,{'loggedOut':True},clear_cookies()
