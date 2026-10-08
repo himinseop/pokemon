@@ -15,7 +15,7 @@
 <script src="app.js" defer></script>
 </head>
 <body class="trainer-entry">
-<main id="app" tabindex="-1"><section class="trainer-welcome" aria-labelledby="trainer-welcome-title"><img class="welcome-pokeball" src="assets/ui/pokeball.svg" alt="포켓볼" width="96" height="96" fetchpriority="high"><h1 id="trainer-welcome-title">트레이너 이름을 넣어줘.</h1><form id="trainer-entry-form"><input id="entry-trainer-name" placeholder="이름" aria-label="트레이너 이름" maxlength="12" autocomplete="nickname" required><button class="primary" type="submit">함께 시작하자!</button></form><p class="trainer-entry-note" id="trainer-entry-message" role="status"></p></section></main>
+<main id="app" tabindex="-1"><div class="loading" role="status"><span class="quiz-spinner" aria-hidden="true"></span><p>포켓몬 친구들이 오고 있어…</p></div></main>
 <footer><span class="ball mini" aria-hidden="true"></span><span>포켓몬 친구들과 신나게 놀아보자!</span><div>비공식 팬 게임 · 이미지·정보 포켓몬 공식 도감<small>© Nintendo / Creatures Inc. / GAME FREAK inc.</small></div></footer>
 <dialog id="detail" aria-label="포켓몬 도감"></dialog>
 <dialog id="coloring" aria-label="색칠 도안"></dialog>

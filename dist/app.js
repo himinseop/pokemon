@@ -3,7 +3,7 @@ const app=document.querySelector('#app');
 const difficulties={easy:{label:'쉬움',multiplier:1},normal:{label:'보통',multiplier:2},hard:{label:'어려움',multiplier:3}};
 const familiar=[1,2,3,4,5,6,7,8,9,12,16,25,26,35,37,39,52,54,58,63,66,74,79,92,94,95,104,113,129,130,131,132,133,134,135,136,143,144,145,146,149,150,151];
 const MASTER_BONUS_DURATION=20000;
-let pokemon=[],pokedexManifest=null,view='play',mode='time',difficulty='easy',game=null,ticker=null,advance=null,judgementTimer=null,recordTab='time-easy',search='',typeFilter='',sort='number',regionFilter='',regionGroups=[];
+let pokemon=[],evolutionFamilies=new Map(),pokedexManifest=null,view='play',mode='time',difficulty='easy',game=null,ticker=null,advance=null,judgementTimer=null,recordTab='time-easy',search='',typeFilter='',sort='number',regionFilter='',regionGroups=[];
 const judgementAssets={good:'assets/judgements/good.png',great:'assets/judgements/great.png',perfect:'assets/judgements/perfect.png',awesome:'assets/judgements/awesome.png',fail:'assets/judgements/fail.png'};
 const judgementPreloads=Object.values(judgementAssets).map(src=>{const image=new Image();image.src=src;return image;});
 function judgementFor(correct,streak){return !correct?'fail':streak>=7?'awesome':streak>=5?'perfect':streak>=3?'great':'good';}
@@ -182,10 +182,24 @@ function prepareQuestionImage(g,p,priority){
  });
  return entry;
 }
+function buildEvolutionFamilies(entries){
+ const byId=new Map(entries.map(p=>[p.id,p])),parents=new Map(entries.map(p=>[p.id,p.id]));
+ const root=id=>{while(parents.get(id)!==id){parents.set(id,parents.get(parents.get(id)));id=parents.get(id);}return id;};
+ for(const p of entries)for(const related of p.evolutions||[])if(byId.has(related.id))parents.set(root(related.id),root(p.id));
+ const groups=new Map();for(const p of entries){const id=root(p.id);if(!groups.has(id))groups.set(id,[]);groups.get(id).push(p);}
+ return new Map(entries.map(p=>[p.id,groups.get(root(p.id))]));
+}
+function timeChoices(question,pool){
+ const choices=[question],names=new Set([normalize(question.name)]);
+ const add=p=>{if(choices.length>=4)return;const name=normalize(p.name);if(!names.has(name)){choices.push(p);names.add(name);}};
+ shuffle(evolutionFamilies.get(question.id)||[]).forEach(add);
+ if(choices.length<4)shuffle(pool).forEach(add);if(choices.length<4)shuffle(pokemon).forEach(add);
+ return shuffle(choices);
+}
 function selectQuestion(g){
  if(!g.deck.length)g.deck=shuffle(g.pool.filter(p=>p.id!==g.question?.id));
  g.question=g.deck.pop();g.questionNumber=g.total+1;g.questionStartedAt=null;g.elapsedAtAnswer=null;g.bonusAwarded=0;g.judgement=null;g.awaitingNext=false;g.checkedLetters=null;g.lastAttempt='';g.answerLength=Array.from(normalize(g.question.name)).length;g.answerComposing=false;g.answerRevealed=false;g.hintUsed=false;g.hint=null;g.selectedAnswer=null;g.locked=false;g.imageReady=false;prepareQuestionImages(g);
- g.options=shuffle([g.question,...shuffle(g.pool.filter(p=>p.id!==g.question.id)).slice(0,3)]);
+ g.options=timeChoices(g.question,g.pool);
 }
 function startGame(){if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;if(!trainerName||document.body.classList.contains('trainer-entry'))return;cleanup();const pool=difficulty==='easy'?pokemon.filter(p=>familiar.includes(p.id)):pokemon;
  game={status:'loading',mode,difficulty,pool,deck:shuffle(pool),images:new Map(),question:null,score:0,correct:0,total:0,streak:0,maxStreak:0,history:[],locked:false,saved:false,deadline:0,imageReady:false,imageFailures:0};
@@ -457,7 +471,7 @@ document.addEventListener('change',e=>{if(e.target.id==='region-filter'){regionF
 document.addEventListener('keydown',e=>{if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;if(document.querySelector('#detail').open||document.querySelector('#coloring').open||document.querySelector('#high-score').open||e.target.matches('input,select,textarea')||e.isComposing)return;if(game?.status==='playing'&&game.mode==='time'&&!game.locked&&/^[1-4]$/.test(e.key)){e.preventDefault();submitAnswer(game.options[Number(e.key)-1].id);}});
 for(const id of ['detail','coloring'])document.querySelector('#'+id).addEventListener('click',e=>{if(e.target===e.currentTarget){const r=e.currentTarget.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.currentTarget.close();}});
 document.querySelector('#coloring').addEventListener('close',()=>{if(!document.querySelector('#coloring').open)coloringRequest++;});
-async function init(){pokemonLoading=true;pokemonLoadError=false;try{const [dataResponse,manifestResponse,regionResponse]=await Promise.all([fetch('pokemon.json'),fetch('pokedex-manifest.json'),fetch('pokemon-regions.json')]);if(!dataResponse.ok||!manifestResponse.ok||!regionResponse.ok)throw Error('data');const [data,manifest,regionalData]=await Promise.all([dataResponse.json(),manifestResponse.json(),regionResponse.json()]);if(!Array.isArray(data)||data.length!==manifest.speciesCount||manifest.speciesCount!==manifest.maxNumber||!data.every((p,i)=>p.id===i+1&&p.name&&p.image&&p.types?.length))throw Error('incomplete');if(!Array.isArray(regionalData.groups)||!regionalData.groups.length||regionalData.groups.some(g=>!g.name||!Array.isArray(g.numbers)||g.numbers.some(n=>!Number.isInteger(n)||n<1||n>manifest.maxNumber)))throw Error('regions');pokemon=data;pokedexManifest=manifest;regionGroups=regionalData.groups;pokemonLoading=false;render();}catch{pokemonLoading=false;pokemonLoadError=true;renderSiteLoading();}}
+async function init(){pokemonLoading=true;pokemonLoadError=false;try{const [dataResponse,manifestResponse,regionResponse]=await Promise.all([fetch('pokemon.json'),fetch('pokedex-manifest.json'),fetch('pokemon-regions.json')]);if(!dataResponse.ok||!manifestResponse.ok||!regionResponse.ok)throw Error('data');const [data,manifest,regionalData]=await Promise.all([dataResponse.json(),manifestResponse.json(),regionResponse.json()]);if(!Array.isArray(data)||data.length!==manifest.speciesCount||manifest.speciesCount!==manifest.maxNumber||!data.every((p,i)=>p.id===i+1&&p.name&&p.image&&p.types?.length))throw Error('incomplete');if(!Array.isArray(regionalData.groups)||!regionalData.groups.length||regionalData.groups.some(g=>!g.name||!Array.isArray(g.numbers)||g.numbers.some(n=>!Number.isInteger(n)||n<1||n>manifest.maxNumber)))throw Error('regions');pokemon=data;evolutionFamilies=buildEvolutionFamilies(data);pokedexManifest=manifest;regionGroups=regionalData.groups;pokemonLoading=false;render();}catch{pokemonLoading=false;pokemonLoadError=true;renderSiteLoading();}}
 if(trainerName){document.body.classList.remove('trainer-entry');renderSiteLoading();}else showTrainerEntry();
 init();
 // WebMCP uses the same game and Pokédex actions as the visible controls.

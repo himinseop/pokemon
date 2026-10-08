@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent / 'vendor'))
 import rsa
 
 SHARE_SECONDS = 3 * 86400
-SESSION_SECONDS = 1800
+SESSION_SECONDS = 8 * 60 * 60
 DEVICE_PATTERN = re.compile(r'^[a-f0-9]{32}\.[A-Za-z0-9_-]{43}$')
 SHARE_PATTERN = re.compile(r'^[A-Za-z0-9_-]{43}$')
 COOKIES = ('CloudFront-Policy', 'CloudFront-Signature', 'CloudFront-Key-Pair-Id', 'CloudFront-Hash-Algorithm')
@@ -166,7 +166,7 @@ def public_device(row):
 
 
 def public_config():
-    return {'enabled':os.environ.get('AUTH_REQUIRED')=='1','siteOrigin':os.environ.get('SITE_ORIGIN','https://pokemon.pir.kr'),'shareOrigin':os.environ.get('SHARE_ORIGIN','https://pokemon.pir.kr'),'inviteDays':3,'admin':{'clientId':os.environ.get('ADMIN_CLIENT_ID',''),'loginOrigin':os.environ.get('ADMIN_LOGIN_ORIGIN',''),'redirectUri':os.environ.get('SITE_ORIGIN','https://pokemon.pir.kr')+'/admin'}}
+    return {'enabled':os.environ.get('AUTH_REQUIRED')=='1','siteOrigin':os.environ.get('SITE_ORIGIN','https://pokemon.pir.kr'),'shareOrigin':os.environ.get('SHARE_ORIGIN','https://pokemon.pir.kr'),'inviteDays':3,'verificationSeconds':SESSION_SECONDS,'admin':{'clientId':os.environ.get('ADMIN_CLIENT_ID',''),'loginOrigin':os.environ.get('ADMIN_LOGIN_ORIGIN',''),'redirectUri':os.environ.get('SITE_ORIGIN','https://pokemon.pir.kr')+'/admin'}}
 
 
 def dispatch(event, storage=None, now=None, signer=None):
@@ -218,7 +218,7 @@ def dispatch(event, storage=None, now=None, signer=None):
     if method=='POST' and path in ['/api/access/validate','/api/access/profile']:
         device=require_device(data.get('deviceKey'),storage,now)
         name=trainer_name(data.get('trainerName',device.get('trainerName','')))
-        if path.endswith('/profile'):
+        if path.endswith('/profile') and not data.get('recordVisit',False):
             row=storage.update(device['id'],{'trainerName':name})
             previous=storage.get(device['lastVisitId']) if device.get('lastVisitId') else None
             if previous and not previous.get('trainerName'):storage.update(previous['id'],{'trainerName':name})
@@ -230,7 +230,7 @@ def dispatch(event, storage=None, now=None, signer=None):
                 if getattr(error,'response',{}).get('Error',{}).get('Code') in ['TransactionCanceledException','ConditionalCheckFailedException']:raise AccessError(403,'파티 초대장이 필요합니다','invalid_device')
                 raise
             device={**device,'trainerName':name,'lastSeenAt':visit['createdAt'],'visitCount':device.get('visitCount',0)+1}
-        return 200,{'valid':True,'device':public_device(device)},signed_cookies(now,signer)
+        return 200,{'valid':True,'device':public_device(device)},None if path.endswith('/profile') else signed_cookies(now,signer)
     if method=='POST' and path=='/api/access/logout':return 200,{'loggedOut':True},clear_cookies()
     raise AccessError(404,'초대 기능을 찾지 못했어.')
 

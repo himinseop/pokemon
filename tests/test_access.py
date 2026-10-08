@@ -89,6 +89,13 @@ class AccessTests(unittest.TestCase):
         _,key,device=self.device();self.db.race=lambda db:db.update('device#'+device['deviceId'],{'status':'blocked'})
         with self.assertRaises(access.AccessError) as error:self.call('/api/access/validate',data={'deviceKey':key})
         self.assertEqual(error.exception.reason,'invalid_device');self.assertEqual(self.db.list('visit')[0],[])
+    def test_background_visit_records_access_without_extending_cookie_session(self):
+        _,key,device=self.device()
+        status,data,cookies=self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'지우','recordVisit':True})
+        self.assertEqual(status,200);self.assertEqual(data['device']['visitCount'],1);self.assertIsNone(cookies)
+        self.assertEqual(self.call('/api/admin/visits','GET',admin=True)[1]['items'][0]['trainerName'],'지우')
+        self.call('/api/admin/devices/'+device['deviceId'],'PATCH',{'action':'block'},admin=True)
+        with self.assertRaises(access.AccessError):self.call('/api/access/profile',data={'deviceKey':key,'recordVisit':True})
     def test_wrong_secret_cannot_impersonate_known_device(self):
         _,key,_=self.device();forged=key.split('.')[0]+'.'+'z'*43
         with self.assertRaises(access.AccessError):access.require_device(forged,self.db,self.now)
@@ -110,8 +117,8 @@ class AccessTests(unittest.TestCase):
         decode=lambda s:base64.b64decode(s.translate(str.maketrans('-_~','+=/')))
         policy=decode(values['CloudFront-Policy']);signature=decode(values['CloudFront-Signature'])
         self.assertEqual(access.rsa.verify(policy,signature,public),'SHA-256');self.assertEqual(values['CloudFront-Hash-Algorithm'],'SHA256');self.assertEqual(values['CloudFront-Key-Pair-Id'],'KEYID')
-        document=json.loads(policy);self.assertEqual(document['Statement'][0]['Resource'],'https://pokemon.pir.kr/*');self.assertEqual(document['Statement'][0]['Condition']['DateLessThan']['AWS:EpochTime'],self.now+1800)
-        self.assertTrue(all('Secure; HttpOnly; SameSite=Lax' in c for c in cookies))
+        document=json.loads(policy);self.assertEqual(document['Statement'][0]['Resource'],'https://pokemon.pir.kr/*');self.assertEqual(document['Statement'][0]['Condition']['DateLessThan']['AWS:EpochTime'],self.now+8*60*60)
+        self.assertTrue(all('Secure; HttpOnly; SameSite=Lax' in c and 'Max-Age=28800' in c for c in cookies))
     def test_public_configuration_does_not_need_database_or_expose_a_secret(self):
         with patch.object(access,'store',side_effect=AssertionError('unnecessary database read')):
             result=access.dispatch(event('/api/access/config','GET'))
