@@ -202,7 +202,7 @@ dialog.dex-detail{width:min(826px,calc(100vw - 32px));max-height:calc(100dvh - 4
 @media(max-width:700px){.ranking th:nth-child(5),.ranking td:nth-child(5){display:table-cell}.ranking{font-size:12px}.ranking .score{font-size:16px}.ranking th,.ranking td{padding:14px 6px}.ranking .record-date{font-size:10px}}
 
 /* Playing uses the viewport for artwork and answers, with no lobby navigation. */
-body.game-focused{background:#fff}
+body.game-focused{background:#eee url('assets/ui/bg_pattern2.jpg') repeat}
 body.game-focused #app{display:flex;align-items:center;max-width:720px;width:100%;min-height:100svh;padding:max(12px,env(safe-area-inset-top)) clamp(16px,4vw,32px) max(12px,env(safe-area-inset-bottom))}
 body.game-focused #app>.intro,body.game-focused .game-tabs,body.game-focused .quick-links,body.game-focused>footer{display:none}
 body.game-focused .play-grid{width:100%;max-width:none;margin:0}
