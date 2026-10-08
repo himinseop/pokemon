@@ -25,9 +25,11 @@ def timestamp():
     return datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
 
 
-def response(status, payload):
-    return {'statusCode': status, 'headers': {'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store'},
+def response(status, payload, cookies=None):
+    result = {'statusCode': status, 'headers': {'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store'},
             'body': json.dumps(payload, ensure_ascii=False, allow_nan=False, default=lambda value: int(value) if isinstance(value, Decimal) else str(value))}
+    if cookies is not None: result['cookies'] = cookies
+    return result
 
 
 def table():
@@ -137,7 +139,7 @@ def save(storage, submitted):
     raise RequestError(409, '친구의 기록이 먼저 도착했네! 한 번 더 저장해줘.')
 
 
-def handle(event, context=None, storage=None):
+def handle(event, context=None, storage=None, access_storage=None):
     try:
         headers = {key.lower(): value for key, value in (event.get('headers') or {}).items()}
         origin = headers.get('origin')
@@ -146,6 +148,18 @@ def handle(event, context=None, storage=None):
             raise RequestError(403, '여기서는 기록을 남길 수 없어. 게임 화면으로 돌아와줘.')
         method = event.get('requestContext', {}).get('http', {}).get('method')
         path = (event.get('rawPath') or '').rstrip('/')
+        if path.startswith(('/api/access/', '/api/admin/')):
+            import access
+            try:
+                status, data, cookies = access.dispatch(event, storage=access_storage)
+                return response(status, data, cookies)
+            except access.AccessError as error:
+                return response(error.status, {'error': error.message, 'reason': error.reason}, access.clear_cookies() if error.reason == 'invalid_device' else None)
+        if path in ['/api/rankings', '/api/scores'] and os.environ.get('AUTH_REQUIRED') == '1':
+            import access
+            try: access.require_device(headers.get('x-device-key'), access_storage)
+            except access.AccessError as error:
+                return response(error.status, {'error': error.message, 'reason': 'invalid_device'}, access.clear_cookies())
         if method == 'GET' and path == '/api/rankings':
             mode = valid_mode((event.get('queryStringParameters') or {}).get('mode'))
             _, entries = board(storage if storage is not None else table(), mode)

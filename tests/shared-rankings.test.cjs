@@ -2,7 +2,7 @@ const {test}=require('node:test');const assert=require('node:assert/strict');con
 const root=path.resolve(__dirname,'../dist'),flush=()=>new Promise(r=>setImmediate(r));
 function server(){return {boards:new Map(),submissions:[],loseNextAck:false,deferMode:null,release:null};}
 async function harness(shared,{trainer='지우'}={}){
- const dom=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'https://pokemon.pir.kr/',runScripts:'outside-only'}),w=dom.window;
+ const dom=new JSDOM(fs.readFileSync(path.join(root,'game.html'),'utf8'),{url:'https://pokemon.pir.kr/',runScripts:'outside-only'}),w=dom.window;
  if(trainer!==null)w.localStorage.setItem('pokemon-play-trainer-name',trainer);
  w.localStorage.setItem('pokemon-play-records',JSON.stringify([{id:'old-private',name:'개인기록',mode:'time-easy',score:999999,correct:1,total:1,date:'2020-01-01T00:00:00Z'}]));
  let id=0;w.setTimeout=()=>++id;w.clearTimeout=()=>{};w.setInterval=()=>++id;w.clearInterval=()=>{};

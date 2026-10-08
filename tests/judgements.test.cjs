@@ -7,7 +7,7 @@ const root=path.resolve(__dirname,'../dist');
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 
 async function harness(){
- const dom=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'http://localhost/',runScripts:'outside-only'}),w=dom.window;
+ const dom=new JSDOM(fs.readFileSync(path.join(root,'game.html'),'utf8'),{url:'http://localhost/',runScripts:'outside-only'}),w=dom.window;
  w.localStorage.setItem('pokemon-play-trainer-name','지우');
  let now=0,id=0;const timers=new Map();
  w.fetch=async url=>({ok:true,json:async()=>url.startsWith('/api/rankings')?{mode:new URL(url,'http://localhost').searchParams.get('mode'),entries:[],serverTime:'2026-10-07T00:00:00Z'}:JSON.parse(fs.readFileSync(path.join(root,url),'utf8'))});

@@ -10,5 +10,9 @@
   "githubRepositoryId": "1400912995",
   "githubEnvironment": "production",
   "githubOidcProviderArn": "",
-  "certificateArn": ""
+  "certificateArn": "",
+  "invitationAccessEnabled": true,
+  "shareDomainName": "pokemin.pir.kr",
+  "adminLoginPrefix": "pokemon-party-733625312722",
+  "signingParameterName": "/pokemon-play/prod/cloudfront-signing-key"
 }

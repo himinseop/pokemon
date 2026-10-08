@@ -16,7 +16,7 @@ def local_asset(source, name):
 
 def verify(source=ROOT / 'dist'):
     source = Path(source)
-    for name in ['index.html', 'app.js', 'style.css', 'pokemon.json', 'pokemon-details.json', 'pokedex-manifest.json', 'pokemon-regions.json', 'ui-assets.json']:
+    for name in ['index.html', 'game.html', 'admin.html', 'public/access.js', 'public/admin.js', 'public/access.css', 'public/envelope.svg', 'app.js', 'style.css', 'pokemon.json', 'pokemon-details.json', 'pokedex-manifest.json', 'pokemon-regions.json', 'ui-assets.json']:
         if not (source / name).is_file():
             raise ValueError(f'Missing site file: {name}')
     checked = set()
@@ -46,7 +46,7 @@ def verify(source=ROOT / 'dist'):
     groups = documents['pokemon-regions.json']['groups']
     if set().union(*(set(g['numbers']) for g in groups)) != set(range(1, 1026)):
         raise ValueError('Regional groups must cover all species without out-of-range numbers.')
-    html = (source / 'index.html').read_text(encoding='utf-8')
+    html = (source / 'game.html').read_text(encoding='utf-8')
     if 'app.js' not in html or 'style.css' not in html:
         raise ValueError('The HTML must reference the app and stylesheet.')
     for path in source.rglob('*'):
