@@ -120,6 +120,29 @@ class AccessTests(unittest.TestCase):
         self.assertEqual(self.call('/api/admin/visits','GET',admin=True)[1]['items'][0]['trainerName'],'지우')
         self.call('/api/admin/devices/'+device['deviceId'],'PATCH',{'action':'block'},admin=True)
         with self.assertRaises(access.AccessError):self.call('/api/access/profile',data={'deviceKey':key,'recordVisit':True})
+    def test_share_rename_updates_device_attribution_without_changing_keys_expiry_or_state(self):
+        share,key,device=self.device();url='/api/admin/shares/'+share['shareId'];original=self.db.get('share#'+share['shareId'])
+        with self.assertRaises(access.AccessError):self.call(url,'PATCH',{'action':'rename','label':'모임'})
+        result=self.call(url,'PATCH',{'action':'rename','label':' 모임 '},admin=True)[1]['share']
+        renamed=self.db.get(original['id']);self.assertEqual(result['label'],'모임');self.assertEqual(result['url'],share['url'])
+        self.assertEqual({k:v for k,v in renamed.items() if k!='label'},{k:v for k,v in original.items() if k!='label'})
+        listing=self.call('/api/admin/devices','GET',admin=True)[1]['items'];self.assertEqual(listing[0]['invitation'],{'shareId':share['shareId'],'label':'모임','deleted':False})
+        self.assertNotIn(key,json.dumps(listing));self.assertNotIn(share['url'].split('/')[-1],json.dumps(listing))
+        for label in [None, 'x'*61, 'a\x00']:
+            with self.assertRaises(access.AccessError):self.call(url,'PATCH',{'action':'rename','label':label},admin=True)
+        self.call(url,'PATCH',{'action':'revoke'},admin=True);self.call(url,'PATCH',{'action':'rename','label':'다음 모임'},admin=True)
+        self.assertEqual(self.db.get(original['id'])['status'],'revoked')
+        self.call(url,'DELETE',admin=True)
+        invite=self.call('/api/admin/devices','GET',admin=True)[1]['items'][0]['invitation'];self.assertTrue(invite['deleted']);self.assertEqual(invite['shareId'],share['shareId']);self.assertEqual(invite['label'],original['label'])
+        self.assertTrue(self.call('/api/access/validate',data={'deviceKey':key,'recordVisit':False})[1]['valid'])
+    def test_device_invitation_lookup_is_cached_per_link_and_missing_legacy_source_is_explicit(self):
+        share=self.share()
+        for _ in range(2):self.call('/api/access/claim',data={'shareKey':share['url'].split('/')[-1]})
+        with patch.object(self.db,'get',wraps=self.db.get) as lookup:
+            listing=self.call('/api/admin/devices','GET',admin=True)[1]['items']
+            self.assertEqual(len(listing),2);self.assertEqual(lookup.call_count,1)
+        row=next(r for r in self.db.items.values() if r['kind']=='device');row.pop('shareId')
+        listing=self.call('/api/admin/devices','GET',admin=True)[1]['items'];self.assertTrue(any(r['invitation'] is None for r in listing))
     def test_name_changes_append_new_history_immediately_without_changing_previous_names(self):
         _,key,device=self.device()
         for seconds,name,record in [(0,'지우',True),(10,'이슬',True),(11,'이슬',True),(20,'지우',False)]:

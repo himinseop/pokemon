@@ -68,3 +68,13 @@ test('device visit button opens only that device history and supports returning 
  assert.equal(h.calls.at(-1).url,'/api/admin/visits?deviceId='+deviceId);assert.ok(h.$('[data-admin-tab="visits"]').classList.contains('active'));assert.equal(h.$('#visit-filter').hidden,false);assert.equal(h.w.document.querySelectorAll('#admin-list .admin-row').length,1);assert.ok(!h.$('#admin-list').textContent.includes('이슬'));
  h.$('#all-visits').click();for(let i=0;i<5;i++)await flush();assert.equal(h.calls.at(-1).url,'/api/admin/visits');assert.equal(h.$('#visit-filter').hidden,true);assert.equal(h.w.document.querySelectorAll('#admin-list .admin-row').length,2);
 });
+
+test('administrator edits invitation names inline, can cancel, and sees safe device attribution',async t=>{
+ const id='d'.repeat(64),stamp='2026-10-08T00:00:00Z',share={shareId:id,label:'가족',status:'active',createdAt:stamp,expiresAt:Date.now()/1000+86400,claimCount:1,url:'https://pokemon.pir.kr/'+SHARE};
+ const data={'/api/admin/shares':{items:[share]},['/api/admin/shares/'+id]:{share},'/api/admin/devices':{items:[{deviceId:'a'.repeat(32),trainerName:'지우',status:'active',createdAt:stamp,lastSeenAt:stamp,invitation:{shareId:id,label:'<img src=x onerror=alert(1)>',deleted:false}}]}};
+ const h=await admin({session:{access:'access',expires:Date.now()+1800000},data});t.after(h.close);
+ h.$('[data-share-edit]').click();assert.equal(h.$('.admin-share-edit input').value,'가족');h.$('.admin-share-edit input').value='취소';h.$('[data-cancel-share-edit]').click();assert.equal(h.$('.admin-share-edit'),null);assert.ok(!h.calls.some(c=>c.options.method==='PATCH'));
+ h.$('[data-share-edit]').click();h.$('.admin-share-edit input').value='친구들';share.label='친구들';h.$('.admin-share-edit').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));for(let i=0;i<5;i++)await flush();
+ const rename=h.calls.find(c=>c.options.method==='PATCH');assert.equal(rename.url,'/api/admin/shares/'+id);assert.deepEqual(JSON.parse(rename.options.body),{action:'rename',label:'친구들'});assert.ok(h.$('#shares-list h3').textContent.includes('친구들'));
+ h.$('[data-admin-page="activity"]').click();for(let i=0;i<5;i++)await flush();assert.ok(h.$('.admin-invitation-source').textContent.includes('<img'));assert.equal(h.$('.admin-invitation-source img'),null);assert.equal(h.$('.admin-invitation-id').title,id);
+});

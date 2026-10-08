@@ -64,6 +64,22 @@ def trainer_name(value):
     return value
 
 
+def share_label(value):
+    if not isinstance(value,str) or len(value.strip())>60 or any(unicodedata.category(c).startswith('C') for c in value):
+        raise AccessError(400,'링크 이름을 60자 안으로 적어 주세요.')
+    return value.strip()
+
+
+def admin_device(row, storage, invitations):
+    device=public_device(row);share_id=row.get('shareId')
+    if not share_id:
+        device['invitation']=None;return device
+    if share_id not in invitations:invitations[share_id]=storage.get('share#'+share_id)
+    share=invitations[share_id]
+    device['invitation']={'shareId':share_id,'label':share.get('label','') if share else row.get('shareLabel',''),'deleted':share is None}
+    return device
+
+
 class DynamoStore:
     def __init__(self):
         import boto3
@@ -189,8 +205,7 @@ def dispatch(event, storage=None, now=None, signer=None):
     if path.startswith('/api/admin/'):
         admin=require_admin(event)
         if method=='POST' and path=='/api/admin/shares':
-            data=decode_body(event);label=data.get('label','')
-            if not isinstance(label,str) or len(label.strip())>60 or any(unicodedata.category(c).startswith('C') for c in label): raise AccessError(400,'링크 이름을 60자 안으로 적어 주세요.')
+            data=decode_body(event);label=share_label(data.get('label',''))
             key=secrets.token_urlsafe(32);identifier=digest(key)
             row={'id':'share#'+identifier,'shareId':identifier,'key':key,'kind':'share','label':label.strip(),'status':'active','createdAt':iso(now),'expiresAt':now+SHARE_SECONDS,'claimCount':0,'createdBy':admin}
             storage.put(row);return 201,{'share':share_view(row)},None
@@ -199,13 +214,17 @@ def dispatch(event, storage=None, now=None, signer=None):
             params=event.get('queryStringParameters') or {};device_id=params.get('deviceId')
             if device_id is not None and (kind!='visit' or not isinstance(device_id,str) or not re.fullmatch(r'[a-f0-9]{32}',device_id)):raise AccessError(400,'기기 ID를 다시 확인해 주세요.')
             rows,cursor=storage.list(kind,params.get('cursor'),device_id)
-            return 200,{'items':[share_view(r) if kind=='share' else public_device(r) if kind=='device' else {k:r[k] for k in ['id','deviceId','trainerName','createdAt','userAgent']} for r in rows],'nextCursor':cursor},None
+            invitations={}
+            return 200,{'items':[share_view(r) if kind=='share' else admin_device(r,storage,invitations) if kind=='device' else {k:r[k] for k in ['id','deviceId','trainerName','createdAt','userAgent']} for r in rows],'nextCursor':cursor},None
         match=re.fullmatch(r'/api/admin/(devices|shares)/([a-f0-9]{32}|[a-f0-9]{64})',path)
         if match and method in ['PATCH','DELETE']:
             kind,identifier=match.groups();prefix='device' if kind=='devices' else 'share';row=storage.get(prefix+'#'+identifier)
             if not row: raise AccessError(404,'기록을 찾지 못했습니다.')
             if method=='DELETE':storage.delete(row['id']);return 200,{'deleted':True},None
-            action=decode_body(event).get('action')
+            data=decode_body(event);action=data.get('action')
+            if prefix=='share' and action=='rename':
+                row=storage.update(row['id'],{'label':share_label(data.get('label'))})
+                return 200,{'share':share_view(row)},None
             allowed={'block':'blocked','unblock':'active'} if prefix=='device' else {'revoke':'revoked'}
             if action not in allowed:raise AccessError(400,'변경할 상태를 확인해 주세요.')
             row=storage.update(row['id'],{'status':allowed[action]});return 200,{'device':public_device(row)} if prefix=='device' else {'share':share_view(row)},None
@@ -221,7 +240,7 @@ def dispatch(event, storage=None, now=None, signer=None):
         share_id=digest(key);share=storage.get('share#'+share_id)
         if not share or share.get('status')!='active' or now>=share.get('expiresAt',0):raise AccessError(403,'초대 링크의 기간이 지났거나 사용할 수 없어.','invalid_invite')
         device_id=uuid.uuid4().hex;token=device_id+'.'+secrets.token_urlsafe(32)
-        device={'id':'device#'+device_id,'deviceId':device_id,'kind':'device','tokenHash':digest(token),'status':'active','trainerName':trainer_name(data.get('trainerName','')),'createdAt':iso(now),'lastSeenAt':iso(now),'visitCount':0,'userAgent':str(headers.get('user-agent',''))[:240],'shareId':share_id}
+        device={'id':'device#'+device_id,'deviceId':device_id,'kind':'device','tokenHash':digest(token),'status':'active','trainerName':trainer_name(data.get('trainerName','')),'createdAt':iso(now),'lastSeenAt':iso(now),'visitCount':0,'userAgent':str(headers.get('user-agent',''))[:240],'shareId':share_id,'shareLabel':share.get('label','')}
         try:storage.issue(share_id,device,now)
         except Exception as error:
             if getattr(error,'response',{}).get('Error',{}).get('Code') in ['TransactionCanceledException','ConditionalCheckFailedException']:raise AccessError(403,'초대 링크를 사용할 수 없어.','invalid_invite')
