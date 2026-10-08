@@ -12,7 +12,7 @@
   "githubOidcProviderArn": "",
   "certificateArn": "",
   "invitationAccessEnabled": true,
-  "shareDomainName": "pokemin.pir.kr",
+  "shareDomainName": "",
   "adminLoginPrefix": "pokemon-party-733625312722",
   "signingParameterName": "/pokemon-play/prod/cloudfront-signing-key"
 }
