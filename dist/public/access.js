@@ -9,7 +9,7 @@
   clearInterval(refreshTimer);refreshTimer=null;window.dispatchEvent(new Event('pokemon-access-revoked'));
   document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());document.head.querySelectorAll('[data-game-head]').forEach(element=>element.remove());document.title='포켓몬 파티 초대장';
   document.body.className='access-gate';delete document.body.dataset.gameMode;
-  document.body.innerHTML='<main class="invitation"><img src="/public/envelope.svg" class="envelope" width="140" height="140" alt="편지봉투"><h1>파티 초대장이 필요합니다</h1><p id="gate-message" role="status"></p><button class="gate-button" id="gate-retry" hidden>다시 확인하기</button></main><a class="admin-link" href="/admin">관리자</a>';
+  document.body.innerHTML='<main class="invitation"><img src="/public/envelope.svg" class="envelope" width="140" height="140" alt="편지봉투"><h1>파티 초대장이 필요합니다</h1><p id="gate-message" role="status"></p><button class="gate-button" id="gate-retry" hidden>다시 확인하기</button></main>';
   document.querySelector('#gate-message').textContent=message;const button=document.querySelector('#gate-retry');button.hidden=!retry;button.onclick=begin;
  }
  async function request(path,data){
