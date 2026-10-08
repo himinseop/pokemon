@@ -78,3 +78,22 @@ test('administrator edits invitation names inline, can cancel, and sees safe dev
  const rename=h.calls.find(c=>c.options.method==='PATCH');assert.equal(rename.url,'/api/admin/shares/'+id);assert.deepEqual(JSON.parse(rename.options.body),{action:'rename',label:'친구들'});assert.ok(h.$('#shares-list h3').textContent.includes('친구들'));
  h.$('[data-admin-page="activity"]').click();for(let i=0;i<5;i++)await flush();assert.ok(h.$('.admin-invitation-source').textContent.includes('<img'));assert.equal(h.$('.admin-invitation-source img'),null);assert.equal(h.$('.admin-invitation-id').title,id);
 });
+
+test('administrator extends invitations in Korean time, can cancel, and keeps stopped links disabled',async t=>{
+ const id='d'.repeat(64),expiry=Date.parse('2090-10-08T12:00:00+09:00')/1000,share={shareId:id,label:'친구들',status:'active',createdAt:'2026-10-08T00:00:00Z',expiresAt:expiry,claimCount:3,url:'https://pokemon.pir.kr/'+SHARE};
+ const h=await admin({session:{access:'access',expires:Date.now()+1800000},data:{'/api/admin/shares':{items:[share,{...share,shareId:'e'.repeat(64),status:'revoked'},{...share,shareId:'f'.repeat(64),expiresAt:1}]},['/api/admin/shares/'+id]:{share}}});t.after(h.close);
+ assert.equal(h.$('[data-share-extend="'+ 'e'.repeat(64)+'"]').disabled,true);assert.equal(h.$('[data-share-extend="'+ 'f'.repeat(64)+'"]').disabled,false);
+ h.$('[data-share-extend]').click();const input=h.$('.admin-share-expiry input');assert.equal(input.value,'2090-10-11T12:00');assert.equal(input.min,'2090-10-08T12:01');assert.ok(h.$('.admin-share-expiry').textContent.includes('한국 시간'));
+ h.$('[data-cancel-share-expiry]').click();assert.equal(h.$('.admin-share-expiry'),null);assert.equal(h.$('[data-share-extend]').disabled,false);assert.ok(!h.calls.some(c=>c.options.method==='PATCH'));
+ h.$('[data-share-extend]').click();h.$('.admin-share-expiry input').value='2090-10-15T23:45';share.expiresAt=Date.parse('2090-10-15T23:45:00+09:00')/1000;
+ h.$('.admin-share-expiry').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));h.$('.admin-share-expiry').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));for(let i=0;i<5;i++)await flush();
+ const calls=h.calls.filter(c=>c.options.method==='PATCH');assert.equal(calls.length,1);assert.equal(calls[0].url,'/api/admin/shares/'+id);assert.deepEqual(JSON.parse(calls[0].options.body),{action:'extend',expiresAt:share.expiresAt});assert.equal(calls[0].options.headers.authorization,'Bearer access');
+ assert.equal(h.$('.admin-share-expiry'),null);assert.ok(h.$('#shares-list').textContent.includes('2090-10-15 23:45'));assert.equal(h.$('[data-copy]').dataset.copy,share.url);
+});
+
+test('administrator cannot submit an empty or earlier expiry',async t=>{
+ const share={shareId:'d'.repeat(64),label:'친구들',status:'active',createdAt:'2026-10-08T00:00:00Z',expiresAt:Date.parse('2090-10-08T12:00:00+09:00')/1000,claimCount:1,url:'https://pokemon.pir.kr/'+SHARE};
+ const h=await admin({session:{access:'access',expires:Date.now()+1800000},data:{'/api/admin/shares':{items:[share]}}});t.after(h.close);
+ h.$('[data-share-extend]').click();for(const value of ['','2090-10-08T12:00','2000-01-01T12:00']){h.$('.admin-share-expiry input').value=value;h.$('.admin-share-expiry').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));await flush();}
+ assert.ok(!h.calls.some(c=>c.options.method==='PATCH'));assert.equal(h.$('.admin-share-expiry [type="submit"]').disabled,false);
+});

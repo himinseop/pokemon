@@ -26,6 +26,12 @@ class MemoryStore:
         if key not in self.items:raise Conflict()
         self.items[key].update(copy.deepcopy(values));return self.get(key)
     def delete(self,key):del self.items[key]
+    def extend_share(self,key,expires_at):
+        if self.race:self.race(self);self.race=None
+        row=self.items.get(key)
+        if not row or row['status']!='active' or row['expiresAt']>=expires_at:
+            error=Conflict();error.response={'Error':{'Code':'ConditionalCheckFailedException'}};raise error
+        return self.update(key,{'expiresAt':expires_at})
     def list(self,kind,cursor=None,device_id=None):return sorted([copy.deepcopy(r) for r in self.items.values() if r['kind']==kind and (device_id is None or r.get('deviceId')==device_id)],key=lambda r:r['createdAt'],reverse=True),None
     def issue(self,share_id,device,now):
         if self.race:self.race(self);self.race=None
@@ -135,6 +141,53 @@ class AccessTests(unittest.TestCase):
         self.call(url,'DELETE',admin=True)
         invite=self.call('/api/admin/devices','GET',admin=True)[1]['items'][0]['invitation'];self.assertTrue(invite['deleted']);self.assertEqual(invite['shareId'],share['shareId']);self.assertEqual(invite['label'],original['label'])
         self.assertTrue(self.call('/api/access/validate',data={'deviceKey':key,'recordVisit':False})[1]['valid'])
+    def test_share_extension_changes_only_expiry_and_preserves_existing_devices_and_records(self):
+        share,key,device=self.device();url='/api/admin/shares/'+share['shareId'];expiry=share['expiresAt']+86400
+        self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'지우','recordVisit':True})
+        self.db.put({'id':'ranking-test','kind':'ranking','createdAt':access.iso(self.now),'score':1234})
+        before=copy.deepcopy(self.db.items)
+        with self.assertRaises(access.AccessError) as error:self.call(url,'PATCH',{'action':'extend','expiresAt':expiry})
+        self.assertEqual(error.exception.reason,'admin_required');self.assertEqual(self.db.items,before)
+        result=self.call(url,'PATCH',{'action':'extend','expiresAt':expiry},admin=True)[1]['share']
+        self.assertEqual(result['url'],share['url']);self.assertEqual(result['expiresAt'],expiry)
+        before['share#'+share['shareId']]['expiresAt']=expiry;self.assertEqual(self.db.items,before)
+        self.assertTrue(self.call('/api/access/validate',data={'deviceKey':key,'recordVisit':False},now=expiry+86400)[1]['valid'])
+
+    def test_expired_share_can_extend_and_be_claimed_again_but_revoked_share_cannot(self):
+        share,key,_=self.device();url='/api/admin/shares/'+share['shareId'];now=share['expiresAt']+1;expiry=now+86400
+        self.call(url,'PATCH',{'action':'extend','expiresAt':expiry},admin=True,now=now)
+        self.assertEqual(self.call('/api/access/claim',data={'shareKey':share['url'].split('/')[-1]},now=now)[0],201)
+        self.call(url,'PATCH',{'action':'revoke'},admin=True);before=copy.deepcopy(self.db.items)
+        with self.assertRaises(access.AccessError) as error:self.call(url,'PATCH',{'action':'extend','expiresAt':expiry+1},admin=True)
+        self.assertEqual(error.exception.status,409);self.assertEqual(self.db.items,before)
+        self.assertTrue(self.call('/api/access/validate',data={'deviceKey':key,'recordVisit':False})[1]['valid'])
+        self.call(url,'DELETE',admin=True)
+        with self.assertRaises(access.AccessError) as error:self.call(url,'PATCH',{'action':'extend','expiresAt':expiry+1},admin=True)
+        self.assertEqual(error.exception.status,404)
+
+    def test_share_extension_rejects_invalid_or_earlier_dates_without_writes(self):
+        share=self.share();url='/api/admin/shares/'+share['shareId'];before=copy.deepcopy(self.db.items)
+        for expiry in [None,True,False,'1792000000',[],{},0,-1,self.now,share['expiresAt'],share['expiresAt']-1,share['expiresAt']+0.5,253402300800,10**40]:
+            with self.subTest(expiry=expiry):
+                with self.assertRaises(access.AccessError) as error:self.call(url,'PATCH',{'action':'extend','expiresAt':expiry},admin=True)
+                self.assertEqual(error.exception.status,400);self.assertEqual(self.db.items,before)
+        with self.assertRaises(access.AccessError):self.call(url,'PATCH',{'action':'extend','expiresAt':share['expiresAt']+1},admin=True,now=share['expiresAt']+2)
+        self.assertEqual(self.db.items,before)
+
+    def test_share_extension_cannot_undo_concurrent_revoke_delete_or_longer_extension(self):
+        for action in ['revoke','delete','extend']:
+            with self.subTest(action=action):
+                share=self.share();identifier='share#'+share['shareId'];expiry=share['expiresAt']+86400
+                def race(db):
+                    if action=='delete':db.delete(identifier)
+                    else:db.update(identifier,{'status':'revoked'} if action=='revoke' else {'expiresAt':expiry+86400})
+                self.db.race=race
+                with self.assertRaises(access.AccessError) as error:self.call('/api/admin/shares/'+share['shareId'],'PATCH',{'action':'extend','expiresAt':expiry},admin=True)
+                self.assertEqual(error.exception.status,409);row=self.db.get(identifier)
+                if action=='delete':self.assertIsNone(row)
+                elif action=='revoke':self.assertEqual(row['status'],'revoked');self.assertEqual(row['expiresAt'],share['expiresAt'])
+                else:self.assertEqual(row['expiresAt'],expiry+86400)
+
     def test_device_invitation_lookup_is_cached_per_link_and_missing_legacy_source_is_explicit(self):
         share=self.share()
         for _ in range(2):self.call('/api/access/claim',data={'shareKey':share['url'].split('/')[-1]})

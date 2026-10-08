@@ -36,6 +36,18 @@ class TransactionSdkTests(unittest.TestCase):
             self.assertEqual(requests[0]['ConditionExpression'],'#status=:active');self.assertEqual(self.requests,[])
             stub.assert_no_pending_responses()
 
+    def test_share_extension_updates_only_expiry_with_atomic_guards(self):
+        self.stub.deactivate();requests=[]
+        self.db.table.meta.client.meta.events.register('before-parameter-build.dynamodb.UpdateItem',lambda params,**_:requests.append(params.copy()))
+        with Stubber(self.db.table.meta.client) as stub:
+            stub.add_response('update_item',{'Attributes':{'id':{'S':'share#id'},'expiresAt':{'N':'1792000000'},'claimCount':{'N':'3'}}})
+            row=self.db.extend_share('share#id',1792000000);request=requests[0]
+            self.assertEqual(row['expiresAt'],1792000000);self.assertEqual(row['claimCount'],3)
+            self.assertEqual(request['UpdateExpression'],'SET expiresAt=:expiry')
+            self.assertEqual(request['ExpressionAttributeValues'],{':active':{'S':'active'},':expiry':{'N':'1792000000'}})
+            self.assertEqual(request['ConditionExpression'],'attribute_exists(id) AND #status=:active AND expiresAt<:expiry')
+            stub.assert_no_pending_responses()
+
     def test_device_filter_skips_empty_index_pages_and_retains_filter_on_next_page(self):
         self.stub.deactivate();requests=[];device='a'*32
         self.db.table.meta.client.meta.events.register('before-parameter-build.dynamodb.Query',lambda params,**_:requests.append(params.copy()))

@@ -97,6 +97,10 @@ class DynamoStore:
         return self.table.update_item(Key={'id': key}, ConditionExpression='attribute_exists(id)', UpdateExpression='SET '+', '.join(f'#n{i}=:v{i}' for i in range(len(values))), ExpressionAttributeNames=names, ExpressionAttributeValues=params, ReturnValues='ALL_NEW')['Attributes']
     def delete(self, key):
         self.table.delete_item(Key={'id': key}, ConditionExpression='attribute_exists(id)')
+    def extend_share(self, key, expires_at):
+        # Change only expiry; never recreate a deleted link, shorten a concurrent
+        # extension or reactivate a link stopped by another administrator.
+        return self.table.update_item(Key={'id':key}, ConditionExpression='attribute_exists(id) AND #status=:active AND expiresAt<:expiry', UpdateExpression='SET expiresAt=:expiry', ExpressionAttributeNames={'#status':'status'}, ExpressionAttributeValues={':active':'active',':expiry':expires_at}, ReturnValues='ALL_NEW')['Attributes']
     def list(self, kind, cursor=None, device_id=None):
         args = {'IndexName': 'byKind', 'KeyConditionExpression': '#kind=:kind', 'ExpressionAttributeNames': {'#kind':'kind'}, 'ExpressionAttributeValues': {':kind':kind}, 'ScanIndexForward': False, 'Limit':50}
         if device_id is not None:
@@ -224,6 +228,17 @@ def dispatch(event, storage=None, now=None, signer=None):
             data=decode_body(event);action=data.get('action')
             if prefix=='share' and action=='rename':
                 row=storage.update(row['id'],{'label':share_label(data.get('label'))})
+                return 200,{'share':share_view(row)},None
+            if prefix=='share' and action=='extend':
+                expires_at=data.get('expiresAt')
+                if type(expires_at) is not int or not max(now,row['expiresAt'])<expires_at<=253402300799:
+                    raise AccessError(400,'현재 만료일시보다 늦은 미래 일시를 골라 주세요.')
+                if row['status']!='active':raise AccessError(409,'사용 중지한 링크는 연장할 수 없어요.')
+                try:row=storage.extend_share(row['id'],expires_at)
+                except Exception as error:
+                    if getattr(error,'response',{}).get('Error',{}).get('Code')=='ConditionalCheckFailedException':
+                        raise AccessError(409,'초대 링크가 변경되었어요. 목록을 다시 열고 확인해 주세요.')
+                    raise
                 return 200,{'share':share_view(row)},None
             allowed={'block':'blocked','unblock':'active'} if prefix=='device' else {'revoke':'revoked'}
             if action not in allowed:raise AccessError(400,'변경할 상태를 확인해 주세요.')
