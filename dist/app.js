@@ -227,14 +227,17 @@ function nextQuestion(){if(!game||game.status!=='playing')return;if(game.mode===
  selectQuestion(game);renderGameBody();}
 function timerState(g){const duration=60000;const remaining=Math.max(0,g.deadline-performance.now());return {seconds:Math.ceil(remaining/1000),percent:Math.min(100,remaining/duration*100)};}
 function masterElapsed(g){return Math.min(MASTER_BONUS_DURATION,Math.max(0,Math.floor(performance.now()-(g.questionStartedAt??performance.now()))));}
-function masterBonus(g,elapsed=masterElapsed(g)){return g.hintUsed?0:Math.floor((MASTER_BONUS_DURATION-elapsed)*50/MASTER_BONUS_DURATION)*difficulties[g.difficulty].multiplier;}
+const masterBonusMax=g=>50*difficulties[g.difficulty].multiplier;
+function masterBonus(g,elapsed=masterElapsed(g)){const maximum=masterBonusMax(g);return g.hintUsed?0:maximum-Math.floor(elapsed*maximum/(MASTER_BONUS_DURATION*10))*10;}
 function updateMasterBonus(g){
  const gauge=document.querySelector('#master-bonus');if(!gauge)return;gauge.hidden=!!g.hintUsed||g.judgement==='skipped';
  const elapsed=g.elapsedAtAnswer??masterElapsed(g),remaining=MASTER_BONUS_DURATION-elapsed,points=g.locked?g.bonusAwarded:masterBonus(g,elapsed);
- const percent=points/150*100;
+ const percent=points/masterBonusMax(g)*100;
  gauge.querySelector('.bonus-fill').style.width=percent+'%';gauge.querySelector('[role="progressbar"]').setAttribute('aria-valuenow',points);
  gauge.querySelector('.bonus-current').textContent=points+'점';
  gauge.classList.toggle('bonus-earned',g.locked&&points>0);gauge.classList.toggle('bonus-expired',!remaining);
+ const hint=document.querySelector('#hint-question'),ready=g.imageReady&&!g.locked&&!g.hintUsed&&points===0;
+ if(hint){hint.classList.toggle('hint-ready',ready);hint.querySelector('.hint-nudge').hidden=!ready;}
 }
 function resetMasterAttempt(){
  const g=game;if(!g||g.mode!=='write'||g.locked)return;g.judgement=null;g.awaitingNext=false;g.checkedLetters=null;
@@ -293,9 +296,9 @@ function showQuestionHint(){
  hint.textContent='힌트는 채웠어! 빈칸을 적어봐.';hint.hidden=false;button.disabled=true;button.classList.add('used');button.setAttribute('aria-label','힌트 사용 완료');button.title='이 문제의 힌트는 이미 사용했어.';
  updateAnswerSlots();updateMasterBonus(g);fitLayersToViewport();
 }
-function masterHint(g){return `<button class="game-control hint-control stage-hint" id="hint-question" aria-label="힌트 · 시간 보너스 없이 ${masterPoints(g,true)}점" title="힌트 · 시간 보너스 없이 ${masterPoints(g,true)}점" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15c0-2-3-2-3-6a6 6 0 0 1 12 0c0 4-3 4-3 6ZM9 18h6m-5 3h4"/></svg></button>`;}
-function masterControls(){return `<div class="master-tools"><button class="game-control skip-control" id="skip-question" aria-label="패스 · 정답 보기" title="패스 · 정답 보기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 5 8 7-8 7M18 5v14"/></svg><span class="control-label">패스</span></button></div>`;}
-function masterScore(g){return `<div class="master-bonus" id="master-bonus"><div class="bonus-heading"><span class="bonus-label">보너스 점수</span><strong class="bonus-current">0점</strong></div><div class="bonus-track" role="progressbar" aria-label="보너스 점수" aria-valuemin="0" aria-valuemax="150" aria-valuenow="0"><div class="bonus-fill"></div></div><div class="bonus-scale" aria-hidden="true"><span>0</span><span>50</span><span>100</span><span>150</span></div></div><div class="game-stats"><span class="question-count">${g.questionNumber} / 10 문제</span>${masterControls()}<span class="master-score"><strong id="score">${g.score.toLocaleString()}</strong> 점</span></div>`;}
+function masterHint(g){return `<button class="game-control hint-control stage-hint" id="hint-question" aria-label="힌트 · 시간 보너스 없이 ${masterPoints(g,true)}점" title="힌트 · 시간 보너스 없이 ${masterPoints(g,true)}점" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 15c0-2-3-2-3-6a6 6 0 0 1 12 0c0 4-3 4-3 6ZM9 18h6m-5 3h4"/></svg><span class="hint-nudge" hidden aria-hidden="true">힌트보기</span></button>`;}
+function masterControls(){return `<div class="master-tools"><button class="game-control skip-control" id="skip-question" aria-label="패스 · 정답 보기" title="패스 · 정답 보기"><img src="assets/ui/pass-flag.svg" alt="" width="24" height="24"><span class="control-label">패스</span></button></div>`;}
+function masterScore(g){const maximum=masterBonusMax(g);return `<div class="master-bonus" id="master-bonus"><div class="bonus-heading"><span class="bonus-label">빨리 맞추기 보너스</span><strong class="bonus-current">${maximum}점</strong></div><div class="bonus-track" role="progressbar" aria-label="빨리 맞추기 보너스" aria-valuemin="0" aria-valuemax="${maximum}" aria-valuenow="${maximum}"><div class="bonus-fill"></div></div><div class="bonus-scale" aria-hidden="true">${Array.from({length:maximum/10+1},(_,index)=>`<span style="left:${index*10/maximum*100}%">${index*10}</span>`).join('')}</div></div><div class="game-stats"><span class="question-count">${g.questionNumber} / 10 문제</span>${masterControls()}<span class="master-score"><strong id="score">${g.score.toLocaleString()}</strong> 점</span></div>`;}
 function masterFeedback(){return '<div class="feedback-area master-feedback"><div id="feedback" class="feedback" role="status" aria-live="polite">포켓몬이 오고 있어…</div><p id="hint-message" class="hint-message" role="status" hidden></p></div>';}
 function renderQuestion(body){clearJudgement();const g=game;const timeState=g.mode==='time'?timerState(g):null;const previousProgress=g.mode==='time'?body.querySelector('.progress'):null,previousForm=g.mode==='write'?body.querySelector('#answer-form'):null;
 const markup=`<div class="pokemon-stage ${g.difficulty==='hard'?'silhouette':''}">${gameExit()}${g.mode==='write'?masterHint(g)+masterFeedback():''}<span id="question-image-slot"></span><span id="judgement-effect" class="judgement-effect" aria-hidden="true" hidden></span></div>

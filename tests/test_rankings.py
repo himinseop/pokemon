@@ -82,8 +82,15 @@ class Rankings(unittest.TestCase):
         for mode, unit in [('easy', 100), ('normal', 200), ('hard', 300)]:
             status, data = self.submit(mode=mode, results=[True, True, True, True, False], hints=[False, False, False, True, False], elapsedMs=[0, 10000, 20000, 0, 0], score=999999)
             self.assertEqual(status, 200)
-            self.assertEqual(data['record']['timeBonus'], unit * 3 // 4)
-            self.assertEqual(data['record']['score'], unit * 17 // 4)
+            bonus=unit//2 + ((unit//4 + 9)//10)*10
+            self.assertEqual(data['record']['timeBonus'], bonus)
+            self.assertEqual(data['record']['score'], unit*3+unit//2+bonus)
+    def test_bonus_step_boundaries_match_each_difficulty(self):
+        for mode,maximum,boundary in [('easy',50,4000),('normal',100,2000),('hard',150,1334)]:
+            for elapsed,expected in [(0,maximum),(boundary-1,maximum),(boundary,maximum-10),(19999,10),(20000,0)]:
+                payload={'id':'bonus-boundary-000001','name':'지우','mode':mode,'results':[True],'elapsedMs':[elapsed]}
+                record=handler.parse_submission(event(method='POST',path='/api/scores',payload=payload))
+                self.assertEqual(record['timeBonus'],expected)
     def test_invalid_bonus_arrays_do_not_write_and_time_attack_cannot_claim_master_bonus(self):
         for elapsed in [None, {}, [0], [True]*4, [0.5]*4, [-1]*4, [20001]*4]:
             self.assertEqual(self.submit(mode='easy', elapsedMs=elapsed)[0], 400)

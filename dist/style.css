@@ -456,3 +456,12 @@ body.game-focused .master-tools .game-control:disabled{background:#fff;opacity:.
 
 /* Match the invitation Poke Ball while ranking requests are pending. */
 .ranking-pokeball{display:block;width:80px;height:80px;flex-shrink:0}.pokeball-spinner{transform-box:fill-box;transform-origin:center;animation:pokeball-spin 1.4s linear infinite}@keyframes pokeball-spin{to{transform:rotate(360deg)}}.ranking-result-loading{display:flex;flex-direction:column;align-items:center;gap:6px;margin:12px 0}.ranking-result-loading .ranking-pokeball{width:56px;height:56px}.ranking-result-loading p{margin:0}@media(prefers-reduced-motion:reduce){.pokeball-spinner{animation:none}}
+
+/* Ten-point bonus steps and a gentle hint invitation after the bonus expires. */
+.bonus-track{margin-inline:9px}.bonus-scale{position:relative;display:block;height:12px;margin-inline:9px;font-size:clamp(9px,2.6vw,10px)}.bonus-scale span{position:absolute;transform:translateX(-50%)}.bonus-scale span:first-child,.bonus-scale span:last-child{transform:translateX(-50%)}
+.master-tools .skip-control img{display:block;flex-shrink:0;width:24px;height:24px;object-fit:contain}
+body.game-focused .stage-hint .hint-nudge{display:block;height:auto;flex:none;position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);padding:7px 10px;border:1px solid #efd68b;border-radius:12px;background:#fffdf4;color:#a97913;font-size:12px;font-weight:700;line-height:18px;white-space:nowrap;box-shadow:0 3px 10px #2734480d;pointer-events:none}
+body.game-focused .stage-hint .hint-nudge[hidden]{display:none}body.game-focused .stage-hint .hint-nudge:before{content:'';position:absolute;left:-5px;top:calc(50% - 4px);width:8px;height:8px;background:#fffdf4;border-left:1px solid #efd68b;border-bottom:1px solid #efd68b;transform:rotate(45deg)}
+body.game-focused .stage-hint.hint-ready{border-color:#efd68b}body.game-focused .stage-hint.hint-ready svg{animation:hint-glimmer 1.3s ease-in-out infinite}
+@keyframes hint-glimmer{0%,100%{opacity:.55;filter:drop-shadow(0 0 0 transparent)}50%{opacity:1;filter:drop-shadow(0 0 5px #ffcc39)}}
+@media(prefers-reduced-motion:reduce){body.game-focused .stage-hint.hint-ready svg{animation:none}}

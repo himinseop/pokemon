@@ -165,8 +165,8 @@ test('moving on from a wrong answer records one miss without revealing its full 
 });
 test('master time bonus starts with image readiness, decreases for twenty seconds and never ends a slow question',async t=>{
  for(const [level,unit] of [['easy',100],['normal',200],['hard',300]]){
-  const h=await harness();t.after(h.close);await h.start('write',level);assert.equal(h.game().questionStartedAt,0);h.clock(10000);h.w.qa('tick()');assert.equal(h.w.qa('masterBonus(game)'),unit/4);assert.ok(Math.abs(parseFloat(h.$('.bonus-fill').style.width)-unit/4/150*100)<.001);assert.equal(h.$('[aria-label="보너스 점수"]').getAttribute('aria-valuenow'),String(unit/4));h.correct();assert.equal(h.game().score,unit*1.25);assert.equal(h.game().history[0].elapsedMs,10000);assert.equal(h.game().bonusAwarded,unit/4);
-  await h.next();h.clock(40000);h.w.qa('tick()');assert.equal(h.game().status,'playing');assert.equal(h.w.qa('masterBonus(game)'),0);assert.equal(h.$('.bonus-fill').style.width,'0%');h.correct();assert.equal(h.game().score,unit*2.25);assert.equal(h.game().history[1].elapsedMs,20000);
+  const h=await harness();t.after(h.close);await h.start('write',level);assert.equal(h.game().questionStartedAt,0);h.clock(10000);h.w.qa('tick()');const halfBonus=Math.ceil(unit/4/10)*10;assert.equal(h.w.qa('masterBonus(game)'),halfBonus);assert.ok(Math.abs(parseFloat(h.$('.bonus-fill').style.width)-halfBonus/(unit/2)*100)<.001);assert.equal(h.$('[aria-label="빨리 맞추기 보너스"]').getAttribute('aria-valuenow'),String(halfBonus));h.correct();assert.equal(h.game().score,unit+halfBonus);assert.equal(h.game().history[0].elapsedMs,10000);assert.equal(h.game().bonusAwarded,halfBonus);
+  await h.next();h.clock(40000);h.w.qa('tick()');assert.equal(h.game().status,'playing');assert.equal(h.w.qa('masterBonus(game)'),0);assert.equal(h.$('.bonus-fill').style.width,'0%');h.correct();assert.equal(h.game().score,unit*2+halfBonus);assert.equal(h.game().history[1].elapsedMs,20000);
  }
 });
 test('a hint immediately removes all time bonus and its next question restores it',async t=>{
@@ -180,3 +180,22 @@ test('the tenth master answer also waits for next before finishing, without dupl
 test('time choices include the full three-stage family and fill only the remaining slot randomly',async t=>{const h=await harness();t.after(h.close);const ids=h.w.qa('timeChoices(pokemon.find(p=>p.id===1),pokemon).map(p=>p.id)');assert.equal(ids.length,4);assert.equal(new Set(ids).size,4);for(const id of [1,2,3])assert.ok(ids.includes(id));});
 test('branched evolution choices all belong to the same family and regional forms never duplicate names',async t=>{const h=await harness();t.after(h.close);for(const id of [133,134,196,700]){const choices=h.w.qa(`timeChoices(pokemon.find(p=>p.id===${id}),pokemon)`),family=h.w.qa(`evolutionFamilies.get(${id}).map(p=>p.id)`);assert.equal(choices.length,4);assert.ok(choices.some(p=>p.id===id));assert.ok(choices.every(p=>family.includes(p.id)));assert.equal(new Set(choices.map(p=>p.name)).size,4);}const raichu=h.w.qa('timeChoices(pokemon.find(p=>p.id===25),pokemon.filter(p=>familiar.includes(p.id)))');assert.ok(raichu.some(p=>p.id===172));assert.ok(raichu.some(p=>p.id===26));assert.equal(new Set(raichu.map(p=>p.name)).size,4);});
 test('all 1025 questions produce four unique choices and exactly one correct answer, including singletons',async t=>{const h=await harness();t.after(h.close);const problems=h.w.qa('pokemon.filter(q=>{const options=timeChoices(q,pokemon);return options.length!==4||options.filter(p=>p.id===q.id).length!==1||new Set(options.map(p=>normalize(p.name))).size!==4;}).map(p=>p.id)');assert.deepEqual(Array.from(problems),[]);});
+
+test('master bonus holds its initial points then drops by ten at each boundary and scales to difficulty',async t=>{
+ for(const [level,maximum,firstDrop] of [['easy',50,4000],['normal',100,2000],['hard',150,1334]]){
+  const h=await harness();t.after(h.close);await h.start('write',level);
+  assert.equal(h.$('.bonus-track').getAttribute('aria-valuemax'),String(maximum));assert.equal(h.$('.bonus-fill').style.width,'100%');
+  assert.deepEqual([...h.w.document.querySelectorAll('.bonus-scale span')].map(n=>Number(n.textContent)),Array.from({length:maximum/10+1},(_,i)=>i*10));
+  h.clock(firstDrop-1);h.w.qa('tick()');assert.equal(h.$('.bonus-current').textContent,maximum+'점');
+  h.clock(firstDrop);h.w.qa('tick()');assert.equal(h.$('.bonus-current').textContent,maximum-10+'점');
+  let previous=maximum;for(let elapsed=0;elapsed<=20000;elapsed++){const current=h.w.qa(`masterBonus(game,${elapsed})`);assert.equal(current%10,0);assert.ok(previous-current===0||previous-current===10);previous=current;}
+  assert.equal(previous,0);
+ }
+});
+test('an expired bonus invites an available hint and stops nudging after hint, answer, pass or next',async t=>{
+ const h=await harness();t.after(h.close);await h.start('write');assert.equal(h.$('.hint-nudge').hidden,true);
+ h.clock(20000);h.w.qa('tick()');assert.equal(h.$('.hint-nudge').hidden,false);assert.equal(h.$('.hint-nudge').textContent,'힌트보기');assert.ok(h.$('#hint-question').classList.contains('hint-ready'));
+ h.$('#hint-question').click();assert.equal(h.$('.hint-nudge').hidden,true);assert.ok(!h.$('#hint-question').classList.contains('hint-ready'));
+ h.correct();await h.next();assert.equal(h.$('.hint-nudge').hidden,true);h.clock(40000);h.w.qa('tick()');assert.equal(h.$('.hint-nudge').hidden,false);h.correct();assert.equal(h.$('.hint-nudge').hidden,true);
+ await h.next();h.clock(60000);h.w.qa('tick()');h.$('#skip-question').click();assert.equal(h.$('.hint-nudge').hidden,true);assert.ok(h.$('#skip-question img').src.endsWith('/assets/ui/pass-flag.svg'));
+});

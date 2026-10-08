@@ -94,7 +94,8 @@ def parse_submission(event):
             score += 100 + min(streak - 1, 10) * 10
         else:
             unit = {'easy': 100, 'normal': 200, 'hard': 300}[mode]
-            bonus = 0 if hinted else (BONUS_DURATION - duration) * 50 // BONUS_DURATION * (unit // 100)
+            maximum = unit // 2
+            bonus = 0 if hinted else maximum - duration * maximum // (BONUS_DURATION * 10) * 10
             score += unit // (2 if hinted else 1) + bonus
             time_bonus += bonus
     return {'id': record_id, 'name': name, 'mode': mode, 'score': score, 'correct': correct, 'total': len(results), 'hintsUsed': sum(hints), 'timeBonus': time_bonus}
