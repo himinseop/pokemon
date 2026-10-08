@@ -59,3 +59,12 @@ test('finishing trainer entry requests the first named visit without renewing in
  assert.ok(named);assert.equal(JSON.parse(named.options.body).recordVisit,true);assert.ok(!h.calls.some(c=>c.url==='/api/access/validate'));
  assert.equal(JSON.parse(h.w.localStorage.getItem('pokemon-party-last-verification')).checkedAt,now-1000);
 });
+
+test('device visit button opens only that device history and supports returning to all visits',async t=>{
+ const deviceId='a'.repeat(32),other='b'.repeat(32),stamp='2026-10-08T00:00:00Z',row={deviceId,trainerName:'지우',status:'active',createdAt:stamp,lastSeenAt:stamp,userAgent:'Safari',visitCount:1};
+ const h=await admin({session:{access:'access',expires:Date.now()+1800000},data:{'/api/admin/devices':{items:[row]},['/api/admin/visits?deviceId='+deviceId]:{items:[{...row,id:'visit-mine'}]},'/api/admin/visits':{items:[{...row,id:'visit-mine'},{...row,id:'visit-other',deviceId:other,trainerName:'이슬'}]}}});t.after(h.close);
+ h.$('[data-admin-page="activity"]').click();for(let i=0;i<5;i++)await flush();
+ assert.equal(h.$('.admin-row-actions').firstElementChild.dataset.deviceVisits,deviceId);h.$('[data-device-visits]').click();for(let i=0;i<5;i++)await flush();
+ assert.equal(h.calls.at(-1).url,'/api/admin/visits?deviceId='+deviceId);assert.ok(h.$('[data-admin-tab="visits"]').classList.contains('active'));assert.equal(h.$('#visit-filter').hidden,false);assert.equal(h.w.document.querySelectorAll('#admin-list .admin-row').length,1);assert.ok(!h.$('#admin-list').textContent.includes('이슬'));
+ h.$('#all-visits').click();for(let i=0;i<5;i++)await flush();assert.equal(h.calls.at(-1).url,'/api/admin/visits');assert.equal(h.$('#visit-filter').hidden,true);assert.equal(h.w.document.querySelectorAll('#admin-list .admin-row').length,2);
+});

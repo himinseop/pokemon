@@ -36,5 +36,17 @@ class TransactionSdkTests(unittest.TestCase):
             self.assertEqual(requests[0]['ConditionExpression'],'#status=:active');self.assertEqual(self.requests,[])
             stub.assert_no_pending_responses()
 
+    def test_device_filter_skips_empty_index_pages_and_retains_filter_on_next_page(self):
+        self.stub.deactivate();requests=[];device='a'*32
+        self.db.table.meta.client.meta.events.register('before-parameter-build.dynamodb.Query',lambda params,**_:requests.append(params.copy()))
+        key={'id':{'S':'visit#previous'},'kind':{'S':'visit'},'createdAt':{'S':'2026-10-08T01:00:00Z'}}
+        with Stubber(self.db.table.meta.client) as stub:
+            stub.add_response('query',{'Items':[],'LastEvaluatedKey':key})
+            stub.add_response('query',{'Items':[{'id':{'S':'visit#mine'},'kind':{'S':'visit'},'deviceId':{'S':device},'createdAt':{'S':'2026-10-08T00:00:00Z'}}]})
+            rows,cursor=self.db.list('visit',device_id=device)
+            self.assertEqual(rows[0]['deviceId'],device);self.assertIsNone(cursor);self.assertEqual(len(requests),2)
+            self.assertTrue(all(r['FilterExpression']=='#device=:device' for r in requests));self.assertIn('ExclusiveStartKey',requests[1])
+            stub.assert_no_pending_responses()
+
 
 unittest.main()

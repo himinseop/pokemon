@@ -165,7 +165,7 @@ test('moving on from a wrong answer records one miss without revealing its full 
 });
 test('master time bonus starts with image readiness, decreases for twenty seconds and never ends a slow question',async t=>{
  for(const [level,unit] of [['easy',100],['normal',200],['hard',300]]){
-  const h=await harness();t.after(h.close);await h.start('write',level);assert.equal(h.game().questionStartedAt,0);h.clock(10000);h.w.qa('tick()');const halfBonus=Math.ceil(unit/4/10)*10;assert.equal(h.w.qa('masterBonus(game)'),halfBonus);assert.ok(Math.abs(parseFloat(h.$('.bonus-fill').style.width)-halfBonus/(unit/2)*100)<.001);assert.equal(h.$('[aria-label="빨리 맞추기 보너스"]').getAttribute('aria-valuenow'),String(halfBonus));h.correct();assert.equal(h.game().score,unit+halfBonus);assert.equal(h.game().history[0].elapsedMs,10000);assert.equal(h.game().bonusAwarded,halfBonus);
+  const h=await harness();t.after(h.close);await h.start('write',level);assert.equal(h.game().questionStartedAt,0);h.clock(10000);h.w.qa('tick()');const halfBonus=Math.ceil(unit/4/10)*10;assert.equal(h.w.qa('masterBonus(game)'),halfBonus);assert.ok(Math.abs(parseFloat(h.$('.bonus-fill').style.width)-50)<.001);assert.equal(h.$('[aria-label="빨리 맞추기 보너스"]').getAttribute('aria-valuenow'),String(halfBonus));h.correct();assert.equal(h.game().score,unit+halfBonus);assert.equal(h.game().history[0].elapsedMs,10000);assert.equal(h.game().bonusAwarded,halfBonus);
   await h.next();h.clock(40000);h.w.qa('tick()');assert.equal(h.game().status,'playing');assert.equal(h.w.qa('masterBonus(game)'),0);assert.equal(h.$('.bonus-fill').style.width,'0%');h.correct();assert.equal(h.game().score,unit*2+halfBonus);assert.equal(h.game().history[1].elapsedMs,20000);
  }
 });
@@ -186,6 +186,7 @@ test('master bonus holds its initial points then drops by ten at each boundary a
   const h=await harness();t.after(h.close);await h.start('write',level);
   assert.equal(h.$('.bonus-track').getAttribute('aria-valuemax'),String(maximum));assert.equal(h.$('.bonus-fill').style.width,'100%');
   assert.deepEqual([...h.w.document.querySelectorAll('.bonus-scale span')].map(n=>Number(n.textContent)),Array.from({length:maximum/10+1},(_,i)=>i*10));
+  h.clock(1000);h.w.qa('tick()');assert.equal(h.$('.bonus-current').textContent,maximum+'점');assert.equal(h.$('.bonus-fill').style.width,'95%');
   h.clock(firstDrop-1);h.w.qa('tick()');assert.equal(h.$('.bonus-current').textContent,maximum+'점');
   h.clock(firstDrop);h.w.qa('tick()');assert.equal(h.$('.bonus-current').textContent,maximum-10+'점');
   let previous=maximum;for(let elapsed=0;elapsed<=20000;elapsed++){const current=h.w.qa(`masterBonus(game,${elapsed})`);assert.equal(current%10,0);assert.ok(previous-current===0||previous-current===10);previous=current;}

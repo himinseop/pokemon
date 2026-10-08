@@ -26,7 +26,7 @@ class MemoryStore:
         if key not in self.items:raise Conflict()
         self.items[key].update(copy.deepcopy(values));return self.get(key)
     def delete(self,key):del self.items[key]
-    def list(self,kind,cursor=None):return sorted([copy.deepcopy(r) for r in self.items.values() if r['kind']==kind],key=lambda r:r['createdAt'],reverse=True),None
+    def list(self,kind,cursor=None,device_id=None):return sorted([copy.deepcopy(r) for r in self.items.values() if r['kind']==kind and (device_id is None or r.get('deviceId')==device_id)],key=lambda r:r['createdAt'],reverse=True),None
     def issue(self,share_id,device,now):
         if self.race:self.race(self);self.race=None
         share=self.items['share#'+share_id]
@@ -120,6 +120,20 @@ class AccessTests(unittest.TestCase):
         self.assertEqual(self.call('/api/admin/visits','GET',admin=True)[1]['items'][0]['trainerName'],'지우')
         self.call('/api/admin/devices/'+device['deviceId'],'PATCH',{'action':'block'},admin=True)
         with self.assertRaises(access.AccessError):self.call('/api/access/profile',data={'deviceKey':key,'recordVisit':True})
+    def test_admin_can_filter_visits_by_device_and_bad_filters_are_rejected(self):
+        _,key,first=self.device();self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'지우','recordVisit':True})
+        _,key,second=self.device();self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'이슬','recordVisit':True})
+        request=event('/api/admin/visits','GET',claims=self.claims);request['queryStringParameters']={'deviceId':first['deviceId']}
+        result=access.dispatch(request,self.db,now=self.now)[1]
+        self.assertEqual(len(result['items']),1);self.assertEqual(result['items'][0]['deviceId'],first['deviceId']);self.assertEqual(result['items'][0]['trainerName'],'지우')
+        self.assertEqual(len(self.call('/api/admin/visits','GET',admin=True)[1]['items']),2)
+        for value in ['', 'bad-id', 'a'*64]:
+            request['queryStringParameters']={'deviceId':value}
+            with self.assertRaises(access.AccessError) as error:access.dispatch(request,self.db,now=self.now)
+            self.assertEqual(error.exception.status,400)
+        request['queryStringParameters']={'deviceId':first['deviceId']};request['requestContext']['authorizer']['jwt']['claims']={}
+        with self.assertRaises(access.AccessError) as error:access.dispatch(request,self.db,now=self.now)
+        self.assertEqual(error.exception.reason,'admin_required')
     def test_reloads_coalesce_for_thirty_minutes_while_last_seen_keeps_updating(self):
         _,key,device=self.device()
         for seconds in [0,1,60,1799]:

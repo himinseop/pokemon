@@ -81,16 +81,21 @@ class DynamoStore:
         return self.table.update_item(Key={'id': key}, ConditionExpression='attribute_exists(id)', UpdateExpression='SET '+', '.join(f'#n{i}=:v{i}' for i in range(len(values))), ExpressionAttributeNames=names, ExpressionAttributeValues=params, ReturnValues='ALL_NEW')['Attributes']
     def delete(self, key):
         self.table.delete_item(Key={'id': key}, ConditionExpression='attribute_exists(id)')
-    def list(self, kind, cursor=None):
+    def list(self, kind, cursor=None, device_id=None):
         args = {'IndexName': 'byKind', 'KeyConditionExpression': '#kind=:kind', 'ExpressionAttributeNames': {'#kind':'kind'}, 'ExpressionAttributeValues': {':kind':kind}, 'ScanIndexForward': False, 'Limit':50}
+        if device_id is not None:
+            args['FilterExpression']='#device=:device';args['ExpressionAttributeNames']['#device']='deviceId';args['ExpressionAttributeValues'][':device']=device_id
         if cursor:
             try:
                 start = json.loads(base64.urlsafe_b64decode(cursor))
                 if not isinstance(start, dict) or set(start) != {'id','kind','createdAt'} or start['kind'] != kind or any(not isinstance(v,str) for v in start.values()): raise ValueError()
                 args['ExclusiveStartKey'] = start
             except (ValueError, TypeError): raise AccessError(400, '목록을 다시 불러와 주세요.')
-        result = self.table.query(**args)
-        next_key = result.get('LastEvaluatedKey')
+        for _ in range(5):
+            result = self.table.query(**args)
+            next_key = result.get('LastEvaluatedKey')
+            if not device_id or result.get('Items') or not next_key:break
+            args['ExclusiveStartKey']=next_key
         return result.get('Items', []), base64.urlsafe_b64encode(json.dumps(next_key).encode()).decode() if next_key else None
     def issue(self, share_id, device, now):
         # Grant and counter update commit together: a revoked/expired link cannot race issuance.
@@ -191,7 +196,9 @@ def dispatch(event, storage=None, now=None, signer=None):
             storage.put(row);return 201,{'share':share_view(row)},None
         if method=='GET' and path in ['/api/admin/shares','/api/admin/devices','/api/admin/visits']:
             kind={'shares':'share','devices':'device','visits':'visit'}[path.rsplit('/',1)[1]]
-            rows,cursor=storage.list(kind,(event.get('queryStringParameters') or {}).get('cursor'))
+            params=event.get('queryStringParameters') or {};device_id=params.get('deviceId')
+            if device_id is not None and (kind!='visit' or not isinstance(device_id,str) or not re.fullmatch(r'[a-f0-9]{32}',device_id)):raise AccessError(400,'기기 ID를 다시 확인해 주세요.')
+            rows,cursor=storage.list(kind,params.get('cursor'),device_id)
             return 200,{'items':[share_view(r) if kind=='share' else public_device(r) if kind=='device' else {k:r[k] for k in ['id','deviceId','trainerName','createdAt','userAgent']} for r in rows],'nextCursor':cursor},None
         match=re.fullmatch(r'/api/admin/(devices|shares)/([a-f0-9]{32}|[a-f0-9]{64})',path)
         if match and method in ['PATCH','DELETE']:

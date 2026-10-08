@@ -74,6 +74,7 @@ test('enabled invitations protect all game assets at the edge while the envelope
  assert.equal(ctx.handler({request:{uri:'/a'.padEnd(44,'a'),headers:{host:{value:'pokemon.pir.kr'}}}}).uri,'/index.html');
  assert.equal(ctx.handler({request:{uri:'/admin',headers:{host:{value:'pokemon.pir.kr'}}}}).uri,'/admin.html');
  for(const uri of ['/game%2ehtml','/public/%2e%2e/game.html','/public/../pokemon.json','/anything-else'])assert.equal(ctx.handler({request:{uri,headers:{host:{value:'pokemon.pir.kr'}}}}).statusCode,404);
+ assert.equal(ctx.handler({request:{uri:'/public/party-preview.png',headers:{host:{value:'pokemon.pir.kr'}}}}).uri,'/public/party-preview.png');
  assert.equal(ctx.handler({request:{uri:'/public/access.js',headers:{host:{value:'pokemon.pir.kr'}}}}).uri,'/public/access.js');
 });
 test('separate share domain redirects onto the main origin before browser storage is used',()=>{
