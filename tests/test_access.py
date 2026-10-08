@@ -81,6 +81,19 @@ class AccessTests(unittest.TestCase):
         share,key,_=self.device();self.call('/api/admin/shares/'+share['shareId'],'PATCH',{'action':'revoke'},admin=True)
         with self.assertRaises(access.AccessError):self.call('/api/access/claim',data={'shareKey':share['url'].rsplit('/',1)[1]})
         self.assertTrue(self.call('/api/access/validate',data={'deviceKey':key,'recordVisit':False})[1]['valid'])
+    def test_hard_deleting_share_removes_row_and_denies_new_grants_but_keeps_existing_device(self):
+        share,key,device=self.device();url='/api/admin/shares/'+share['shareId']
+        with self.assertRaises(access.AccessError):self.call(url,'DELETE')
+        self.assertIsNotNone(self.db.get('share#'+share['shareId']))
+        result=self.call(url,'DELETE',admin=True)
+        self.assertEqual(result[1],{'deleted':True});self.assertIsNone(self.db.get('share#'+share['shareId']))
+        self.assertEqual(self.call('/api/admin/shares','GET',admin=True)[1]['items'],[])
+        with self.assertRaises(access.AccessError) as error:self.call('/api/access/claim',data={'shareKey':share['url'].rsplit('/',1)[1]})
+        self.assertEqual(error.exception.reason,'invalid_invite')
+        self.assertTrue(self.call('/api/access/validate',data={'deviceKey':key,'recordVisit':False})[1]['valid'])
+        self.assertEqual(self.call('/api/admin/devices','GET',admin=True)[1]['items'][0]['deviceId'],device['deviceId'])
+        with self.assertRaises(access.AccessError) as error:self.call(url,'DELETE',admin=True)
+        self.assertEqual(error.exception.status,404)
     def test_invitation_revoked_during_issuance_never_creates_a_device(self):
         share=self.share();self.db.race=lambda db:db.update('share#'+share['shareId'],{'status':'revoked'})
         with self.assertRaises(access.AccessError) as error:self.call('/api/access/claim',data={'shareKey':share['url'].rsplit('/',1)[1]})

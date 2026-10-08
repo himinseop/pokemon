@@ -33,3 +33,21 @@ test('a recently verified browser loads the game without invitation checks and r
 test('verification expires at exactly eight hours and a different device cannot reuse the receipt',async t=>{const now=Date.now();for(const receipt of [{deviceKey:DEVICE,checkedAt:now-8*3600000},{deviceKey:DEVICE.replace(/^a/,'b'),checkedAt:now-1000},{deviceKey:DEVICE,checkedAt:now+1000}]){const h=await gate({key:DEVICE,now,receipt});t.after(h.close);assert.ok(h.calls.some(r=>r.url==='/api/access/validate'));assert.equal(JSON.parse(h.w.localStorage.getItem('pokemon-party-last-verification')).checkedAt,now);}});
 test('missing or expired signed cookies force fresh verification even inside the eight-hour window',async t=>{const now=Date.now(),h=await gate({key:DEVICE,now,receipt:{deviceKey:DEVICE,checkedAt:now-1000},gameFailsOnce:true});t.after(h.close);await waitFor(()=>h.calls.filter(r=>r.url==='/game.html').length===2);assert.deepEqual(h.calls.map(r=>r.url),['/game.html','/api/access/config','/api/access/validate','/game.html']);assert.equal(h.w.PokemonAccess.valid,true);});
 test('a cached visitor rejected by the background access log loses both key and verification receipt',async t=>{const now=Date.now(),h=await gate({key:DEVICE,now,receipt:{deviceKey:DEVICE,checkedAt:now-1000},responses:{'/api/access/profile':{reason:'invalid_device'}}});t.after(h.close);await waitFor(()=>h.w.localStorage.getItem('pokemon-party-device-key')===null);assert.equal(h.w.localStorage.getItem('pokemon-party-last-verification'),null);assert.equal(h.$('h1').textContent,'파티 초대장이 필요합니다');});
+
+test('share management stays separate from activity tabs and confirms permanent deletion',async t=>{
+ const shareId='d'.repeat(64),deviceId='e'.repeat(32),stamp='2026-10-08T00:00:00Z';
+ const h=await admin({session:{access:'access',expires:Date.now()+1800000},data:{
+  '/api/admin/shares':{items:[{shareId,label:'친구들',status:'active',createdAt:stamp,expiresAt:Date.now()/1000+86400,claimCount:1,url:'https://pokemon.pir.kr/'+SHARE}],nextCursor:'share-next'},
+  '/api/admin/devices':{items:[{deviceId,trainerName:'지우',status:'active',createdAt:stamp,lastSeenAt:stamp,visitCount:1}],nextCursor:'device-next'},
+  '/api/admin/shares?cursor=share-next':{items:[],nextCursor:null},'/api/admin/visits':{items:[],nextCursor:null}
+ }});t.after(h.close);
+ assert.equal(h.$('.admin-header').hidden,false);assert.equal(h.$('[data-admin-tab="shares"]'),null);
+ assert.ok(h.$('#shares-panel [data-share-delete]'));assert.ok(h.$('#activity-panel .admin-device-id').textContent.includes(deviceId));
+ h.w.confirm=()=>false;h.$('[data-share-delete]').click();await flush();assert.ok(!h.calls.some(c=>c.options.method==='DELETE'));
+ h.w.confirm=()=>true;h.$('[data-share-delete]').click();for(let i=0;i<5;i++)await flush();
+ const deletion=h.calls.find(c=>c.options.method==='DELETE');assert.equal(deletion.url,'/api/admin/shares/'+shareId);assert.equal(deletion.options.headers.authorization,'Bearer access');
+ h.$('[data-panel-next="shares"]').click();for(let i=0;i<5;i++)await flush();assert.equal(h.calls.at(-1).url,'/api/admin/shares?cursor=share-next');
+ h.$('[data-panel-refresh="activity"]').click();for(let i=0;i<5;i++)await flush();assert.equal(h.calls.at(-1).url,'/api/admin/devices');
+ h.$('[data-admin-tab="visits"]').click();for(let i=0;i<5;i++)await flush();assert.equal(h.calls.at(-1).url,'/api/admin/visits');
+ h.$('[data-panel-prev="shares"]').click();for(let i=0;i<5;i++)await flush();assert.equal(h.calls.at(-1).url,'/api/admin/shares');assert.ok(h.$('[data-admin-tab="visits"]').classList.contains('active'));
+});
