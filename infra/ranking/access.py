@@ -228,7 +228,7 @@ def dispatch(event, storage=None, now=None, signer=None):
             previous=storage.get(device['lastVisitId']) if device.get('lastVisitId') else None
             if previous and not previous.get('trainerName'):storage.update(previous['id'],{'trainerName':name})
             return 200,{'valid':True,'device':public_device(row)},None
-        if data.get('recordVisit',True):
+        if data.get('recordVisit',True) and name:
             visit={'id':'visit#'+uuid.uuid4().hex,'kind':'visit','deviceId':device['deviceId'],'trainerName':name,'createdAt':iso(now),'visitedAt':now,'userAgent':str(headers.get('user-agent',''))[:240]}
             def touch(current):
                 try:return storage.touch(current,{'lastSeenAt':visit['createdAt'],'trainerName':name,'userAgent':visit['userAgent']})

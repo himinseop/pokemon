@@ -51,3 +51,11 @@ test('administrator page tabs isolate invitations and activity and confirm perma
  h.$('[data-admin-tab="visits"]').click();for(let i=0;i<5;i++)await flush();assert.equal(h.calls.at(-1).url,'/api/admin/visits');
  h.$('[data-admin-page="shares"]').click();for(let i=0;i<5;i++)await flush();h.$('[data-panel-prev="shares"]').click();for(let i=0;i<5;i++)await flush();assert.equal(h.calls.at(-1).url,'/api/admin/shares');assert.ok(h.$('[data-admin-tab="visits"]').classList.contains('active'));
 });
+
+test('finishing trainer entry requests the first named visit without renewing invitation verification',async t=>{
+ const now=Date.now(),h=await gate({key:DEVICE,now,receipt:{deviceKey:DEVICE,checkedAt:now-1000}});t.after(h.close);
+ h.w.localStorage.setItem('pokemon-play-trainer-name','지우');await h.w.PokemonAccess.reportTrainer();
+ const named=h.calls.filter(c=>c.url==='/api/access/profile').find(c=>JSON.parse(c.options.body).trainerName==='지우');
+ assert.ok(named);assert.equal(JSON.parse(named.options.body).recordVisit,true);assert.ok(!h.calls.some(c=>c.url==='/api/access/validate'));
+ assert.equal(JSON.parse(h.w.localStorage.getItem('pokemon-party-last-verification')).checkedAt,now-1000);
+});

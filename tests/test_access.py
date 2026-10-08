@@ -71,9 +71,16 @@ class AccessTests(unittest.TestCase):
         _,key,device=self.device();self.call('/api/access/validate',data={'deviceKey':key,'trainerName':'지우'})
         visits=self.call('/api/admin/visits','GET',admin=True)[1]['items'];self.assertEqual(len(visits),1);self.assertEqual(visits[0]['trainerName'],'지우');self.assertEqual(visits[0]['userAgent'],'iPhone Safari')
         self.call('/api/access/validate',data={'deviceKey':key,'recordVisit':False},now=self.now+600);self.assertEqual(self.db.get('device#'+device['deviceId'])['visitCount'],1)
-    def test_name_entered_after_first_visit_updates_device_and_initial_visit(self):
-        _,key,device=self.device();self.call('/api/access/validate',data={'deviceKey':key});self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'피카츄'})
-        self.assertEqual(self.db.get('device#'+device['deviceId'])['trainerName'],'피카츄');self.assertEqual(self.call('/api/admin/visits','GET',admin=True)[1]['items'][0]['trainerName'],'피카츄')
+    def test_first_visit_is_recorded_only_after_trainer_name_is_entered(self):
+        _,key,device=self.device()
+        self.call('/api/access/validate',data={'deviceKey':key})
+        self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'  ','recordVisit':True})
+        self.assertEqual(self.db.list('visit')[0],[]);self.assertEqual(self.db.get('device#'+device['deviceId'])['visitCount'],0)
+        self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'피카츄','recordVisit':True})
+        self.assertEqual(self.db.get('device#'+device['deviceId'])['trainerName'],'피카츄')
+        self.assertEqual(self.call('/api/admin/visits','GET',admin=True)[1]['items'][0]['trainerName'],'피카츄')
+        self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'지우','recordVisit':True},now=self.now+60)
+        self.assertEqual(len(self.db.list('visit')[0]),1);self.assertEqual(self.db.get('device#'+device['deviceId'])['trainerName'],'지우')
     def test_block_delete_and_unblock_recheck_key_and_clear_signed_cookies(self):
         _,key,device=self.device();url='/api/admin/devices/'+device['deviceId'];self.call(url,'PATCH',{'action':'block'},admin=True)
         result=handler.handle(event('/api/access/validate',data={'deviceKey':key}),access_storage=self.db)
@@ -104,7 +111,7 @@ class AccessTests(unittest.TestCase):
         self.assertEqual(error.exception.reason,'invalid_invite');self.assertEqual(self.db.list('device')[0],[])
     def test_device_blocked_during_visit_is_denied(self):
         _,key,device=self.device();self.db.race=lambda db:db.update('device#'+device['deviceId'],{'status':'blocked'})
-        with self.assertRaises(access.AccessError) as error:self.call('/api/access/validate',data={'deviceKey':key})
+        with self.assertRaises(access.AccessError) as error:self.call('/api/access/validate',data={'deviceKey':key,'trainerName':'지우'})
         self.assertEqual(error.exception.reason,'invalid_device');self.assertEqual(self.db.list('visit')[0],[])
     def test_background_visit_records_access_without_extending_cookie_session(self):
         _,key,device=self.device()
@@ -130,10 +137,10 @@ class AccessTests(unittest.TestCase):
             db.put({'id':'visit#other','kind':'visit','deviceId':device['deviceId'],'trainerName':'지우','createdAt':access.iso(self.now)})
             db.update('device#'+device['deviceId'],{'lastVisitAt':self.now,'visitCount':1})
         self.db.race=race
-        self.assertTrue(self.call('/api/access/profile',data={'deviceKey':key,'recordVisit':True})[1]['valid'])
+        self.assertTrue(self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'지우','recordVisit':True})[1]['valid'])
         self.assertEqual(len(self.db.list('visit')[0]),1);self.assertEqual(self.db.get('device#'+device['deviceId'])['visitCount'],1)
     def test_short_reload_window_still_rejects_blocked_devices(self):
-        _,key,device=self.device();self.call('/api/access/profile',data={'deviceKey':key,'recordVisit':True})
+        _,key,device=self.device();self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'지우','recordVisit':True})
         self.call('/api/admin/devices/'+device['deviceId'],'PATCH',{'action':'block'},admin=True)
         with self.assertRaises(access.AccessError):self.call('/api/access/profile',data={'deviceKey':key,'recordVisit':True},now=self.now+10)
         self.assertEqual(len(self.db.list('visit')[0]),1)

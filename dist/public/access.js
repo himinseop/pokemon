@@ -55,7 +55,7 @@
   }catch(error){if(error.invalid)clearKey();invitation(error.message||'초대장을 확인하지 못했어. 다시 해볼까?',!error.invalid&&!error.invite);}
   finally{requestBusy=false;}
  }
- window.PokemonAccess={get required(){return !!config?.enabled;},get valid(){return valid;},headers:()=>currentKey?{'x-device-key':currentKey}:{},revoked(){clearKey();request('/api/access/logout',{}).catch(()=>{});invitation();},async reportTrainer(){if(!currentKey)return;try{await request('/api/access/profile',{deviceKey:currentKey,trainerName:trainer()});}catch(error){if(error.invalid)this.revoked();}}};
+ window.PokemonAccess={get required(){return !!config?.enabled;},get valid(){return valid;},headers:()=>currentKey?{'x-device-key':currentKey}:{},revoked(){clearKey();request('/api/access/logout',{}).catch(()=>{});invitation();},async reportTrainer(){if(!currentKey)return;try{await request('/api/access/profile',{deviceKey:currentKey,trainerName:trainer(),recordVisit:true});}catch(error){if(error.invalid)this.revoked();}}};
  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh();});
  document.addEventListener('click',event=>event.target.closest('button')?.blur());
  begin();
