@@ -19,6 +19,7 @@ import rsa
 
 SHARE_SECONDS = 3 * 86400
 SESSION_SECONDS = 8 * 60 * 60
+VISIT_SECONDS = 30 * 60
 DEVICE_PATTERN = re.compile(r'^[a-f0-9]{32}\.[A-Za-z0-9_-]{43}$')
 SHARE_PATTERN = re.compile(r'^[A-Za-z0-9_-]{43}$')
 COOKIES = ('CloudFront-Policy', 'CloudFront-Signature', 'CloudFront-Key-Pair-Id', 'CloudFront-Hash-Algorithm')
@@ -98,13 +99,17 @@ class DynamoStore:
             {'Update': {'TableName':self.name, 'Key':{'id':serialize('share#'+share_id)}, 'UpdateExpression':'ADD claimCount :one', 'ConditionExpression':'#status=:active AND expiresAt>:now', 'ExpressionAttributeNames':{'#status':'status'}, 'ExpressionAttributeValues':{':one':serialize(1),':active':serialize('active'),':now':serialize(now)}}},
             {'Put': {'TableName':self.name, 'Item':{k:serialize(v) for k,v in device.items()}, 'ConditionExpression':'attribute_not_exists(id)'}}
         ])
+    def touch(self, device, values):
+        names = {f'#n{i}':name for i,name in enumerate(values)} | {'#status':'status'}
+        params = {f':v{i}':value for i,value in enumerate(values.values())} | {':active':'active'}
+        return self.table.update_item(Key={'id':device['id']},ConditionExpression='#status=:active',UpdateExpression='SET '+', '.join(f'#n{i}=:v{i}' for i in range(len(values))),ExpressionAttributeNames=names,ExpressionAttributeValues=params,ReturnValues='ALL_NEW')['Attributes']
     def visit(self, device, visit):
         serialize = lambda value: self.serializer.serialize(value)
-        updates = {'lastSeenAt':visit['createdAt'], 'lastVisitId':visit['id'], 'trainerName':visit['trainerName'], 'userAgent':visit['userAgent']}
+        updates = {'lastSeenAt':visit['createdAt'], 'lastVisitId':visit['id'], 'lastVisitAt':visit['visitedAt'], 'trainerName':visit['trainerName'], 'userAgent':visit['userAgent']}
         names = {'#status':'status',**{f'#n{i}':key for i,key in enumerate(updates)}}
-        values = {':active':serialize('active'),':one':serialize(1),**{f':v{i}':serialize(v) for i,v in enumerate(updates.values())}}
+        values = {':active':serialize('active'),':one':serialize(1),':cutoff':serialize(visit['visitedAt']-VISIT_SECONDS),**{f':v{i}':serialize(v) for i,v in enumerate(updates.values())}}
         self.client.transact_write_items(TransactItems=[
-            {'Update': {'TableName':self.name,'Key':{'id':serialize(device['id'])},'UpdateExpression':'SET '+', '.join(f'#n{i}=:v{i}' for i in range(len(updates)))+' ADD visitCount :one','ConditionExpression':'#status=:active','ExpressionAttributeNames':names,'ExpressionAttributeValues':values}},
+            {'Update': {'TableName':self.name,'Key':{'id':serialize(device['id'])},'UpdateExpression':'SET '+', '.join(f'#n{i}=:v{i}' for i in range(len(updates)))+' ADD visitCount :one','ConditionExpression':'#status=:active AND (attribute_not_exists(lastVisitAt) OR lastVisitAt<=:cutoff)','ExpressionAttributeNames':names,'ExpressionAttributeValues':values}},
             {'Put': {'TableName':self.name,'Item':{k:serialize(v) for k,v in visit.items()},'ConditionExpression':'attribute_not_exists(id)'}}
         ])
 
@@ -224,12 +229,24 @@ def dispatch(event, storage=None, now=None, signer=None):
             if previous and not previous.get('trainerName'):storage.update(previous['id'],{'trainerName':name})
             return 200,{'valid':True,'device':public_device(row)},None
         if data.get('recordVisit',True):
-            visit={'id':'visit#'+uuid.uuid4().hex,'kind':'visit','deviceId':device['deviceId'],'trainerName':name,'createdAt':iso(now),'userAgent':str(headers.get('user-agent',''))[:240]}
-            try:storage.visit(device,visit)
-            except Exception as error:
-                if getattr(error,'response',{}).get('Error',{}).get('Code') in ['TransactionCanceledException','ConditionalCheckFailedException']:raise AccessError(403,'파티 초대장이 필요합니다','invalid_device')
-                raise
-            device={**device,'trainerName':name,'lastSeenAt':visit['createdAt'],'visitCount':device.get('visitCount',0)+1}
+            visit={'id':'visit#'+uuid.uuid4().hex,'kind':'visit','deviceId':device['deviceId'],'trainerName':name,'createdAt':iso(now),'visitedAt':now,'userAgent':str(headers.get('user-agent',''))[:240]}
+            def touch(current):
+                try:return storage.touch(current,{'lastSeenAt':visit['createdAt'],'trainerName':name,'userAgent':visit['userAgent']})
+                except Exception as error:
+                    if getattr(error,'response',{}).get('Error',{}).get('Code')=='ConditionalCheckFailedException':raise AccessError(403,'파티 초대장이 필요합니다','invalid_device')
+                    raise
+            if device.get('lastVisitAt',0)>now-VISIT_SECONDS:
+                device=touch(device)
+            else:
+                try:
+                    storage.visit(device,visit)
+                    device={**device,'trainerName':name,'lastSeenAt':visit['createdAt'],'lastVisitAt':now,'visitCount':device.get('visitCount',0)+1}
+                except Exception as error:
+                    if getattr(error,'response',{}).get('Error',{}).get('Code') not in ['TransactionCanceledException','ConditionalCheckFailedException']:raise
+                    # Concurrent reloads must not create separate visits in the same window.
+                    current=require_device(data.get('deviceKey'),storage,now)
+                    if current.get('lastVisitAt',0)<=now-VISIT_SECONDS:raise
+                    device=touch(current)
         return 200,{'valid':True,'device':public_device(device)},None if path.endswith('/profile') else signed_cookies(now,signer)
     if method=='POST' and path=='/api/access/logout':return 200,{'loggedOut':True},clear_cookies()
     raise AccessError(404,'초대 기능을 찾지 못했어.')

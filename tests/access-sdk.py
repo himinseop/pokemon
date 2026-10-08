@@ -21,10 +21,20 @@ class TransactionSdkTests(unittest.TestCase):
         self.assertEqual(grant['ExpressionAttributeValues'][':now'],{'N':'100'});self.assertIn('expiresAt>:now',grant['ConditionExpression']);self.assertEqual(items[1]['Put']['Item']['visitCount'],{'N':'0'})
         self.stub.assert_no_pending_responses()
     def test_visit_is_atomic_and_checks_that_device_is_still_active(self):
-        visit={'id':'visit#id','createdAt':'2026-10-08T00:00:00Z','trainerName':'지우','userAgent':'Safari'}
+        visit={'id':'visit#id','createdAt':'2026-10-08T00:00:00Z','trainerName':'지우','userAgent':'Safari','visitedAt':1791400000}
         self.db.visit({'id':'device#id'},visit);items=self.requests[0]['TransactItems'];grant=items[0]['Update']
-        self.assertEqual(grant['Key']['id'],{'S':'device#id'});self.assertEqual(grant['ExpressionAttributeValues'][':active'],{'S':'active'});self.assertEqual(grant['ConditionExpression'],'#status=:active')
+        self.assertEqual(grant['Key']['id'],{'S':'device#id'});self.assertEqual(grant['ExpressionAttributeValues'][':active'],{'S':'active'});self.assertIn('#status=:active',grant['ConditionExpression']);self.assertIn('lastVisitAt<=:cutoff',grant['ConditionExpression']);self.assertEqual(grant['ExpressionAttributeValues'][':cutoff'],{'N':str(1791400000-access.VISIT_SECONDS)})
         self.assertEqual(items[1]['Put']['Item']['trainerName'],{'S':'지우'});self.stub.assert_no_pending_responses()
+
+    def test_refresh_touches_active_device_without_creating_a_visit(self):
+        self.stub.deactivate();requests=[]
+        self.db.table.meta.client.meta.events.register('before-parameter-build.dynamodb.UpdateItem',lambda params,**_:requests.append(params.copy()))
+        with Stubber(self.db.table.meta.client) as stub:
+            stub.add_response('update_item',{'Attributes':{'id':{'S':'device#id'},'lastSeenAt':{'S':'2026-10-08T01:00:00Z'},'visitCount':{'N':'1'}}})
+            row=self.db.touch({'id':'device#id'},{'lastSeenAt':'2026-10-08T01:00:00Z'})
+            self.assertEqual(row['visitCount'],1);self.assertEqual(row['lastSeenAt'],'2026-10-08T01:00:00Z')
+            self.assertEqual(requests[0]['ConditionExpression'],'#status=:active');self.assertEqual(self.requests,[])
+            stub.assert_no_pending_responses()
 
 
 unittest.main()

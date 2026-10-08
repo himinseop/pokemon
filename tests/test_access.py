@@ -32,10 +32,14 @@ class MemoryStore:
         share=self.items['share#'+share_id]
         if share['status']!='active' or share['expiresAt']<=now:raise Conflict()
         self.put(device);share['claimCount']+=1
+    def touch(self,device,values):
+        if self.items.get(device['id'],{}).get('status')!='active':
+            error=Conflict();error.response={'Error':{'Code':'ConditionalCheckFailedException'}};raise error
+        return self.update(device['id'],values)
     def visit(self,device,row):
         if self.race:self.race(self);self.race=None
-        if self.items.get(device['id'],{}).get('status')!='active':raise Conflict()
-        self.put(row);self.update(device['id'],{'lastVisitId':row['id'],'lastSeenAt':row['createdAt'],'visitCount':device.get('visitCount',0)+1,'trainerName':row['trainerName'],'userAgent':row['userAgent']})
+        if self.items.get(device['id'],{}).get('status')!='active' or self.items[device['id']].get('lastVisitAt',0)>row['visitedAt']-access.VISIT_SECONDS:raise Conflict()
+        self.put(row);self.update(device['id'],{'lastVisitId':row['id'],'lastVisitAt':row['visitedAt'],'lastSeenAt':row['createdAt'],'visitCount':device.get('visitCount',0)+1,'trainerName':row['trainerName'],'userAgent':row['userAgent']})
 
 
 def event(path,method='POST',data=None,claims=None,headers=None):
@@ -109,6 +113,30 @@ class AccessTests(unittest.TestCase):
         self.assertEqual(self.call('/api/admin/visits','GET',admin=True)[1]['items'][0]['trainerName'],'지우')
         self.call('/api/admin/devices/'+device['deviceId'],'PATCH',{'action':'block'},admin=True)
         with self.assertRaises(access.AccessError):self.call('/api/access/profile',data={'deviceKey':key,'recordVisit':True})
+    def test_reloads_coalesce_for_thirty_minutes_while_last_seen_keeps_updating(self):
+        _,key,device=self.device()
+        for seconds in [0,1,60,1799]:
+            self.call('/api/access/profile',data={'deviceKey':key,'trainerName':'지우','recordVisit':True},now=self.now+seconds)
+        self.assertEqual(len(self.db.list('visit')[0]),1)
+        row=self.db.get('device#'+device['deviceId'])
+        self.assertEqual(row['visitCount'],1);self.assertEqual(row['lastSeenAt'],access.iso(self.now+1799));self.assertEqual(row['lastVisitAt'],self.now)
+        self.call('/api/access/validate',data={'deviceKey':key,'recordVisit':True},now=self.now+1800)
+        self.assertEqual(len(self.db.list('visit')[0]),2)
+        self.call('/api/access/validate',data={'deviceKey':key,'recordVisit':False},now=self.now+3600)
+        self.assertEqual(len(self.db.list('visit')[0]),2)
+    def test_concurrent_reload_does_not_duplicate_visit(self):
+        _,key,device=self.device()
+        def race(db):
+            db.put({'id':'visit#other','kind':'visit','deviceId':device['deviceId'],'trainerName':'지우','createdAt':access.iso(self.now)})
+            db.update('device#'+device['deviceId'],{'lastVisitAt':self.now,'visitCount':1})
+        self.db.race=race
+        self.assertTrue(self.call('/api/access/profile',data={'deviceKey':key,'recordVisit':True})[1]['valid'])
+        self.assertEqual(len(self.db.list('visit')[0]),1);self.assertEqual(self.db.get('device#'+device['deviceId'])['visitCount'],1)
+    def test_short_reload_window_still_rejects_blocked_devices(self):
+        _,key,device=self.device();self.call('/api/access/profile',data={'deviceKey':key,'recordVisit':True})
+        self.call('/api/admin/devices/'+device['deviceId'],'PATCH',{'action':'block'},admin=True)
+        with self.assertRaises(access.AccessError):self.call('/api/access/profile',data={'deviceKey':key,'recordVisit':True},now=self.now+10)
+        self.assertEqual(len(self.db.list('visit')[0]),1)
     def test_wrong_secret_cannot_impersonate_known_device(self):
         _,key,_=self.device();forged=key.split('.')[0]+'.'+'z'*43
         with self.assertRaises(access.AccessError):access.require_device(forged,self.db,self.now)
