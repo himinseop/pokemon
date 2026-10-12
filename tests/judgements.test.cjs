@@ -203,7 +203,7 @@ test('an expired bonus invites an available hint and stops nudging after hint, a
 
 test('time attack mixes familiar and full pools by difficulty without duplicates or boundary repeats',async t=>{
  const h=await harness();t.after(h.close);
- for(const [level,knownSlots] of [['easy',8],['normal',2],['hard',5]]){
+ for(const [level,knownSlots] of [['easy',9],['normal',5],['hard',5]]){
   const result=h.w.qa(`(()=>{const original=Math.random;let seed=713;Math.random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);try{const g={mode:'time',difficulty:'${level}',pool:pokemon,question:null};let familiarCount=0,minKnown=10,valid=true;for(let i=0;i<200;i++){const deck=questionDeck(g);const count=deck.filter(p=>familiar.includes(p.id)).length;familiarCount+=count;minKnown=Math.min(minKnown,count);valid&&=deck.length===10&&new Set(deck.map(p=>p.id)).size===10&&!deck.some(p=>p.id===g.question?.id);g.question=deck[0];}return {familiarCount,minKnown,valid};}finally{Math.random=original;}})()`);
   assert.equal(result.valid,true);assert.ok(result.minKnown>=knownSlots);assert.ok(result.familiarCount>=knownSlots*200&&result.familiarCount<=(knownSlots+.5)*200);
   await h.start('time',level);assert.equal(h.game().pool.length,1025);assert.equal(h.w.document.querySelectorAll('.difficulty-time small').length,0);

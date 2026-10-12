@@ -3,7 +3,7 @@ const app=document.querySelector('#app');
 const difficulties={easy:{label:'쉬움',multiplier:1},normal:{label:'보통',multiplier:2},hard:{label:'어려움',multiplier:3}};
 const familiar=[1,2,3,4,5,6,7,8,9,12,16,25,26,35,37,39,52,54,58,63,66,74,79,92,94,95,104,113,129,130,131,132,133,134,135,136,143,144,145,146,149,150,151];
 const MASTER_BONUS_DURATION=20000;
-const TIME_FAMILIAR_SLOTS={easy:8,normal:2,hard:5};
+const TIME_FAMILIAR_SLOTS={easy:9,normal:5,hard:5};
 let pokemon=[],pokemonById=new Map(),evolutionFamilies=new Map(),pokedexManifest=null,view='play',mode='time',difficulty='easy',game=null,ticker=null,advance=null,judgementTimer=null,recordTab='time-easy',search='',typeFilter='',sort='number',regionFilter='',regionGroups=[];
 const judgementAssets={good:'assets/judgements/good.png',great:'assets/judgements/great.png',perfect:'assets/judgements/perfect.png',awesome:'assets/judgements/awesome.png',fail:'assets/judgements/fail.png'};
 const judgementPreloads=Object.values(judgementAssets).map(src=>{const image=new Image();image.src=src;return image;});
