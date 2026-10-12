@@ -61,4 +61,34 @@ class TransactionSdkTests(unittest.TestCase):
             stub.assert_no_pending_responses()
 
 
+class RankingHistorySdkTests(unittest.TestCase):
+    def setUp(self):
+        import boto3
+        import handler
+        self.handler=handler;self.table=boto3.resource('dynamodb').Table('pokemon-test-rankings');self.requests=[]
+        self.table.meta.client.meta.events.register('before-parameter-build.dynamodb.PutItem',lambda params,**_:self.requests.append(params.copy()))
+        self.record={'id':'sdk-history-record1','name':'지우','mode':'easy','score':100,'correct':1,'total':1,'date':'2026-10-12T00:00:00Z','deviceId':'a'*32,'userAgent':'Safari','partnerId':25}
+
+    def test_archive_serializes_nested_original_without_mutating_it(self):
+        import copy
+        before=copy.deepcopy(self.record)
+        with Stubber(self.table.meta.client) as stub:
+            stub.add_response('put_item',{})
+            self.assertEqual(self.handler.archive_record(self.table,self.record),before)
+            request=self.requests[0];self.assertEqual(request['Item']['mode'],{'S':'history#easy#sdk-history-record1'})
+            self.assertEqual(request['Item']['record']['M']['score'],{'N':'100'})
+            self.assertEqual(request['Item']['record']['M']['deviceId'],{'S':'a'*32})
+            self.assertEqual(request['ConditionExpression'],'attribute_not_exists(#mode)')
+            self.assertEqual(self.record,before);stub.assert_no_pending_responses()
+
+    def test_existing_archive_is_read_after_conditional_failure_and_not_overwritten(self):
+        from boto3.dynamodb.types import TypeSerializer
+        serializer=TypeSerializer();item={'mode':'history#easy#sdk-history-record1','boardMode':'easy','record':self.record}
+        with Stubber(self.table.meta.client) as stub:
+            stub.add_client_error('put_item',service_error_code='ConditionalCheckFailedException')
+            stub.add_response('get_item',{'Item':{k:serializer.serialize(v) for k,v in item.items()}})
+            result=self.handler.archive_record(self.table,self.record)
+            self.assertEqual(result,self.record);stub.assert_no_pending_responses()
+
+
 unittest.main()

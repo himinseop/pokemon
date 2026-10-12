@@ -17,12 +17,15 @@ class Conflict(Exception):
 
 class Table:
     def __init__(self):
-        self.items, self.writes, self.conflict = {}, 0, None
+        self.items, self.writes, self.archive_writes, self.conflict = {}, 0, 0, None
     def get_item(self, Key, ConsistentRead):
         assert ConsistentRead
         return {'Item': copy.deepcopy(self.items[Key['mode']])} if Key['mode'] in self.items else {}
     def put_item(self, **kwargs):
         item = kwargs['Item']; key = item['mode']
+        if key.startswith('history#'):
+            if key in self.items: raise Conflict()
+            self.items[key] = copy.deepcopy(item); self.archive_writes += 1; return
         if self.conflict:
             callback, self.conflict = self.conflict, None
             callback(self)
@@ -50,6 +53,127 @@ class Rankings(unittest.TestCase):
         payload = {'id': 'record-number-00000001', 'name': '피카츄', 'mode': 'time-easy', 'results': [True, True, False, True]}
         payload.update(overrides)
         return self.request(method='POST', path='/api/scores', payload=payload)
+    def test_optional_partner_is_validated_and_kept_with_the_saved_game(self):
+        for partner in [None,1,25,1025]:
+            with self.subTest(partner=partner):
+                status,data=self.submit(id=f'partner-record-{str(partner):0>8}',partnerId=partner)
+                self.assertEqual(status,200);self.assertEqual(data['record']['partnerId'],partner)
+                self.assertEqual(next(r for r in self.request()[1]['entries'] if r['id']==data['record']['id'])['partnerId'],partner)
+        before=copy.deepcopy(self.table.items)
+        for partner in [True,False,0,-1,1026,25.5,'25',{},[], 'https://example.com/image.png']:
+            status,_=self.submit(id='invalid-partner-0001',partnerId=partner)
+            self.assertEqual(status,400);self.assertEqual(self.table.items,before)
+
+    def test_partner_retries_preserve_snapshots_and_old_records_are_not_migrated(self):
+        status,data=self.submit(partnerId=25);self.assertEqual(status,200);original=copy.deepcopy(self.table.items)
+        self.assertEqual(self.submit(partnerId=25)[1]['record'],data['record']);self.assertEqual(self.table.items,original)
+        self.assertEqual(self.submit(partnerId=133)[0],409);self.assertEqual(self.table.items,original)
+        self.assertEqual(self.submit()[1]['record'],data['record']);self.assertEqual(self.table.items,original)
+        old={'id':'legacy-partner-0001','name':'이슬','mode':'time-easy','score':310,'correct':3,'total':4,'date':'2026-10-01T00:00:00Z'}
+        self.table.items['time-easy']['entries'].append(old);snapshot=copy.deepcopy(self.table.items)
+        self.request();self.assertEqual(self.table.items,snapshot)
+        status,result=self.submit(id=old['id'],name=old['name'],partnerId=None)
+        self.assertEqual(status,200);self.assertEqual(result['record'],old);self.assertNotIn('partnerId',result['record']);self.assertEqual(self.table.items,snapshot)
+
+    def test_each_name_keeps_one_highest_record_and_equal_scores_use_the_new_attempt(self):
+        first=self.submit(id='best-record-first-001',name='지우',results=[True]*3)[1]['record']
+        before=copy.deepcopy(self.table.items);writes=self.table.writes
+        status,data=self.submit(id='best-record-lower-001',name='지우',results=[True])
+        self.assertEqual(status,200);self.assertTrue(data['keptBest']);self.assertEqual(data['record'],first)
+        self.assertEqual(self.table.items['time-easy'],before['time-easy']);self.assertEqual(self.table.writes,writes)
+        self.assertEqual(handler.archived_record(self.table,'time-easy','best-record-lower-001')['score'],100)
+        higher=self.submit(id='best-record-higher-01',name='지우',results=[True]*4)[1]['record']
+        self.assertEqual(len(self.request()[1]['entries']),1);self.assertEqual(higher['score'],460)
+        equal=self.submit(id='best-record-equal-001',name=' 지우 ',results=[True]*4)[1]['record']
+        self.assertEqual(equal['id'],'best-record-equal-001');self.assertEqual(self.request()[1]['entries'],[equal])
+        self.assertEqual(self.submit(id=equal['id'],name='지우',results=[True]*4)[1]['record'],equal)
+        self.submit(id='best-record-sibling1',name='이슬',results=[True]*2)
+        self.assertEqual(len(self.request()[1]['entries']),2)
+        self.submit(id='best-record-othermod',name='지우',mode='hard',results=[True])
+        self.assertEqual(len(self.request(mode='hard')[1]['entries']),1)
+
+    def test_legacy_duplicates_are_hidden_without_any_read_time_database_writes(self):
+        high={'id':'legacy-highest-001','name':'Mina','mode':'easy','score':300,'correct':3,'total':3,'date':'2026-10-07T00:00:00Z'}
+        lower={**high,'id':'legacy-lower-0001','name':' Ｍｉｎａ ','score':100,'correct':1,'total':1}
+        newer={**high,'id':'legacy-newest-001','name':'mina','date':'2026-10-08T00:00:00Z'}
+        self.table.items['easy']={'mode':'easy','version':9,'entries':[lower,high,newer]};before=copy.deepcopy(self.table.items)
+        self.assertEqual(self.request(mode='easy')[1]['entries'],[newer]);self.assertEqual(self.table.items,before);self.assertEqual(self.table.writes,0)
+        parsed=handler.parse_submission(event(method='POST',path='/api/scores',payload={'id':lower['id'],'name':'Mina','mode':'easy','results':[True]}))
+        # An exact retry of a hidden older record must resolve to the winner.
+        parsed['name']=lower['name']
+        result=handler.save(self.table,parsed);self.assertEqual(result['record'],newer);self.assertTrue(result['keptBest']);self.assertEqual(self.table.items,before)
+
+    def test_concurrent_higher_score_wins_without_losing_another_trainer(self):
+        first=self.submit(id='initial-best-record1',name='지우',results=[True])[1]['record']
+        other={**first,'id':'other-best-record001','name':'이슬','score':200}
+        higher={**first,'id':'racing-best-record01','score':1000}
+        def race(table):table.items['time-easy']={'mode':'time-easy','version':2,'entries':[higher,other]}
+        self.table.conflict=race
+        result=self.submit(id='racing-lower-record1',name='지우',results=[True]*3)[1]
+        self.assertTrue(result['keptBest']);self.assertEqual(result['record'],higher);self.assertEqual([r['name'] for r in result['entries']],['지우','이슬'])
+
+    def test_device_context_uses_verified_grant_and_is_not_public_or_client_supplied(self):
+        import types
+        from unittest.mock import Mock
+        token='a'*32+'.'+'b'*43;verify=Mock(return_value={'deviceId':'a'*32})
+        fake_access=types.SimpleNamespace(require_device=verify)
+        request=event(method='POST',path='/api/scores',payload={'id':'device-record-000001','name':'지우','mode':'time-easy','results':[True],'deviceId':'forged','userAgent':'forged'})
+        request['headers'].update({'x-device-key':token,'user-agent':'Safari '+ 'x'*300,'x-preview-device-id':'c'*32})
+        with patch.dict('sys.modules',{'access':fake_access}),patch.dict('os.environ',{'AUTH_REQUIRED':'1'}):
+            result=handler.handle(request,storage=self.table,access_storage='verified-storage')
+            self.assertEqual(result['statusCode'],200);verify.assert_called_once_with(token,'verified-storage')
+            stored=self.table.items['time-easy']['entries'][0];self.assertEqual(stored['deviceId'],'a'*32);self.assertEqual(len(stored['userAgent']),240)
+            public=json.loads(result['body']);self.assertNotIn('deviceId',public['record']);self.assertNotIn('userAgent',public['entries'][0]);self.assertNotIn(token,result['body'])
+            got=handler.handle(event(),storage=self.table,access_storage='verified-storage')
+            self.assertNotIn('deviceId',json.loads(got['body'])['entries'][0])
+        original=copy.deepcopy(stored)
+        self.submit(id=stored['id'],name='지우',results=[True]);self.assertEqual(self.table.items['time-easy']['entries'][0],original)
+
+    def test_grouping_archives_every_original_row_before_replacing_the_board(self):
+        old={'id':'archive-original-001','name':'지우','mode':'easy','score':100,'correct':1,'total':1,'date':'2026-10-01T00:00:00Z','deviceId':'old-device','userAgent':'Old browser','partnerId':25}
+        duplicate={**old,'id':'archive-duplicate-01','score':200,'correct':2,'total':2}
+        friend={**old,'id':'archive-friend-0001','name':'이슬','partnerId':7}
+        self.table.items['easy']={'mode':'easy','version':3,'entries':[old,duplicate,friend],'legacyNote':'keep this too'}
+        result=self.submit(id='archive-new-best001',name='지우',mode='easy',results=[True]*3)[1]
+        self.assertEqual(len(result['entries']),2);self.assertEqual(self.table.items['easy']['legacyNote'],'keep this too')
+        for original in [old,duplicate,friend]:self.assertEqual(handler.archived_record(self.table,'easy',original['id']),original)
+        self.assertIsNotNone(handler.archived_record(self.table,'easy','archive-new-best001'))
+        self.assertEqual(len(self.table.items['easy']['archivedIds']),2)
+
+    def test_archive_failure_never_discards_original_board_and_retry_succeeds(self):
+        original={'id':'backup-failure-old1','name':'지우','mode':'easy','score':100,'correct':1,'total':1,'date':'2026-10-01T00:00:00Z'}
+        self.table.items['easy']={'mode':'easy','version':1,'entries':[original]};before=copy.deepcopy(self.table.items['easy'])
+        real_put=self.table.put_item;failed=False
+        def fail_once(**kwargs):
+            nonlocal failed
+            if kwargs['Item']['mode']==handler.history_key('easy',original['id']) and not failed:
+                failed=True;raise RuntimeError('archive unavailable')
+            return real_put(**kwargs)
+        with patch.object(self.table,'put_item',side_effect=fail_once):
+            self.assertEqual(self.submit(id='backup-failure-new1',name='지우',mode='easy',results=[True]*3)[0],503)
+            self.assertEqual(self.table.items['easy'],before)
+            result=self.submit(id='backup-failure-new1',name='지우',mode='easy',results=[True]*3)[1]
+            self.assertEqual(result['record']['score'],300)
+        self.assertEqual(handler.archived_record(self.table,'easy',original['id']),original)
+
+    def test_history_keeps_more_than_twenty_attempts_without_growing_the_board_item(self):
+        for i in range(30):self.submit(id=f'archive-attempt-{i:04d}',name='지우',results=[True]*(i+1))
+        self.assertEqual(len(self.request()[1]['entries']),1)
+        self.assertEqual(len([key for key in self.table.items if key.startswith('history#')]),30)
+        old=copy.deepcopy(handler.archived_record(self.table,'time-easy','archive-attempt-0000'))
+        result=self.submit(id='archive-attempt-0000',name='지우',results=[True])[1]
+        self.assertTrue(result['keptBest']);self.assertEqual(result['record']['id'],'archive-attempt-0029')
+        self.assertEqual(handler.archived_record(self.table,'time-easy','archive-attempt-0000'),old)
+        self.assertEqual(self.submit(id='archive-attempt-0000',name='지우',results=[True]*2)[0],409)
+        self.assertEqual(len(self.table.items['time-easy']['archivedIds']),1)
+
+    def test_archived_record_survives_board_eviction_and_is_hidden_from_public_mode_queries(self):
+        first=self.submit(id='evicted-original001',name='지우',results=[True])[1]['record']
+        for i in range(20):self.submit(id=f'evicting-friend-{i:03d}',name=f'친구{i}',results=[True]*5)
+        self.assertNotIn(first['id'],[row['id'] for row in self.request()[1]['entries']])
+        self.assertEqual(handler.public_result({'record':handler.archived_record(self.table,'time-easy',first['id'])})['record'],first)
+        self.assertEqual(self.request(mode=handler.history_key('time-easy',first['id']))[0],400)
+
     def test_empty_boards_and_modes_are_independent(self):
         for mode in handler.MODES:
             status, data = self.request(mode=mode)
@@ -140,16 +264,16 @@ class Rankings(unittest.TestCase):
         self.assertEqual(self.table.items['time-easy']['version'], 2)
     def test_board_retains_twenty_and_rejects_scores_below_the_cutoff(self):
         for i in range(25):
-            self.submit(id=f'record-number-{i:08d}', results=[True]*12)
+            self.submit(id=f'record-number-{i:08d}', name=f'트레이너{i}', results=[True]*12)
         entries = self.request()[1]['entries']
         self.assertEqual(len(entries), 20)
         self.assertEqual(entries, sorted(entries, key=handler.sort_key))
         before = copy.deepcopy(self.table.items)
         status, data = self.submit(id='below-cutoff-record', results=[True])
-        self.assertEqual(status, 200); self.assertFalse(data['qualified']); self.assertEqual(self.table.items, before)
+        self.assertEqual(status, 200); self.assertFalse(data['qualified']); self.assertEqual(self.table.items['time-easy'], before['time-easy']);self.assertIsNotNone(handler.archived_record(self.table,'time-easy','below-cutoff-record'))
     def test_existing_ties_are_read_newest_first_without_rewriting_the_board(self):
         older = {'id': 'older-record-0001', 'name': '이브이', 'mode': 'easy', 'score': 100, 'correct': 2, 'total': 3, 'date': '2026-10-07T00:00:00.000Z'}
-        newer = {**older, 'id': 'newer-record-0001', 'correct': 1, 'date': '2026-10-07T01:00:00.000Z'}
+        newer = {**older, 'id': 'newer-record-0001', 'name': '뮤', 'correct': 1, 'date': '2026-10-07T01:00:00.000Z'}
         self.table.items['easy'] = {'mode': 'easy', 'version': 1, 'entries': [older, newer]}
         status, data = self.request(mode='easy')
         self.assertEqual(status, 200)
@@ -157,7 +281,7 @@ class Rankings(unittest.TestCase):
         self.assertEqual(self.table.writes, 0)
     def test_new_tie_enters_full_board_first_and_retry_returns_the_same_rank(self):
         self.table.items['easy'] = {'mode': 'easy', 'version': 1, 'entries': [
-            {'id': f'older-record-{i:08d}', 'name': '이브이', 'mode': 'easy', 'score': 100, 'correct': 2, 'total': 3, 'date': f'2026-10-07T00:00:{i:02d}.000Z'} for i in range(20)
+            {'id': f'older-record-{i:08d}', 'name': f'이브이{i}', 'mode': 'easy', 'score': 100, 'correct': 2, 'total': 3, 'date': f'2026-10-07T00:00:{i:02d}.000Z'} for i in range(20)
         ]}
         with patch.object(handler, 'timestamp', return_value='2026-10-07T01:00:00.000Z'):
             status, data = self.submit(mode='easy', results=[True])
@@ -181,7 +305,9 @@ class Rankings(unittest.TestCase):
         bad = event();bad['headers']['origin'] = 'https://wrong.example';self.assertEqual(handler.handle(bad, storage=self.table)['statusCode'], 403)
     def test_retries_stop_when_the_board_is_continuously_contested(self):
         class Busy(Table):
-            def put_item(self, **kwargs): raise Conflict()
+            def put_item(self, **kwargs):
+                if kwargs['Item']['mode'].startswith('history#'):return super().put_item(**kwargs)
+                raise Conflict()
         result = handler.handle(event(method='POST',path='/api/scores',payload={'id':'record-number-0001','name':'피카츄','mode':'time','results':[True]}),storage=Busy())
         self.assertEqual(result['statusCode'],409)
 

@@ -98,35 +98,124 @@ def parse_submission(event):
             bonus = 0 if hinted else maximum - duration * maximum // (BONUS_DURATION * 10) * 10
             score += unit // (2 if hinted else 1) + bonus
             time_bonus += bonus
-    return {'id': record_id, 'name': name, 'mode': mode, 'score': score, 'correct': correct, 'total': len(results), 'hintsUsed': sum(hints), 'timeBonus': time_bonus}
+    record = {'id': record_id, 'name': name, 'mode': mode, 'score': score, 'correct': correct, 'total': len(results), 'hintsUsed': sum(hints), 'timeBonus': time_bonus}
+    if 'partnerId' in data:
+        partner = data['partnerId']
+        if partner is not None and (type(partner) is not int or not 1 <= partner <= len(NAMES)):
+            raise RequestError(400, '파트너 포켓몬을 다시 골라줘.')
+        record['partnerId'] = partner
+    return record
 
 
 def board(storage, mode):
     item = storage.get_item(Key={'mode': mode}, ConsistentRead=True).get('Item')
-    return item, sorted(item.get('entries', []), key=sort_key) if item else []
+    return item, best_entries(item.get('entries', [])) if item else []
+
+
+def trainer_key(record):
+    name = unicodedata.normalize('NFKC', record.get('name', '')).strip().lower()
+    return ('name', name) if name else ('record', record['id'])
+
+
+def best_entries(records):
+    seen, entries = set(), []
+    for record in sorted(records, key=sort_key):
+        key = trainer_key(record)
+        if key not in seen:
+            seen.add(key)
+            entries.append(record)
+    return entries
+
+
+def public_result(data):
+    # Device context stays in storage for future administration, never in the
+    # shared leaderboard or save acknowledgement (and never stores a device key).
+    public_record = lambda row: {key: value for key, value in row.items() if key not in ('deviceId', 'userAgent')}
+    result = dict(data)
+    if 'entries' in result: result['entries'] = [public_record(row) for row in result['entries']]
+    if 'record' in result: result['record'] = public_record(result['record'])
+    return result
 
 
 def sort_key(record):
     return (-record['score'], -datetime.fromisoformat(record['date'].replace('Z', '+00:00')).timestamp(), record['id'])
 
 
+def history_key(mode, record_id):
+    return f'history#{mode}#{record_id}'
+
+
+def archived_record(storage, mode, record_id):
+    return storage.get_item(Key={'mode': history_key(mode, record_id)}, ConsistentRead=True).get('Item', {}).get('record')
+
+
+def validate_retry(existing, submitted):
+    fields = ['score', 'correct', 'total', 'mode'] + (['name'] if submitted.get('name') else [])
+    if any(existing[field] != submitted[field] for field in fields) or any(existing.get(field, 0) != submitted.get(field, 0) for field in ['hintsUsed', 'timeBonus']):
+        raise RequestError(409, '이 기록은 이미 저장됐어. 랭킹에서 확인해봐.')
+    if 'partnerId' in submitted and existing.get('partnerId') != submitted['partnerId']:
+        raise RequestError(409, '이 기록은 이미 저장됐어. 랭킹에서 확인해봐.')
+
+
+def archive_record(storage, record):
+    # Immutable rows keep original records outside the bounded leaderboard item.
+    # A failed archive never permits the original board to be overwritten.
+    try:
+        storage.put_item(Item={'mode': history_key(record['mode'], record['id']), 'boardMode': record['mode'], 'record': record},
+                         ConditionExpression='attribute_not_exists(#mode)', ExpressionAttributeNames={'#mode': 'mode'})
+        return record
+    except Exception as error:
+        if getattr(error, 'response', {}).get('Error', {}).get('Code') != 'ConditionalCheckFailedException':
+            raise
+        previous = archived_record(storage, record['mode'], record['id'])
+        if previous is None: raise
+        validate_retry(previous, record)
+        return previous
+
+
+def winner_result(entries, winner, record):
+    return {'qualified': True, 'rank': entries.index(winner) + 1, 'record': winner, 'entries': entries, 'keptBest': winner['id'] != record['id']}
+
+
 def save(storage, submitted):
     record = {**submitted, 'date': timestamp()}
+    archived = False
+    retry_record = False
+    archived_ids = set()
     for _ in range(8):
         item, entries = board(storage, record['mode'])
-        existing = next((entry for entry in entries if entry['id'] == record['id']), None)
+        raw_entries = (item or {}).get('entries', [])
+        existing = next((entry for entry in raw_entries if entry['id'] == record['id']), None)
         if existing:
-            fields = ['score', 'correct', 'total', 'mode'] + (['name'] if submitted['name'] else [])
-            if any(existing[field] != submitted[field] for field in fields) or existing.get('hintsUsed', 0) != submitted['hintsUsed'] or existing.get('timeBonus', 0) != submitted['timeBonus']:
-                raise RequestError(409, '이 기록은 이미 저장됐어. 랭킹에서 확인해봐.')
-            return {'qualified': True, 'rank': entries.index(existing) + 1, 'record': existing, 'entries': entries}
-        if not record['name']:
-            record['name'] = random.choice(NAMES)
-        updated = sorted([*entries, record], key=sort_key)[:LIMIT]
+            validate_retry(existing, submitted)
+            winner = next(entry for entry in entries if trainer_key(entry) == trainer_key(existing))
+            return winner_result(entries, winner, existing)
+        if not archived:
+            previous = archived_record(storage, record['mode'], record['id'])
+            if previous:
+                retry_record = True
+                validate_retry(previous, submitted)
+                record = previous
+            else:
+                if not record['name']: record['name'] = random.choice(NAMES)
+                record = archive_record(storage, record)
+            archived = True
+        previous = next((entry for entry in entries if trainer_key(entry) == trainer_key(record)), None)
+        if previous and (previous['score'] > record['score'] or previous['score'] == record['score'] and retry_record and sort_key(previous) <= sort_key(record)):
+            return winner_result(entries, previous, record)
+        others = [entry for entry in entries if trainer_key(entry) != trainer_key(record)]
+        updated = sorted([*others, record], key=sort_key)[:LIMIT]
         if record not in updated:
             return {'qualified': False, 'rank': None, 'entries': entries}
+        # Copy every original legacy row before grouping or evicting any row.
+        known = set((item or {}).get('archivedIds', [])) | archived_ids
+        for original in raw_entries:
+            if original['id'] not in known:
+                archive_record(storage, original)
+                archived_ids.add(original['id'])
         version = int(item.get('version', 0)) if item else 0
-        kwargs = {'Item': {'mode': record['mode'], 'version': version + 1, 'entries': updated}}
+        kwargs = {'Item': {**(item or {}), 'mode': record['mode'], 'version': version + 1, 'entries': updated,
+                           'archivedIds': [row['id'] for row in updated]}}
         if item:
             kwargs.update(ConditionExpression='#version = :expected', ExpressionAttributeNames={'#version': 'version'}, ExpressionAttributeValues={':expected': version})
         else:
@@ -156,20 +245,23 @@ def handle(event, context=None, storage=None, access_storage=None):
                 return response(status, data, cookies)
             except access.AccessError as error:
                 return response(error.status, {'error': error.message, 'reason': error.reason}, access.clear_cookies() if error.reason == 'invalid_device' else None)
+        device = None
         if path in ['/api/rankings', '/api/scores'] and os.environ.get('AUTH_REQUIRED') == '1':
             import access
-            try: access.require_device(headers.get('x-device-key'), access_storage)
+            try: device = access.require_device(headers.get('x-device-key'), access_storage)
             except access.AccessError as error:
                 return response(error.status, {'error': error.message, 'reason': 'invalid_device'}, access.clear_cookies())
         if method == 'GET' and path == '/api/rankings':
             mode = valid_mode((event.get('queryStringParameters') or {}).get('mode'))
             _, entries = board(storage if storage is not None else table(), mode)
-            return response(200, {'mode': mode, 'entries': entries, 'serverTime': timestamp()})
+            return response(200, public_result({'mode': mode, 'entries': entries, 'serverTime': timestamp()}))
         if method == 'POST' and path == '/api/scores':
             if not headers.get('content-type', '').lower().startswith('application/json'):
                 raise RequestError(415, '기록을 읽지 못했어. 다시 저장해줘.')
             submitted = parse_submission(event)
-            return response(200, save(storage if storage is not None else table(), submitted))
+            if device: submitted['deviceId'] = device['deviceId']
+            submitted['userAgent'] = str(headers.get('user-agent') or event.get('requestContext', {}).get('http', {}).get('userAgent') or '')[:240]
+            return response(200, public_result(save(storage if storage is not None else table(), submitted)))
         raise RequestError(404, '여기는 찾지 못했어. 게임 화면으로 돌아가볼까?')
     except RequestError as error:
         return response(error.status, {'error': error.message})

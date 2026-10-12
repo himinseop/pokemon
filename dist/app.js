@@ -3,7 +3,8 @@ const app=document.querySelector('#app');
 const difficulties={easy:{label:'쉬움',multiplier:1},normal:{label:'보통',multiplier:2},hard:{label:'어려움',multiplier:3}};
 const familiar=[1,2,3,4,5,6,7,8,9,12,16,25,26,35,37,39,52,54,58,63,66,74,79,92,94,95,104,113,129,130,131,132,133,134,135,136,143,144,145,146,149,150,151];
 const MASTER_BONUS_DURATION=20000;
-let pokemon=[],evolutionFamilies=new Map(),pokedexManifest=null,view='play',mode='time',difficulty='easy',game=null,ticker=null,advance=null,judgementTimer=null,recordTab='time-easy',search='',typeFilter='',sort='number',regionFilter='',regionGroups=[];
+const TIME_FAMILIAR_SLOTS={easy:8,normal:2,hard:5};
+let pokemon=[],pokemonById=new Map(),evolutionFamilies=new Map(),pokedexManifest=null,view='play',mode='time',difficulty='easy',game=null,ticker=null,advance=null,judgementTimer=null,recordTab='time-easy',search='',typeFilter='',sort='number',regionFilter='',regionGroups=[];
 const judgementAssets={good:'assets/judgements/good.png',great:'assets/judgements/great.png',perfect:'assets/judgements/perfect.png',awesome:'assets/judgements/awesome.png',fail:'assets/judgements/fail.png'};
 const judgementPreloads=Object.values(judgementAssets).map(src=>{const image=new Image();image.src=src;return image;});
 function judgementFor(correct,streak){return !correct?'fail':streak>=7?'awesome':streak>=5?'perfect':streak>=3?'great':'good';}
@@ -48,25 +49,100 @@ function fitLayersToViewport(){
  if(document.activeElement?.id==='trainer-name')document.querySelector('#high-score .my-entry')?.scrollIntoView({block:'nearest'});
 }
 fitLayersToViewport();window.addEventListener('resize',fitLayersToViewport);window.visualViewport?.addEventListener('resize',fitLayersToViewport);window.visualViewport?.addEventListener('scroll',fitLayersToViewport);
-const TRAINER_KEY='pokemon-play-trainer-name';
-let trainerName='',pokemonLoading=true,pokemonLoadError=false;
+const TRAINER_KEY='pokemon-play-trainer-name',TRAINERS_KEY='pokemon-play-trainers-v1';
+let trainerName='',trainers=[],knownTrainerNames=new Set(),trainerStage=null,pokemonLoading=true,pokemonLoadError=false,partnerSearch='',partnerRegion='';
 function validTrainerName(value){const name=String(value).normalize('NFKC').trim();return name&&Array.from(name).length<=12&&!/[\p{Cc}\p{Cf}\p{Cs}\p{Co}\p{Cn}]/u.test(name)?name:'';}
-try{trainerName=validTrainerName(localStorage.getItem(TRAINER_KEY)||'');}catch{}
+const validPartnerId=id=>Number.isInteger(id)&&id>=1&&id<=1025;
+function readSavedTrainers(){
+ const saved=JSON.parse(localStorage.getItem(TRAINERS_KEY)||'null'),profiles=[];
+ if(saved?.version===1&&Array.isArray(saved.trainers))for(const row of saved.trainers){
+  if(typeof row?.name!=='string')continue;const name=validTrainerName(row.name);
+  if(name&&!profiles.some(t=>t.name===name))profiles.push({name,partnerId:validPartnerId(row.partnerId)?row.partnerId:null,partnerChosen:row.partnerChosen!==false});
+ }
+ return profiles;
+}
+try{trainerName=validTrainerName(localStorage.getItem(TRAINER_KEY)||'');trainers=readSavedTrainers();}catch{}
+knownTrainerNames=new Set(trainers.map(t=>t.name));
+function persistTrainers(changedName=null,reviveName=null){
+ try{
+  const latest=readSavedTrainers();
+  for(const profile of trainers){const index=latest.findIndex(t=>t.name===profile.name);if(index<0){if(!knownTrainerNames.has(profile.name)||profile.name===reviveName)latest.push(profile);}else if(profile.name===changedName)latest[index]=profile;}
+  localStorage.setItem(TRAINERS_KEY,JSON.stringify({version:1,trainers:latest}));trainers=latest;knownTrainerNames=new Set(latest.map(t=>t.name));if(trainerName&&latest.some(t=>t.name===trainerName))localStorage.setItem(TRAINER_KEY,trainerName);
+ }catch{}
+}
+// Keep the existing saved trainer signed in without forcing a new setup screen.
+if(trainerName&&!trainers.some(t=>t.name===trainerName)){trainers.push({name:trainerName,partnerId:null,partnerChosen:true});persistTrainers();}
+const currentTrainer=()=>trainers.find(t=>t.name===trainerName);
+const currentPartnerId=()=>currentTrainer()?.partnerId??null;
+function partnerAvatar(id,extra=''){
+ const p=pokemonById.get(id);return `<img class="partner-avatar ${extra}" src="${p?p.image:'assets/ui/pokeball.svg'}" alt="${p?escapeHTML(p.name):'포켓볼'}" width="64" height="64" loading="lazy">`;
+}
+function rankingPartner(row){return validPartnerId(row.partnerId)?partnerAvatar(row.partnerId,'ranking-partner'):'';}
+function refreshSavedTrainers(){
+ const list=document.querySelector('#saved-trainers');if(!list)return;
+ list.innerHTML=trainers.length?`<h2>함께 도전했던 트레이너</h2><div class="saved-trainer-grid">${trainers.map(t=>`<div class="saved-trainer-item"><button class="saved-trainer" data-select-trainer="${escapeHTML(t.name)}" aria-label="${escapeHTML(t.name)} 트레이너로 교체" aria-pressed="${t.name===trainerName}">${partnerAvatar(t.partnerId)}<span>${escapeHTML(t.name)}</span></button><button class="delete-trainer" data-delete-trainer="${escapeHTML(t.name)}" aria-label="${escapeHTML(t.name)} 트레이너 삭제"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></svg><span>삭제</span></button></div>`).join('')}</div>`:'';
+}
+function deleteTrainer(name){
+ if(trainerStage!=='name'||!trainers.some(t=>t.name===name))return;
+ if(!window.confirm(`${name} 트레이너를 이 기기에서 지울까?\n이름과 파트너만 삭제하고, 랭킹 기록은 그대로 남아.`))return;
+ try{
+  const latest=readSavedTrainers().filter(t=>t.name!==name);
+  localStorage.setItem(TRAINERS_KEY,JSON.stringify({version:1,trainers:latest}));
+  if(localStorage.getItem(TRAINER_KEY)===name)localStorage.removeItem(TRAINER_KEY);
+  trainers=latest;knownTrainerNames=new Set(latest.map(t=>t.name));
+  if(trainerName===name){trainerName='';cleanup();game=null;}
+  const input=document.querySelector('#entry-trainer-name');if(validTrainerName(input.value)===name){input.value='';input.setCustomValidity('');}
+  refreshSavedTrainers();document.querySelector('#trainer-entry-form .primary').textContent=trainerName?'좋아!':'함께 시작하자!';
+  document.querySelector('#trainer-entry-message').textContent='';
+ }catch{document.querySelector('#trainer-entry-message').textContent='삭제하지 못했어. 한 번 더 해볼까?';}
+}
 function showTrainerEntry(){
- document.body.classList.remove('game-focused');document.body.classList.add('trainer-entry');
- app.innerHTML=`<section class="trainer-welcome" aria-labelledby="trainer-welcome-title"><img class="welcome-pokeball" src="assets/ui/pokeball.svg" alt="포켓볼" width="96" height="96" fetchpriority="high"><h1 id="trainer-welcome-title">트레이너 이름을 넣어줘.</h1><form id="trainer-entry-form"><input id="entry-trainer-name" value="${escapeHTML(trainerName)}" placeholder="이름" aria-label="트레이너 이름" maxlength="12" autocomplete="nickname" required><button class="primary" type="submit">${trainerName?'좋아!':'함께 시작하자!'}</button></form><p class="trainer-entry-note" id="trainer-entry-message" role="status"></p></section>`;
- app.querySelector('#entry-trainer-name').focus({preventScroll:true});
+ trainerStage='name';document.body.classList.remove('game-focused');document.body.classList.add('trainer-entry');
+ app.innerHTML=`<section class="trainer-welcome" aria-labelledby="trainer-welcome-title"><img class="welcome-pokeball" src="assets/ui/pokeball.svg" alt="포켓볼" width="96" height="96" fetchpriority="high"><h1 id="trainer-welcome-title">트레이너 이름을 넣어줘.</h1><form id="trainer-entry-form"><input id="entry-trainer-name" value="${escapeHTML(trainerName)}" placeholder="이름" aria-label="트레이너 이름" maxlength="12" autocomplete="nickname" required><button class="primary" type="submit">${trainerName?'좋아!':'함께 시작하자!'}</button></form><p class="trainer-entry-note" id="trainer-entry-message" role="status"></p><section id="saved-trainers" class="saved-trainers" aria-label="저장된 트레이너"></section></section>`;
+ refreshSavedTrainers();app.querySelector('#entry-trainer-name').focus({preventScroll:true});
+}
+function showPartnerSetup(){
+ trainerStage='partner';document.body.classList.remove('game-focused');document.body.classList.add('trainer-entry');
+ app.innerHTML=`<section class="trainer-welcome partner-welcome" aria-labelledby="partner-welcome-title">${partnerAvatar(currentPartnerId(),'partner-welcome-avatar')}<h1 id="partner-welcome-title">${escapeHTML(trainerName)}!<br>함께할 파트너를 찾아볼까?</h1><p>마음에 드는 포켓몬과 함께 도전해보자!</p><button class="primary" id="find-partner" ${pokemonLoading||pokemonLoadError?'disabled':''}>함께할 파트너 찾기</button><button class="text-button skip-partner" id="skip-partner">파트너없이 도전하기</button><button class="text-button" id="back-to-trainers">트레이너 다시 고르기</button>${pokemonLoadError?'<button class="secondary" id="retry-partner-load">도감 다시 불러오기</button>':''}</section>`;
 }
 function renderSiteLoading(){
  if(document.body.classList.contains('trainer-entry'))return;
  app.innerHTML=pokemonLoadError?'<div class="empty">포켓몬 친구들을 만나지 못했어. 한 번 더 불러볼까?<br><button id="retry-load" class="primary" style="margin-top:20px">다시 불러오기</button></div>':'<div class="loading" role="status"><span class="quiz-spinner" aria-hidden="true"></span><p>포켓몬 친구들이 오고 있어…</p></div>';
  if(pokemonLoadError)app.querySelector('#retry-load').onclick=init;
 }
+function finishTrainerSelection(){
+ persistTrainers();if(!currentTrainer()){trainerName='';showTrainerEntry();return;}
+ trainerStage=null;document.body.classList.remove('trainer-entry');cleanup();game=null;view='play';
+ if(pokemonLoading||pokemonLoadError)renderSiteLoading();else render();
+}
+function selectTrainer(name,explicitName=false){
+ let profile=trainers.find(t=>t.name===name);if(!profile){profile={name,partnerId:null,partnerChosen:false};trainers.push(profile);}
+ trainerName=name;persistTrainers(null,explicitName?name:null);
+ if(!currentTrainer()){trainerName='';showTrainerEntry();return;}window.PokemonAccess?.reportTrainer();
+ if(currentTrainer().partnerChosen)finishTrainerSelection();else showPartnerSetup();
+}
 function enterTrainer(){
  const input=app.querySelector('#entry-trainer-name'),name=validTrainerName(input.value);
  if(!name){input.setCustomValidity('이름을 12자 안으로 적어줘.');input.reportValidity();return;}
- trainerName=name;try{localStorage.setItem(TRAINER_KEY,name);}catch{}
- window.PokemonAccess?.reportTrainer();document.body.classList.remove('trainer-entry');if(pokemonLoading||pokemonLoadError)renderSiteLoading();else render();
+ selectTrainer(name,true);
+}
+function choosePartner(id){
+ const profile=currentTrainer();if(!profile||activeGame()||id!==null&&!pokemon.some(p=>p.id===id))return;
+ profile.partnerId=id;profile.partnerChosen=true;persistTrainers(trainerName);
+ if(!currentTrainer()){trainerName='';showTrainerEntry();return;}
+ document.querySelector('#partner-picker').close();document.querySelector('#detail').close();
+ if(trainerStage==='partner')finishTrainerSelection();else render();
+}
+function showPartnerPicker(){
+ if(pokemonLoading||pokemonLoadError||activeGame())return;partnerSearch='';partnerRegion='';
+ const dialog=document.querySelector('#partner-picker');
+ dialog.innerHTML=`<section class="partner-picker-inner"><header><div><p class="eyebrow">${escapeHTML(trainerName)}의 파트너</p><h2 id="partner-picker-title">함께할 파트너 찾기</h2></div><button class="partner-picker-close" id="close-partner-picker" aria-label="파트너 도감 닫기">×</button></header><div class="partner-filters"><input id="partner-search" placeholder="포켓몬 이름이나 번호" aria-label="파트너 포켓몬 검색" autocomplete="off"><select id="partner-region" aria-label="파트너 지방 선택"><option value="">모든 지방</option>${regionGroups.map(g=>`<option value="${escapeHTML(g.name)}">${escapeHTML(g.name)}</option>`).join('')}</select></div><div id="partner-results"></div></section>`;
+ renderPartnerResults();dialog.showModal();
+}
+function renderPartnerResults(){
+ const q=normalize(partnerSearch),region=regionGroups.find(g=>g.name===partnerRegion);
+ const list=pokemon.filter(p=>(!q||normalize(p.name).includes(q)||number(p).includes(q)||String(p.id)===q)&&(!region||region.numbers.includes(p.id)));
+ document.querySelector('#partner-results').innerHTML=`<p class="result-count">${list.length}마리 · 함께할 친구를 골라줘!</p><div class="partner-picker-grid">${list.map(p=>`<button class="partner-choice" data-choose-partner="${p.id}" aria-label="${escapeHTML(p.name)} 파트너로 선택" aria-pressed="${p.id===currentPartnerId()}"><span class="number">No. ${number(p)}</span>${partnerAvatar(p.id)}<strong>${escapeHTML(p.name)}</strong><div>${badges(p)}</div></button>`).join('')}</div>${list.length?'':'<p class="empty">다른 이름이나 번호로 찾아볼까?</p>'}`;
 }
 let rankingSpinnerId=0;
 function rankingSpinner(){const id=`ranking-spinner-${++rankingSpinnerId}`;return `<svg xmlns="http://www.w3.org/2000/svg" class="ranking-pokeball" width="80" height="80" role="img" aria-label="포켓볼" viewBox="0 0 160 160">
@@ -94,8 +170,10 @@ function rankingDate(date,now=new Date()){
 const rankingModes=['time-easy','time','time-hard','easy','normal','hard'];
 let records=[],lastSavedId=null;
 function compareRecords(a,b){return b.score-a.score||Date.parse(b.date)-Date.parse(a.date)||(a.id<b.id?-1:a.id>b.id?1:0);}
-function leaderboard(key,items=records){return items.filter(r=>r.mode===key).sort(compareRecords).slice(0,RANKING_LIMIT);}
-function rankOf(record,items=records){return leaderboard(record.mode,[...items,record]).indexOf(record)+1;}
+function rankingTrainerKey(record){const name=String(record.name??'').normalize('NFKC').trim().toLocaleLowerCase('ko');return name?`name:${name}`:`record:${record.id}`;}
+function leaderboard(key,items=records){const seen=new Set();return items.filter(r=>r.mode===key).sort(compareRecords).filter(r=>{const id=rankingTrainerKey(r);if(seen.has(id))return false;seen.add(id);return true;}).slice(0,RANKING_LIMIT);}
+function pendingLeaderboard(record,items=records){return leaderboard(record.mode,[...items.filter(r=>r.mode!==record.mode||rankingTrainerKey(r)!==rankingTrainerKey(record)),record]);}
+function rankOf(record,items=records){return pendingLeaderboard(record,items).indexOf(record)+1;}
 function rankingLabel(key){return key==='time'||key.startsWith('time-')?`타임어택 · ${difficulties[key==='time'?'normal':key.slice(5)].label}`:`마스터 · ${difficulties[key].label}`;}
 function rankingKey(g){return g.mode==='time'?(g.difficulty==='normal'?'time':`time-${g.difficulty}`):g.difficulty;}
 try{lastSavedId=localStorage.getItem('pokemon-play-last-shared-id');}catch{}
@@ -104,13 +182,17 @@ const rankingMode=key=>key==='time'||key.startsWith('time-')?'time':'write';
 const rankingDifficulty=key=>key==='time'?'normal':key.startsWith('time-')?key.slice(5):key;
 const rankingBoard=(kind,level)=>kind==='time'?(level==='normal'?'time':`time-${level}`):level;
 function sharedEntries(key,rows){
- if(!Array.isArray(rows)||rows.length>RANKING_LIMIT||!rows.every(r=>r&&typeof r.id==='string'&&typeof r.name==='string'&&r.name.length<=24&&r.mode===key&&Number.isInteger(r.score)&&r.score>0&&Number.isInteger(r.correct)&&r.correct>0&&Number.isInteger(r.total)&&r.total>=r.correct&&typeof r.date==='string'&&Number.isFinite(Date.parse(r.date))))throw Error('랭킹을 가져오지 못했어. 한 번 더 눌러줘.');
+ if(!Array.isArray(rows)||rows.length>RANKING_LIMIT||!rows.every(r=>r&&typeof r.id==='string'&&typeof r.name==='string'&&r.name.length<=24&&r.mode===key&&Number.isInteger(r.score)&&r.score>0&&Number.isInteger(r.correct)&&r.correct>0&&Number.isInteger(r.total)&&r.total>=r.correct&&(r.partnerId==null||validPartnerId(r.partnerId))&&typeof r.date==='string'&&Number.isFinite(Date.parse(r.date))))throw Error('랭킹을 가져오지 못했어. 한 번 더 눌러줘.');
  if(new Set(rows.map(r=>r.id)).size!==rows.length)throw Error('랭킹을 가져오지 못했어. 다시 불러볼까?');
  return rows;
 }
+function localDeviceHeaders(){
+ if(!['127.0.0.1','localhost'].includes(location.hostname))return {};
+ try{const key='pokemon-play-local-device-id';let id=localStorage.getItem(key);if(!/^[a-f0-9]{32}$/.test(id||'')){id=crypto.randomUUID().replaceAll('-','');localStorage.setItem(key,id);}return {'x-preview-device-id':id};}catch{return {};}
+}
 async function rankingRequest(url,options={}){
  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
- try{const result=await fetch(url,{...options,headers:{...options.headers,...window.PokemonAccess?.headers()},credentials:'same-origin',signal:controller.signal,cache:'no-store'});const data=await result.json();if(!result.ok){if(data.reason==='invalid_device')window.PokemonAccess?.revoked();throw Error(typeof data.error==='string'?data.error:'랭킹에 연결하지 못했어. 잠깐 뒤에 다시 눌러줘.');}return data;}
+ try{const result=await fetch(url,{...options,headers:{...options.headers,...localDeviceHeaders(),...window.PokemonAccess?.headers()},credentials:'same-origin',signal:controller.signal,cache:'no-store'});const data=await result.json();if(!result.ok){if(data.reason==='invalid_device')window.PokemonAccess?.revoked();throw Error(typeof data.error==='string'?data.error:'랭킹에 연결하지 못했어. 잠깐 뒤에 다시 눌러줘.');}return data;}
  catch(error){if(error.name==='AbortError')throw Error('랭킹이 조금 늦어지고 있어. 잠깐 뒤에 다시 눌러줘.');if(error instanceof TypeError)throw Error('랭킹에 연결하지 못했어. 잠깐 뒤에 다시 눌러줘.');throw error;}
  finally{clearTimeout(timeout);}
 }
@@ -129,7 +211,9 @@ function loadRankings(key,force=false){
 async function prepareRanking(g){
  if(game!==g||g.status!=='ended'||!g.completed||g.imageError||(g.score<=0&&!g.quit)||g.rankLoading)return;
  g.rankLoading=true;g.rankingError=false;renderGameBody();
- try{const state=await loadRankings(g.record.mode,true);if(game!==g||g.status!=='ended')return;if(Number.isFinite(Date.parse(state.serverTime)))g.record.date=state.serverTime;g.rank=g.score>0?rankOf(g.record):0;g.rankLoading=false;renderGameBody();if(g.rank||g.quit)showRankingEntry();}
+ try{const state=await loadRankings(g.record.mode,true);if(game!==g||g.status!=='ended')return;if(Number.isFinite(Date.parse(state.serverTime)))g.record.date=state.serverTime;const board=leaderboard(g.record.mode),best=board.find(r=>rankingTrainerKey(r)===rankingTrainerKey(g.record));
+  if(best&&best.score>g.score){g.record=best;g.rank=board.indexOf(best)+1;g.saved=true;g.keptBest=true;g.savedRank=g.rank;lastSavedId=best.id;}else g.rank=g.score>0?rankOf(g.record):0;
+  g.rankLoading=false;renderGameBody();if(g.rank||g.quit)showRankingEntry();}
  catch{if(game!==g||g.status!=='ended')return;g.rankLoading=false;g.rankingError=true;renderGameBody();}
 }
 const number=p=>String(p.id).padStart(4,'0');
@@ -149,7 +233,7 @@ function updateNav(){document.querySelectorAll('.nav').forEach(b=>b.classList.to
 function render(){if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;if(!trainerName||document.body.classList.contains('trainer-entry'))return;updateGameFocus();updateNav();if(view==='play')renderPlay();else if(view==='dex')renderDex();else renderRecords();}
 function renderPlay(){
 previewChoices={easy:shuffle(pokemon.filter(p=>familiar.includes(p.id)))[0],normal:shuffle(pokemon)[0],hard:shuffle(pokemon)[0]};previewPokemon=previewChoices[difficulty];
-app.innerHTML=`<section class="intro"><div><p class="trainer-greeting"><span>포켓몬스터의 세계에 잘 왔단다!</span><span class="trainer-name-group"><strong>${escapeHTML(trainerName)}</strong><button class="trainer-edit" id="edit-trainer" title="이름 수정" aria-label="트레이너 이름 수정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z"/><path d="m14 5 5 5"/></svg></button></span></p><h1>이 포켓몬, 누구일까?</h1></div></section>
+app.innerHTML=`<section class="intro"><div><div class="trainer-greeting"><button class="trainer-avatar-button" ${currentPartnerId()?`data-pokemon="${currentPartnerId()}" aria-label="파트너 포켓몬 카드 보기"`:'id="find-partner" aria-label="파트너 포켓몬 고르기"'}>${partnerAvatar(currentPartnerId())}</button><div class="trainer-greeting-copy"><span class="trainer-name-group"><strong>${escapeHTML(trainerName)}!</strong><button class="trainer-edit" id="edit-trainer" title="트레이너 교체" aria-label="트레이너 교체"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h15l-3-3M20 17H5l3 3M19 7l-3 3M5 17l3-3"/></svg></button></span><span>포켓몬스터의 세계에 잘 왔단다!</span></div></div><h1>이 포켓몬, 누구일까?</h1></div></section>
 <div class="play-grid"><section class="game-card" aria-label="포켓몬 퀴즈"><div class="game-tabs"><button class="game-tab ${mode==='time'?'active':''}" data-mode="time">⏱️ 타임어택</button><button class="game-tab ${mode==='write'?'active':''}" data-mode="write">🏆 마스터 도전</button></div><div id="game-body" class="game-body"></div></section></div>
 <div class="quick-links"><button class="shortcut shortcut-dex" data-nav="dex"><span class="shortcut-icon" aria-hidden="true">📖</span><span>포켓몬 도감</span></button><button class="shortcut shortcut-ranking" data-nav="records"><span class="shortcut-icon" aria-hidden="true">🏆</span><span>랭킹</span></button></div>`;
 renderGameBody();
@@ -166,13 +250,28 @@ if(game?.status==='ended'){renderResult(body);return;}
 if(game?.status==='playing'){renderQuestion(body);return;}
 if(game?.status==='loading'){body.innerHTML=`<div class="focus-loading">${gameExit()}<div class="quiz-start-loading" role="status" aria-live="polite"><span class="quiz-spinner" aria-hidden="true"></span><p>첫 번째 포켓몬이 오고 있어…</p></div></div>`;return;}
 body.innerHTML=`<div class="game-setup"><h2>${mode==='time'?'60초 타임어택':'포켓몬 마스터 도전'}</h2>
-${mode==='write'?`<div class="difficulty difficulty-cards" aria-label="난이도 선택">${Object.entries(difficulties).map(([key,d])=>`<button data-difficulty="${key}" class="difficulty-choice ${difficulty===key?'active':''}" aria-pressed="${difficulty===key}"><span class="difficulty-preview ${key==='hard'?'silhouette':''}"><img src="${previewChoices[key].image}" alt="${key==='hard'?'포켓몬 실루엣':key==='easy'?'친숙한 포켓몬 미리보기':'전체 포켓몬 미리보기'}" width="100" height="100"></span><strong>${d.label}</strong><small>${d.multiplier}배 점수</small></button>`).join('')}</div>`:`<div class="difficulty difficulty-time" aria-label="타임어택 난이도 선택">${Object.entries(difficulties).map(([key,d])=>`<button data-difficulty="${key}" class="difficulty-choice ${difficulty===key?'active':''}" aria-pressed="${difficulty===key}"><strong>${d.label}</strong><small>${key==='easy'?'친숙한 포켓몬':key==='normal'?'전체 포켓몬':'실루엣'}</small></button>`).join('')}</div>`}
+${mode==='write'?`<div class="difficulty difficulty-cards" aria-label="난이도 선택">${Object.entries(difficulties).map(([key,d])=>`<button data-difficulty="${key}" class="difficulty-choice ${difficulty===key?'active':''}" aria-pressed="${difficulty===key}"><span class="difficulty-preview ${key==='hard'?'silhouette':''}"><img src="${previewChoices[key].image}" alt="${key==='hard'?'포켓몬 실루엣':key==='easy'?'친숙한 포켓몬 미리보기':'전체 포켓몬 미리보기'}" width="100" height="100"></span><strong>${d.label}</strong><small>${d.multiplier}배 점수</small></button>`).join('')}</div>`:`<div class="difficulty difficulty-time" aria-label="타임어택 난이도 선택">${Object.entries(difficulties).map(([key,d])=>`<button data-difficulty="${key}" class="difficulty-choice ${difficulty===key?'active':''}" aria-pressed="${difficulty===key}"><strong>${d.label}</strong></button>`).join('')}</div>`}
 ${mode==='time'?`<div class="pokemon-stage setup-stage ${difficulty==='hard'?'silhouette':''}"><img src="${previewPokemon.image}" alt="${difficulty==='hard'?'포켓몬 실루엣':'랜덤 포켓몬 미리보기'}" width="230" height="230"></div>`:''}
 <button class="primary setup-start" id="start-game">시작</button><p class="setup-note">${mode==='time'?'60초동안 최대한 많이 맞추기 · 정답 100점 · 연속 정답 보너스':'10문제 · 포켓몬 이름을 맞혀봐!<br>빨리 맞추면 보너스도 있어.'}</p></div>`;
 }
+function questionDeck(g){
+ if(g.mode!=='time')return shuffle(g.pool.filter(p=>p.id!==g.question?.id));
+ // Ten shuffled slots give each difficulty a predictable mix; the full pool
+ // includes familiar Pokemon too. Pick unique Pokemon and avoid boundary repeats.
+ const count=TIME_FAMILIAR_SLOTS[g.difficulty],known=g.pool.filter(p=>familiar.includes(p.id));
+ const slots=shuffle([...Array(count).fill(true),...Array(10-count).fill(false)]),used=new Set(),deck=[];
+ for(const familiarSlot of slots){
+  const preferred=familiarSlot?known:g.pool;
+  let candidates=preferred.filter(p=>!used.has(p.id)&&p.id!==g.question?.id);
+  if(!candidates.length)candidates=g.pool.filter(p=>!used.has(p.id)&&p.id!==g.question?.id);
+  if(!candidates.length)break;
+  const p=candidates[Math.floor(Math.random()*candidates.length)];deck.push(p);used.add(p.id);
+ }
+ return deck;
+}
 function prepareQuestionImages(g){
  // Keep the exact next questions warm, including the next shuffled deck.
- if(!g.deck.length)g.deck=shuffle(g.pool.filter(p=>p.id!==g.question.id));
+ if(!g.deck.length)g.deck=questionDeck(g);
  const ahead=g.mode==='write'?Math.min(3,10-g.total-1):3;
  const upcoming=[g.question,...g.deck.slice(-ahead).reverse().slice(0,ahead)];
  const keep=new Set(upcoming.map(p=>p.id));
@@ -208,12 +307,12 @@ function timeChoices(question,pool){
  return shuffle(choices);
 }
 function selectQuestion(g){
- if(!g.deck.length)g.deck=shuffle(g.pool.filter(p=>p.id!==g.question?.id));
+ if(!g.deck.length)g.deck=questionDeck(g);
  g.question=g.deck.pop();g.questionNumber=g.total+1;g.questionStartedAt=null;g.elapsedAtAnswer=null;g.bonusAwarded=0;g.judgement=null;g.awaitingNext=false;g.checkedLetters=null;g.lastAttempt='';g.answerLength=Array.from(normalize(g.question.name)).length;g.answerComposing=false;g.answerRevealed=false;g.hintUsed=false;g.hint=null;g.selectedAnswer=null;g.locked=false;g.imageReady=false;prepareQuestionImages(g);
  g.options=timeChoices(g.question,g.pool);
 }
-function startGame(){if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;if(!trainerName||document.body.classList.contains('trainer-entry'))return;cleanup();const pool=difficulty==='easy'?pokemon.filter(p=>familiar.includes(p.id)):pokemon;
- game={status:'loading',mode,difficulty,pool,deck:shuffle(pool),images:new Map(),question:null,score:0,correct:0,total:0,streak:0,maxStreak:0,history:[],locked:false,saved:false,deadline:0,imageReady:false,imageFailures:0};
+function startGame(){if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;if(!trainerName||document.body.classList.contains('trainer-entry'))return;cleanup();const pool=mode==='write'&&difficulty==='easy'?pokemon.filter(p=>familiar.includes(p.id)):pokemon;
+ game={status:'loading',mode,difficulty,trainerName,partnerId:currentPartnerId(),pool,deck:[],images:new Map(),question:null,score:0,correct:0,total:0,streak:0,maxStreak:0,history:[],locked:false,saved:false,deadline:0,imageReady:false,imageFailures:0};
  prepareFirstQuestion(game);
 }
 function prepareFirstQuestion(g){
@@ -347,7 +446,7 @@ function submitAnswer(value,skipped=false){const g=game;if(!g||g.status!=='playi
 function endGame(reason='complete'){
  if(!game||game.status==='ended')return;
  completeMasterMiss(game);cleanup();game.status='ended';game.quit=reason==='quit';game.completed=reason==='complete'||game.quit;
- game.record={id:typeof crypto.randomUUID==='function'?crypto.randomUUID():`${Date.now()}-${Math.random()}`,score:game.score,correct:game.correct,total:game.total,mode:rankingKey(game),date:new Date().toISOString()};
+ game.record={name:game.trainerName,partnerId:game.partnerId??null,id:typeof crypto.randomUUID==='function'?crypto.randomUUID():`${Date.now()}-${Math.random()}`,score:game.score,correct:game.correct,total:game.total,mode:rankingKey(game),date:new Date().toISOString()};
  game.rank=0;
  // Replace an open details/navigation panel with the end-of-game registration.
  leaveAction=null;document.querySelector('#detail').close();
@@ -358,7 +457,7 @@ function resultRanking(g){
  if(g.rankingError)return '<p class="result-note" role="status">랭킹을 가져오지 못했어. 다시 확인해볼까?</p><button class="secondary" id="retry-ranking">다시 확인하기</button>';
  if(g.imageError)return '<p class="result-note">연결이 잠깐 끊겼나 봐. 한 번 더 도전해볼까?</p>';
  if(!g.completed)return '<p class="result-note">도전을 마치면 랭킹에 이름을 남길 수 있어!</p>';
- if(g.saved)return `<div class="rank-banner saved"><span>🏆</span><div><strong>랭킹 ${rankPosition(g.savedRank)}에 이름을 남겼어!</strong><p>${escapeHTML(g.record.name)} · ${rankingLabel(g.record.mode)}</p></div></div>`;
+ if(g.saved)return `<div class="rank-banner saved"><span>🏆</span><div><strong>${g.keptBest?'최고기록을 그대로 남겨뒀어!':`랭킹 ${rankPosition(g.savedRank)}에 이름을 남겼어!`}</strong><p>${escapeHTML(g.record.name)} · ${rankingLabel(g.record.mode)}</p></div></div>`;
  if(g.rank)return `<div class="rank-banner"><span>🏆</span><div><strong>축하해! 랭킹 ${rankPosition(g.rank)}!</strong><p>${rankingLabel(g.record.mode)} TOP ${RANKING_LIMIT}에 네 이름을 남겨봐!</p></div><button class="secondary" id="enter-ranking">이름 남기기</button></div>`;
  const cutoff=leaderboard(g.record.mode).at(-1);
  return `<p class="result-note">${g.score===0?'함께해서 즐거웠어! 다음에는 랭킹에도 도전해보자!':`조금만 더 맞히면 TOP ${RANKING_LIMIT}에 들어갈 수 있어! ${cutoff?`현재 ${RANKING_LIMIT}위는 ${cutoff.score.toLocaleString()}점이야.`:''}`}</p>`;
@@ -377,8 +476,8 @@ async function saveRankingAndReturnHome(){
 function showRankingEntry(){
  if(!game||game.status!=='ended'||(!game.rank&&!game.quit))return;
  const g=game,dialog=document.querySelector('#high-score');
- const list=g.saved||!g.rank?leaderboard(g.record.mode):leaderboard(g.record.mode,[...records,g.record]);
- dialog.innerHTML=`<div class="arcade-entry leaderboard-entry"><button class="close" id="close-ranking" aria-label="랭킹 닫기">×</button><h2 id="high-score-title">${g.saved||g.quit?'우리들의 랭킹':'랭킹에 이름을 남겨볼까?'}</h2><form id="save-form"></form><div class="entry-list"><table class="entry-ranking"><thead><tr><th scope="col">순위</th><th scope="col">트레이너</th><th scope="col">점수</th><th scope="col">날짜</th></tr></thead><tbody>${list.map((r,i)=>{const me=r.id===g.record.id;return `<tr class="${me?'my-entry':''}" ${me?'aria-label="내 기록"':''}><td>${rankBadge(i+1)}</td><td>${me&&!g.saved?`<div class="entry-input"><input id="trainer-name" form="save-form" aria-label="트레이너 이름" placeholder="이름" value="${escapeHTML(g.rankingName??trainerName)}" maxlength="12" autocomplete="off"><span class="my-tag">나</span><button type="submit" form="save-form" class="save-name" aria-label="트레이너 이름 저장" title="저장">✓</button></div>`:`<span class="trainer-name-label" title="${escapeHTML(r.name)}"><span class="trainer-name-text">${escapeHTML(r.name)}</span>${me?'<span class="my-tag">나</span>':''}</span>`}</td><td class="entry-points">${r.score.toLocaleString()}</td><td class="entry-date"><time datetime="${escapeHTML(r.date)}" title="${escapeHTML(recordDate.format(new Date(r.date)))}">${rankingDate(r.date)}</time></td></tr>`;}).join('')}</tbody></table>${!list.length?'<p class="empty">아직 기록이 없어. 첫 번째 주인공이 되어볼까?</p>':''}</div><p id="save-message" class="result-note" role="status">${g.quit?'즐거운 도전이었어!':''}</p><button class="primary" id="ranking-replay">다시 도전!</button></div>`;
+ const list=g.saved||!g.rank?leaderboard(g.record.mode):pendingLeaderboard(g.record);
+ dialog.innerHTML=`<div class="arcade-entry leaderboard-entry"><button class="close" id="close-ranking" aria-label="랭킹 닫기">×</button><h2 id="high-score-title">${g.saved||g.quit?'우리들의 랭킹':'랭킹에 이름을 남겨볼까?'}</h2><form id="save-form"></form><div class="entry-list"><table class="entry-ranking"><thead><tr><th scope="col">순위</th><th scope="col">트레이너</th><th scope="col">점수</th><th scope="col">날짜</th></tr></thead><tbody>${list.map((r,i)=>{const me=r.id===g.record.id;return `<tr class="${me?'my-entry':''}" ${me?'aria-label="내 기록"':''}><td>${rankBadge(i+1)}</td><td>${me&&!g.saved?`<div class="entry-input">${rankingPartner(g.record)}<input id="trainer-name" form="save-form" aria-label="트레이너 이름" placeholder="이름" value="${escapeHTML(g.rankingName??trainerName)}" maxlength="12" autocomplete="off"><span class="my-tag">나</span><button type="submit" form="save-form" class="save-name" aria-label="트레이너 이름 저장" title="저장">✓</button></div>`:`<span class="trainer-name-label" title="${escapeHTML(r.name)}">${rankingPartner(r)}<span class="trainer-name-text">${escapeHTML(r.name)}</span>${me?'<span class="my-tag">나</span>':''}</span>`}</td><td class="entry-points">${r.score.toLocaleString()}</td><td class="entry-date"><time datetime="${escapeHTML(r.date)}" title="${escapeHTML(recordDate.format(new Date(r.date)))}">${rankingDate(r.date)}</time></td></tr>`;}).join('')}</tbody></table>${!list.length?'<p class="empty">아직 기록이 없어. 첫 번째 주인공이 되어볼까?</p>':''}</div><p id="save-message" class="result-note" role="status">${g.quit?'즐거운 도전이었어!':''}</p><button class="primary" id="ranking-replay">다시 도전!</button></div>`;
  if(!dialog.open)dialog.showModal();
  const input=dialog.querySelector('#trainer-name');if(input){input.focus({preventScroll:true});input.select();}
  const ownRow=dialog.querySelector('.my-entry');if(ownRow)ownRow.scrollIntoView({block:'nearest'});
@@ -389,13 +488,13 @@ async function saveRecord(){
  const name=input.value.normalize('NFKC').trim()||pokemon[Math.floor(Math.random()*pokemon.length)].name;if(!validTrainerName(name)){input.setCustomValidity('이름을 12자 안으로 적어줘.');input.reportValidity();return;}input.setCustomValidity('');input.value=name;g.rankingName=name;
  g.saving=true;input.disabled=true;button.disabled=true;if(replay)replay.disabled=true;message.textContent='네 이름을 기록에 남기고 있어…';
  try{
-  const data=await rankingRequest('/api/scores',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:g.record.id,name,mode:g.record.mode,results:g.history.map(answer=>answer.correct),hints:g.history.map(answer=>!!answer.hintUsed),...(g.mode==='write'?{elapsedMs:g.history.map(answer=>answer.elapsedMs??MASTER_BONUS_DURATION)}:{})})});
+  const data=await rankingRequest('/api/scores',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:g.record.id,name,partnerId:g.record.partnerId??null,mode:g.record.mode,results:g.history.map(answer=>answer.correct),hints:g.history.map(answer=>!!answer.hintUsed),...(g.mode==='write'?{elapsedMs:g.history.map(answer=>answer.elapsedMs??MASTER_BONUS_DURATION)}:{})})});
   if(typeof data.qualified!=='boolean')throw Error('이름이 저장됐는지 확인하지 못했어. 다시 눌러줘.');
   const entries=sharedEntries(g.record.mode,data.entries);updateBoard(g.record.mode,entries);
   if(game!==g||g.status!=='ended')return;
   if(!data.qualified){g.rank=0;document.querySelector('#high-score').close();renderGameBody();return;}
-  const saved=entries.find(row=>row.id===g.record.id);if(!saved||!Number.isInteger(data.rank)||data.rank<1||data.rank>RANKING_LIMIT||entries[data.rank-1]?.id!==saved.id)throw Error('네 순위를 확인하지 못했어. 다시 눌러줘.');
-  g.record=saved;g.score=saved.score;g.saved=true;g.savedRank=data.rank;lastSavedId=saved.id;recordTab=saved.mode;
+  const saved=entries.find(row=>row.id===data.record?.id);if(!saved||!Number.isInteger(data.rank)||data.rank<1||data.rank>RANKING_LIMIT||entries[data.rank-1]?.id!==saved.id)throw Error('네 순위를 확인하지 못했어. 다시 눌러줘.');
+  g.keptBest=!!data.keptBest||saved.id!==g.record.id;g.record=saved;if(!g.keptBest)g.score=saved.score;g.saved=true;g.savedRank=data.rank;lastSavedId=saved.id;recordTab=saved.mode;
   try{localStorage.setItem('pokemon-play-last-shared-id',saved.id);}catch{}
   renderGameBody();showRankingEntry();
  }catch(error){if(game===g&&document.querySelector('#high-score').open)message.textContent=error.message||'기록을 남기지 못했어. 한 번 더 눌러줘.';}
@@ -445,7 +544,7 @@ function renderDexResults(){const q=normalize(search);let list=pokemon.filter(p=
 let extraDetails=null,extraDetailsPromise=null,detailRequest=0;
 function relatedCard(p,current){return `<button class="related-card ${p.uid===current?'current-form':''}" data-dex-uid="${p.uid}" ${p.uid===current?'aria-current="true"':''} aria-label="${escapeHTML(p.name+' '+(p.form||''))} 도감 보기"><span class="number">No. ${String(p.id).padStart(4,'0')}</span><img src="${p.image}" alt="" width="110" height="100" loading="lazy"><strong>${escapeHTML(p.name)}</strong>${p.form?`<small>${escapeHTML(p.form)}</small>`:''}<div>${badges(p)}</div></button>`;}
 function evolutionSection(p){if(!p.evolutions?.length)return '';const stages=[...new Set(p.evolutions.map(e=>e.stage))].sort((a,b)=>a-b);return `<section class="related-section"><h3>진화</h3><div class="evolution-stages ${stages.length===2&&p.evolutions.filter(e=>e.stage===stages[1]).length>3?'branched-evolution':''}" style="--stages:${stages.length}">${stages.map((stage,i)=>`<div class="evolution-stage"><h4>${i===0?'기본':i+'단계 진화'}</h4>${p.evolutions.filter(e=>e.stage===stage).map(e=>relatedCard(e,p.uid)).join('')}</div>`).join('')}</div></section>`;}
-function detailTools(p){return `<div class="detail-tools"><button class="detail-tool" id="close-detail" aria-label="도감 닫기" title="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>${p?`<button class="detail-tool coloring-tool" data-color-pokemon="${p.id}" data-color-uid="${p.uid}" aria-label="색칠하기" title="색칠하기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18h1.5a2.5 2.5 0 0 0 1.9-4.1 1.6 1.6 0 0 1 1.2-2.6H18a3 3 0 0 0 3-3c0-5-4-8.3-9-8.3Z"/><circle cx="7.5" cy="10" r="1" fill="currentColor"/><circle cx="10" cy="6.8" r="1" fill="currentColor"/><circle cx="14.2" cy="6.8" r="1" fill="currentColor"/><circle cx="17" cy="10" r="1" fill="currentColor"/></svg></button>`:''}</div>`;}
+function detailTools(p){return `<div class="detail-tools"><button class="detail-tool" id="close-detail" aria-label="도감 닫기" title="닫기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>${p?`<button class="detail-tool coloring-tool" data-color-pokemon="${p.id}" data-color-uid="${p.uid}" aria-label="색칠하기" title="색칠하기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18h1.5a2.5 2.5 0 0 0 1.9-4.1 1.6 1.6 0 0 1 1.2-2.6H18a3 3 0 0 0 3-3c0-5-4-8.3-9-8.3Z"/><circle cx="7.5" cy="10" r="1" fill="currentColor"/><circle cx="10" cy="6.8" r="1" fill="currentColor"/><circle cx="14.2" cy="6.8" r="1" fill="currentColor"/><circle cx="17" cy="10" r="1" fill="currentColor"/></svg></button><button class="detail-tool partner-tool" data-partner-pokemon="${p.id}" aria-label="${p.id===currentPartnerId()?'함께하는 파트너':'이 포켓몬을 파트너로 선택'}" title="${p.id===currentPartnerId()?'함께하는 파트너':'파트너로 선택'}" aria-pressed="${p.id===currentPartnerId()}" ${activeGame()?'disabled':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 20S3 14.8 3 8.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 9 1.5C21 14.8 12 20 12 20Z"/></svg></button>`:''}</div>`;}
 function detailShell(content,p){return `${detailTools(p)}<div class="detail-scroll"><div class="detail-inner pokemon-detail-card">${content}</div></div>`;}
 function renderDexDetail(p){
  const dialog=document.querySelector('#detail');dialog.classList.add('dex-detail');dialog.setAttribute('aria-labelledby','detail-title');dialog.style.setProperty('--card-type',typeMeta[p.types[0]]?.color||'#999999');dialog.dataset.type=p.types[0];
@@ -466,13 +565,13 @@ async function showRelatedDetail(uid){
 }
 function renderRecords(){if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;
  const key=recordTab,list=leaderboard(key),state=rankingStates.get(key)||{status:'idle'},kind=rankingMode(key),level=rankingDifficulty(key);
- const content=state.status==='idle'||state.status==='loading'?`<div class="ranking-status" role="status">${rankingSpinner()}<p>친구들의 멋진 기록을 가져오고 있어…</p></div>`:state.status==='error'?`<div class="ranking-status" role="status"><p>${escapeHTML(state.message)}</p><button class="secondary" id="retry-rankings">다시 불러오기</button></div>`:list.length?`<table class="ranking"><thead><tr><th>순위</th><th>트레이너</th><th>점수</th><th>정답</th><th>날짜</th></tr></thead><tbody>${list.map((r,i)=>`<tr class="${r.id===lastSavedId?'new-record':''}"><td>${rankBadge(i+1)}</td><td><span class="trainer-name-label" title="${escapeHTML(r.name)}"><span class="trainer-name-text">${escapeHTML(r.name)}</span>${r.id===lastSavedId?'<span class="my-tag">나</span>':''}</span></td><td class="score">${r.score.toLocaleString()}</td><td>${kind==='write'?r.correct+'개':r.correct+' / '+r.total}</td><td class="record-date"><time datetime="${escapeHTML(r.date)}" title="${escapeHTML(recordDate.format(new Date(r.date)))}">${rankingDate(r.date)}</time></td></tr>`).join('')}</tbody></table><p class="result-note">${rankingLabel(key)} TOP 20 · 같은 점수라면 최근에 도전한 친구가 먼저 보여.</p>`:`<div class="empty"><div style="font-size:38px;margin-bottom:14px">🏆</div>아직 기록이 없어.<br>네가 첫 번째 주인공이 되어볼까?<div style="margin-top:23px"><button class="primary" data-play-record="${key}">도전 시작하기</button></div></div>`;
+ const content=state.status==='idle'||state.status==='loading'?`<div class="ranking-status" role="status">${rankingSpinner()}<p>친구들의 멋진 기록을 가져오고 있어…</p></div>`:state.status==='error'?`<div class="ranking-status" role="status"><p>${escapeHTML(state.message)}</p><button class="secondary" id="retry-rankings">다시 불러오기</button></div>`:list.length?`<table class="ranking"><thead><tr><th>순위</th><th>트레이너</th><th>점수</th><th>정답</th><th>날짜</th></tr></thead><tbody>${list.map((r,i)=>`<tr class="${r.id===lastSavedId?'new-record':''}"><td>${rankBadge(i+1)}</td><td><span class="trainer-name-label" title="${escapeHTML(r.name)}">${rankingPartner(r)}<span class="trainer-name-text">${escapeHTML(r.name)}</span>${r.id===lastSavedId?'<span class="my-tag">나</span>':''}</span></td><td class="score">${r.score.toLocaleString()}</td><td>${kind==='write'?r.correct+'개':r.correct+' / '+r.total}</td><td class="record-date"><time datetime="${escapeHTML(r.date)}" title="${escapeHTML(recordDate.format(new Date(r.date)))}">${rankingDate(r.date)}</time></td></tr>`).join('')}</tbody></table><p class="result-note">${rankingLabel(key)} TOP 20 · 트레이너마다 최고기록 하나 · 동점은 최근 기록부터.</p>`:`<div class="empty"><div style="font-size:38px;margin-bottom:14px">🏆</div>아직 기록이 없어.<br>네가 첫 번째 주인공이 되어볼까?<div style="margin-top:23px"><button class="primary" data-play-record="${key}">도전 시작하기</button></div></div>`;
  app.innerHTML=`<button class="text-button back-to-game" data-nav="play"><img src="assets/ui/pokeball.svg" alt="" width="24" height="24">도전하러가기!</button><section class="intro ranking-intro"><div><h1>우리들의 랭킹</h1><p>친구들과 함께 멋진 기록을 만들어보자!</p></div></section><section class="ranking-controls" aria-label="랭킹 모드와 난이도"><div class="game-tabs ranking-mode-tabs" role="group" aria-label="게임 모드">${[['time','⏱️ 타임어택'],['write','🏆 마스터']].map(([value,label])=>`<button class="game-tab ${kind===value?'active':''}" data-ranking-mode="${value}" aria-pressed="${kind===value}">${label}</button>`).join('')}</div><div class="ranking-difficulties" role="group" aria-label="난이도">${Object.entries(difficulties).map(([value,d])=>`<button data-ranking-difficulty="${value}" class="${level===value?'active':''}" aria-pressed="${level===value}">${d.label}</button>`).join('')}</div></section><div class="shared-ranking-board" aria-live="polite">${content}</div>`;
  if(state.status==='idle')loadRankings(key).catch(()=>{});
 }
-document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;b.blur();if(b.id==='edit-trainer'){showTrainerEntry();return;}if(b.id==='print-coloring'){if(!b.disabled)window.print();return;}if(b.dataset.nav){navigate(b.dataset.nav);return;}if(b.dataset.mode){const switchMode=()=>{cleanup();game=null;mode=b.dataset.mode;renderPlay();};if(activeGame())confirmLeave(switchMode);else switchMode();return;}if(b.dataset.difficulty){difficulty=b.dataset.difficulty;renderPlay();return;}if(b.id==='start-game'||b.hasAttribute('data-start')){startGame();return;}if(b.dataset.answer){if(b.dataset.question===String(game?.question.id))submitAnswer(b.dataset.answer);return;}if(b.id==='hint-question'){showQuestionHint();return;}if(b.id==='skip-question'){submitAnswer('',true);return;}if(b.id==='quit-game'){endGame('quit');return;}if(b.id==='retry-ranking'){prepareRanking(game);return;}if(b.id==='retry-rankings'){if(!rankingRequests.has(recordTab)){rankingStates.delete(recordTab);renderRecords();}return;}if(b.dataset.rankingMode){recordTab=rankingBoard(b.dataset.rankingMode,rankingDifficulty(recordTab));renderRecords();return;}if(b.dataset.rankingDifficulty){recordTab=rankingBoard(rankingMode(recordTab),b.dataset.rankingDifficulty);renderRecords();return;}if(b.id==='enter-ranking'){showRankingEntry();return;}if(b.id==='close-ranking'){document.querySelector('#high-score').close();return;}if(b.id==='ranking-replay'){saveRankingAndReturnHome();return;}if(b.id==='result-replay'){returnToLobby();return;}if(b.id==='keep-playing'){leaveAction=null;document.querySelector('#detail').close();return;}if(b.id==='leave-game'){const action=leaveAction;leaveAction=null;document.querySelector('#detail').close();if(action)action();return;}if(b.dataset.dexUid){showRelatedDetail(b.dataset.dexUid);return;}if(b.hasAttribute('data-description')){const dialog=document.querySelector('#detail');dialog.querySelectorAll('[data-description]').forEach(button=>{const selected=button===b;button.classList.toggle('active',selected);button.setAttribute('aria-pressed',selected);});dialog.querySelectorAll('[data-description-text]').forEach(text=>text.hidden=text.dataset.descriptionText!==b.dataset.description);return;}if(b.dataset.colorPokemon){const p=pokemon.find(p=>p.uid===b.dataset.colorUid)||extraDetails?.[b.dataset.colorUid];if(p)showColoring(p);return;}if(b.dataset.pokemon){showDetail(b.dataset.pokemon);return;}if(b.id==='close-detail'){document.querySelector('#detail').close();return;}if(b.dataset.recordTab){recordTab=b.dataset.recordTab;renderRecords();return;}if(b.dataset.playRecord){const key=b.dataset.playRecord;mode=key==='time'||key.startsWith('time-')?'time':'write';difficulty=mode==='time'?(key==='time'?'normal':key.slice(5)):key;view='play';game=null;render();return;}});
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;b.blur();if(b.id==='edit-trainer'||b.id==='back-to-trainers'){showTrainerEntry();return;}if(b.dataset.deleteTrainer){deleteTrainer(b.dataset.deleteTrainer);return;}if(b.dataset.selectTrainer){selectTrainer(b.dataset.selectTrainer);return;}if(b.id==='find-partner'){showPartnerPicker();return;}if(b.id==='skip-partner'){choosePartner(null);return;}if(b.id==='close-partner-picker'){document.querySelector('#partner-picker').close();return;}if(b.dataset.choosePartner||b.dataset.partnerPokemon){choosePartner(Number(b.dataset.choosePartner||b.dataset.partnerPokemon));return;}if(b.id==='retry-partner-load'){init();return;}if(b.id==='print-coloring'){if(!b.disabled)window.print();return;}if(b.dataset.nav){navigate(b.dataset.nav);return;}if(b.dataset.mode){const switchMode=()=>{cleanup();game=null;mode=b.dataset.mode;renderPlay();};if(activeGame())confirmLeave(switchMode);else switchMode();return;}if(b.dataset.difficulty){difficulty=b.dataset.difficulty;renderPlay();return;}if(b.id==='start-game'||b.hasAttribute('data-start')){startGame();return;}if(b.dataset.answer){if(b.dataset.question===String(game?.question.id))submitAnswer(b.dataset.answer);return;}if(b.id==='hint-question'){showQuestionHint();return;}if(b.id==='skip-question'){submitAnswer('',true);return;}if(b.id==='quit-game'){endGame('quit');return;}if(b.id==='retry-ranking'){prepareRanking(game);return;}if(b.id==='retry-rankings'){if(!rankingRequests.has(recordTab)){rankingStates.delete(recordTab);renderRecords();}return;}if(b.dataset.rankingMode){recordTab=rankingBoard(b.dataset.rankingMode,rankingDifficulty(recordTab));renderRecords();return;}if(b.dataset.rankingDifficulty){recordTab=rankingBoard(rankingMode(recordTab),b.dataset.rankingDifficulty);renderRecords();return;}if(b.id==='enter-ranking'){showRankingEntry();return;}if(b.id==='close-ranking'){document.querySelector('#high-score').close();return;}if(b.id==='ranking-replay'){saveRankingAndReturnHome();return;}if(b.id==='result-replay'){returnToLobby();return;}if(b.id==='keep-playing'){leaveAction=null;document.querySelector('#detail').close();return;}if(b.id==='leave-game'){const action=leaveAction;leaveAction=null;document.querySelector('#detail').close();if(action)action();return;}if(b.dataset.dexUid){showRelatedDetail(b.dataset.dexUid);return;}if(b.hasAttribute('data-description')){const dialog=document.querySelector('#detail');dialog.querySelectorAll('[data-description]').forEach(button=>{const selected=button===b;button.classList.toggle('active',selected);button.setAttribute('aria-pressed',selected);});dialog.querySelectorAll('[data-description-text]').forEach(text=>text.hidden=text.dataset.descriptionText!==b.dataset.description);return;}if(b.dataset.colorPokemon){const p=pokemon.find(p=>p.uid===b.dataset.colorUid)||extraDetails?.[b.dataset.colorUid];if(p)showColoring(p);return;}if(b.dataset.pokemon){showDetail(b.dataset.pokemon);return;}if(b.id==='close-detail'){document.querySelector('#detail').close();return;}if(b.dataset.recordTab){recordTab=b.dataset.recordTab;renderRecords();return;}if(b.dataset.playRecord){const key=b.dataset.playRecord;mode=key==='time'||key.startsWith('time-')?'time':'write';difficulty=mode==='time'?(key==='time'?'normal':key.slice(5)):key;view='play';game=null;render();return;}});
 document.addEventListener('submit',e=>{if(e.target.id==='trainer-entry-form'){e.preventDefault();enterTrainer();return;}if(e.target.id==='answer-form'){e.preventDefault();if(game?.answerComposing)return;if(game?.awaitingNext){advanceMasterQuestion();return;}const value=masterAnswer(game,document.querySelector('#answer-input').value.trim());if(value)submitAnswer(value);}if(e.target.id==='save-form'){e.preventDefault();saveRecord();}});
-document.addEventListener('input',e=>{if(e.target.id==='search'){search=e.target.value;renderDexResults();}if(e.target.id==='answer-input'){if(game?.judgement==='wrong')resetMasterAttempt();updateAnswerSlots(!e.isComposing);}if(e.target.id==='trainer-name'){e.target.setCustomValidity('');if(game)game.rankingName=e.target.value;}if(e.target.id==='entry-trainer-name')e.target.setCustomValidity('');});
+document.addEventListener('input',e=>{if(e.target.id==='partner-search'){partnerSearch=e.target.value;renderPartnerResults();}if(e.target.id==='search'){search=e.target.value;renderDexResults();}if(e.target.id==='answer-input'){if(game?.judgement==='wrong')resetMasterAttempt();updateAnswerSlots(!e.isComposing);}if(e.target.id==='trainer-name'){e.target.setCustomValidity('');if(game)game.rankingName=e.target.value;}if(e.target.id==='entry-trainer-name')e.target.setCustomValidity('');});
 document.addEventListener('pointerdown',e=>{if(e.target.id==='answer-input'){focusAnswerSlot(e);return;}if(document.activeElement?.id==='answer-input'&&e.target.closest('#answer-form button,#skip-question,#hint-question')){finishAnswerComposition();e.preventDefault();}});
 document.addEventListener('focusin',e=>{if(e.target.matches('button')){e.target.blur();return;}if(e.target.id==='answer-input'){updateAnswerSlots();fitLayersToViewport();}});
 document.addEventListener('compositionstart',e=>{if(e.target.id==='answer-input'&&game){if(game.judgement==='wrong')resetMasterAttempt();game.answerComposing=true;}});
@@ -481,12 +580,12 @@ document.addEventListener('selectionchange',()=>{if(document.activeElement?.id==
 document.addEventListener('select',e=>{if(e.target.id==='answer-input')updateAnswerSlots();},true);
 document.addEventListener('keyup',e=>{if(e.target.id==='answer-input')updateAnswerSlots();});
 document.addEventListener('focusout',e=>{if(e.target.id==='answer-input')updateAnswerSlots();});
-document.addEventListener('change',e=>{if(e.target.id==='region-filter'){regionFilter=e.target.value;renderDexResults();}if(e.target.id==='type-filter'){typeFilter=e.target.value;renderDexResults();}if(e.target.id==='sort'){sort=e.target.value;renderDexResults();}});
-document.addEventListener('keydown',e=>{if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;if(document.querySelector('#detail').open||document.querySelector('#coloring').open||document.querySelector('#high-score').open||e.target.matches('input,select,textarea')||e.isComposing)return;if(game?.status==='playing'&&game.mode==='time'&&!game.locked&&/^[1-4]$/.test(e.key)){e.preventDefault();submitAnswer(game.options[Number(e.key)-1].id);}});
-for(const id of ['detail','coloring'])document.querySelector('#'+id).addEventListener('click',e=>{if(e.target===e.currentTarget){const r=e.currentTarget.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.currentTarget.close();}});
+document.addEventListener('change',e=>{if(e.target.id==='partner-region'){partnerRegion=e.target.value;renderPartnerResults();}if(e.target.id==='region-filter'){regionFilter=e.target.value;renderDexResults();}if(e.target.id==='type-filter'){typeFilter=e.target.value;renderDexResults();}if(e.target.id==='sort'){sort=e.target.value;renderDexResults();}});
+document.addEventListener('keydown',e=>{if(window.PokemonAccess?.required&&!window.PokemonAccess.valid)return;if(document.querySelector('#partner-picker').open||document.querySelector('#detail').open||document.querySelector('#coloring').open||document.querySelector('#high-score').open||e.target.matches('input,select,textarea')||e.isComposing)return;if(game?.status==='playing'&&game.mode==='time'&&!game.locked&&/^[1-4]$/.test(e.key)){e.preventDefault();submitAnswer(game.options[Number(e.key)-1].id);}});
+for(const id of ['detail','coloring','partner-picker'])document.querySelector('#'+id).addEventListener('click',e=>{if(e.target===e.currentTarget){const r=e.currentTarget.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.currentTarget.close();}});
 document.querySelector('#coloring').addEventListener('close',()=>{if(!document.querySelector('#coloring').open)coloringRequest++;});
-async function init(){pokemonLoading=true;pokemonLoadError=false;try{const [dataResponse,manifestResponse,regionResponse]=await Promise.all([fetch('pokemon.json'),fetch('pokedex-manifest.json'),fetch('pokemon-regions.json')]);if(!dataResponse.ok||!manifestResponse.ok||!regionResponse.ok)throw Error('data');const [data,manifest,regionalData]=await Promise.all([dataResponse.json(),manifestResponse.json(),regionResponse.json()]);if(!Array.isArray(data)||data.length!==manifest.speciesCount||manifest.speciesCount!==manifest.maxNumber||!data.every((p,i)=>p.id===i+1&&p.name&&p.image&&p.types?.length))throw Error('incomplete');if(!Array.isArray(regionalData.groups)||!regionalData.groups.length||regionalData.groups.some(g=>!g.name||!Array.isArray(g.numbers)||g.numbers.some(n=>!Number.isInteger(n)||n<1||n>manifest.maxNumber)))throw Error('regions');pokemon=data;evolutionFamilies=buildEvolutionFamilies(data);pokedexManifest=manifest;regionGroups=regionalData.groups;pokemonLoading=false;render();}catch{pokemonLoading=false;pokemonLoadError=true;renderSiteLoading();}}
-if(trainerName){document.body.classList.remove('trainer-entry');renderSiteLoading();}else showTrainerEntry();
+async function init(){pokemonLoading=true;pokemonLoadError=false;try{const [dataResponse,manifestResponse,regionResponse]=await Promise.all([fetch('pokemon.json'),fetch('pokedex-manifest.json'),fetch('pokemon-regions.json')]);if(!dataResponse.ok||!manifestResponse.ok||!regionResponse.ok)throw Error('data');const [data,manifest,regionalData]=await Promise.all([dataResponse.json(),manifestResponse.json(),regionResponse.json()]);if(!Array.isArray(data)||data.length!==manifest.speciesCount||manifest.speciesCount!==manifest.maxNumber||!data.every((p,i)=>p.id===i+1&&p.name&&p.image&&p.types?.length))throw Error('incomplete');if(!Array.isArray(regionalData.groups)||!regionalData.groups.length||regionalData.groups.some(g=>!g.name||!Array.isArray(g.numbers)||g.numbers.some(n=>!Number.isInteger(n)||n<1||n>manifest.maxNumber)))throw Error('regions');pokemon=data;pokemonById=new Map(data.map(p=>[p.id,p]));evolutionFamilies=buildEvolutionFamilies(data);pokedexManifest=manifest;regionGroups=regionalData.groups;pokemonLoading=false;if(trainerStage==='partner')showPartnerSetup();else if(trainerStage==='name')refreshSavedTrainers();else render();}catch{pokemonLoading=false;pokemonLoadError=true;if(trainerStage==='partner')showPartnerSetup();else renderSiteLoading();}}
+if(trainerName&&currentTrainer()?.partnerChosen){document.body.classList.remove('trainer-entry');renderSiteLoading();}else if(trainerName)showPartnerSetup();else showTrainerEntry();
 init();
 // WebMCP uses the same game and Pokédex actions as the visible controls.
 if(document.modelContext?.registerTool){
@@ -502,4 +601,4 @@ if(document.modelContext?.registerTool){
  addEventListener('pagehide',()=>lifecycle.abort(),{once:true});addEventListener('pokemon-access-revoked',()=>lifecycle.abort(),{once:true});
 }
 
-window.addEventListener('pokemon-access-revoked',()=>{cleanup();game=null;detailRequest++;coloringRequest++;document.body.classList.remove('game-focused','trainer-entry');});
+window.addEventListener('pokemon-access-revoked',()=>{cleanup();game=null;detailRequest++;coloringRequest++;document.querySelector('#partner-picker')?.close();document.body.classList.remove('game-focused','trainer-entry');});

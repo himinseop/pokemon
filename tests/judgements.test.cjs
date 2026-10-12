@@ -200,3 +200,14 @@ test('an expired bonus invites an available hint and stops nudging after hint, a
  h.correct();await h.next();assert.equal(h.$('.hint-nudge').hidden,true);h.clock(40000);h.w.qa('tick()');assert.equal(h.$('.hint-nudge').hidden,false);h.correct();assert.equal(h.$('.hint-nudge').hidden,true);
  await h.next();h.clock(60000);h.w.qa('tick()');h.$('#skip-question').click();assert.equal(h.$('.hint-nudge').hidden,true);assert.ok(h.$('#skip-question img').src.endsWith('/assets/ui/pass-flag.svg'));
 });
+
+test('time attack mixes familiar and full pools by difficulty without duplicates or boundary repeats',async t=>{
+ const h=await harness();t.after(h.close);
+ for(const [level,knownSlots] of [['easy',8],['normal',2],['hard',5]]){
+  const result=h.w.qa(`(()=>{const original=Math.random;let seed=713;Math.random=()=>((seed=(seed*1664525+1013904223)>>>0)/4294967296);try{const g={mode:'time',difficulty:'${level}',pool:pokemon,question:null};let familiarCount=0,minKnown=10,valid=true;for(let i=0;i<200;i++){const deck=questionDeck(g);const count=deck.filter(p=>familiar.includes(p.id)).length;familiarCount+=count;minKnown=Math.min(minKnown,count);valid&&=deck.length===10&&new Set(deck.map(p=>p.id)).size===10&&!deck.some(p=>p.id===g.question?.id);g.question=deck[0];}return {familiarCount,minKnown,valid};}finally{Math.random=original;}})()`);
+  assert.equal(result.valid,true);assert.ok(result.minKnown>=knownSlots);assert.ok(result.familiarCount>=knownSlots*200&&result.familiarCount<=(knownSlots+.5)*200);
+  await h.start('time',level);assert.equal(h.game().pool.length,1025);assert.equal(h.w.document.querySelectorAll('.difficulty-time small').length,0);
+  const g=h.game(),current=g.question,next=g.deck.at(-1);assert.ok(g.images.get(next.id)?.ready);h.correct();await h.run(550);assert.equal(h.game().question.id,next.id);assert.notEqual(h.game().question.id,current.id);
+ }
+ await h.start('write','easy');assert.equal(h.game().pool.length,h.w.qa('familiar.length'));assert.ok(h.game().pool.every(p=>h.w.qa('familiar').includes(p.id)));
+});
