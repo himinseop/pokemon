@@ -34,9 +34,9 @@ async function harness(shared,{trainer='지우',profiles=null,storageBroken=fals
  const $=selector=>w.document.querySelector(selector),click=selector=>{assert.ok($(selector),selector);$(selector).click();};
  return {w,$,click,close:()=>dom.window.close(),finish:async()=>{click('#start-game');await flush();const question=w.qa('game.question.id');click(`[data-answer="${question}"]`);w.qa('endGame()');await flush();},save:async name=>{$('#trainer-name').value=name;$('#save-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await flush();}};
 }
-test('ranking uses two mode tabs and three difficulties without showing old device records',async t=>{
+test('ranking uses three mode tabs and three difficulties without showing old device records',async t=>{
  const shared=server(),h=await harness(shared);t.after(h.close);h.click('[data-nav="records"]');await flush();
- assert.equal(h.w.document.querySelectorAll('[data-ranking-mode]').length,2);assert.equal(h.w.document.querySelectorAll('[data-ranking-difficulty]').length,3);assert.ok(!h.$('#app').textContent.includes('개인기록'));
+ assert.equal(h.w.document.querySelectorAll('[data-ranking-mode]').length,3);assert.equal(h.w.document.querySelectorAll('[data-ranking-difficulty]').length,3);assert.ok(!h.$('#app').textContent.includes('개인기록'));
  for(const [kind,expected] of [['time',['time-easy','time','time-hard']],['write',['easy','normal','hard']]]){
   h.click(`[data-ranking-mode="${kind}"]`);
   for(const [i,level] of ['easy','normal','hard'].entries()){h.click(`[data-ranking-difficulty="${level}"]`);await flush();assert.equal(h.w.qa('recordTab'),expected[i]);assert.equal(h.$(`[data-ranking-difficulty="${level}"]`).getAttribute('aria-pressed'),'true');}

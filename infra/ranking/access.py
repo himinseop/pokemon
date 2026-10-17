@@ -91,6 +91,13 @@ class DynamoStore:
         return self.table.get_item(Key={'id': key}, ConsistentRead=True).get('Item')
     def put(self, item):
         self.table.put_item(Item=item, ConditionExpression='attribute_not_exists(id)')
+    def save_settings(self, item, expected):
+        kwargs = {'Item': item}
+        if expected:
+            kwargs.update(ConditionExpression='#settings.#version=:expected', ExpressionAttributeNames={'#settings':'settings','#version':'version'}, ExpressionAttributeValues={':expected':expected})
+        else:
+            kwargs['ConditionExpression'] = 'attribute_not_exists(id)'
+        self.table.put_item(**kwargs)
     def update(self, key, values):
         names = {f'#n{i}': name for i, name in enumerate(values)}
         params = {f':v{i}': value for i, value in enumerate(values.values())}
@@ -208,6 +215,16 @@ def dispatch(event, storage=None, now=None, signer=None):
     storage=storage if storage is not None else store()
     if path.startswith('/api/admin/'):
         admin=require_admin(event)
+        if path=='/api/admin/game-settings':
+            import settings
+            if method=='GET': return 200, {'settings':settings.read(storage),'pokemonNames':settings.NAMES}, None
+            if method=='PUT':
+                try: result=settings.save(storage,decode_body(event),admin,iso(now))
+                except ValueError as error: raise AccessError(400,str(error))
+                except Exception as error:
+                    if getattr(error,'response',{}).get('Error',{}).get('Code')=='ConditionalCheckFailedException':raise AccessError(409,'다른 설정이 먼저 저장됐어요. 최신 설정을 다시 불러와 주세요.')
+                    raise
+                return 200, {'settings':result}, None
         if method=='POST' and path=='/api/admin/shares':
             data=decode_body(event);label=share_label(data.get('label',''))
             key=secrets.token_urlsafe(32);identifier=digest(key)

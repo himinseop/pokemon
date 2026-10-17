@@ -46,7 +46,7 @@ test('shared rankings use one retained on-demand board table and uncached API re
  const fn=resources(t,'AWS::Lambda::Function').find(r=>r.Properties.FunctionName==='pokemon-play-prod-rankings');
  assert.equal(fn.Properties.Runtime,'python3.13');assert.equal(fn.Properties.ReservedConcurrentExecutions,5);assert.equal(fn.Properties.Timeout,8);assert.equal(fn.Properties.MemorySize,256);
  const api=resources(t,'AWS::ApiGatewayV2::Api')[0];assert.equal(api.Properties.ProtocolType,'HTTP');
- const routes=resources(t,'AWS::ApiGatewayV2::Route').map(r=>r.Properties.RouteKey).sort();assert.ok(routes.includes('GET /api/rankings')&&routes.includes('POST /api/scores'));assert.equal(routes.length,15);
+ const routes=resources(t,'AWS::ApiGatewayV2::Route').map(r=>r.Properties.RouteKey).sort();assert.ok(routes.includes('GET /api/rankings')&&routes.includes('POST /api/scores'));assert.equal(routes.length,18);assert.ok(routes.includes('GET /api/game-settings')&&routes.includes('GET /api/admin/game-settings')&&routes.includes('PUT /api/admin/game-settings'));
  const d=resources(t,'AWS::CloudFront::Distribution')[0].Properties.DistributionConfig;
  const behavior=d.CacheBehaviors.find(b=>b.PathPattern==='api/*');assert.ok(behavior);assert.ok(behavior.AllowedMethods.includes('POST'));
  assert.equal(behavior.CachePolicyId,'4135ea2d-6df8-44a3-9df3-4b5a84be39ad');
@@ -61,7 +61,7 @@ test('invitation grants are retained independently and do not expire device reco
  const pool=resources(t,'AWS::Cognito::UserPool')[0];assert.equal(pool.Properties.AdminCreateUserConfig.AllowAdminCreateUserOnly,true);assert.equal(pool.DeletionPolicy,'Retain');
  const client=resources(t,'AWS::Cognito::UserPoolClient')[0];assert.equal(client.Properties.GenerateSecret,false);assert.deepEqual(client.Properties.AllowedOAuthFlows,['code']);assert.deepEqual(client.Properties.CallbackURLs,['https://pokemon.pir.kr/admin']);
  const routes=resources(t,'AWS::ApiGatewayV2::Route');for(const route of routes.filter(r=>r.Properties.RouteKey.includes('/api/admin/'))){assert.equal(route.Properties.AuthorizationType,'JWT');assert.deepEqual(route.Properties.AuthorizationScopes,['openid']);}
- assert.equal(routes.filter(r=>r.Properties.RouteKey.includes('/api/admin/')).length,8);
+ assert.equal(routes.filter(r=>r.Properties.RouteKey.includes('/api/admin/')).length,10);
 });
 test('enabled invitations protect all game assets at the edge while the envelope and administrator shell remain public',()=>{
  const t=template({invitationAccessEnabled:true}),d=resources(t,'AWS::CloudFront::Distribution')[0].Properties.DistributionConfig;

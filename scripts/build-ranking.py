@@ -6,7 +6,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = ('handler.py', 'access.py', 'pokemon-names.json')
+FILES = ('handler.py', 'access.py', 'settings.py', 'game-settings.json', 'pokemon-names.json')
 
 
 def build(target=ROOT / 'exports'):

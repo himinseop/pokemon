@@ -11,7 +11,15 @@ from urllib.parse import parse_qs, urlsplit
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'infra/ranking'))
 import handler as rankings
+import settings as gameplay_settings
 WEB_ROOT=Path(os.environ.get('POKEMON_LOCAL_WEB_ROOT',str(ROOT/'dist'))).resolve()
+SETTINGS_FILE=Path(os.environ.get('POKEMON_LOCAL_SETTINGS_FILE',str(ROOT/'exports/local-game-settings.json')))
+SETTINGS_LOCK=threading.Lock()
+
+
+def read_settings():
+    if SETTINGS_FILE.exists():return gameplay_settings.validate(json.loads(SETTINGS_FILE.read_text()))
+    return copy.deepcopy(gameplay_settings.DEFAULT)
 
 
 class LocalRankings:
@@ -72,16 +80,48 @@ class LocalServer(SimpleHTTPRequestHandler):
         self.send_response(result['statusCode'])
         for key,value in result['headers'].items():self.send_header(key,value)
         self.end_headers();self.wfile.write(result['body'].encode('utf-8'))
+    def settings_response(self):
+        try:
+            if self.command=='PUT':
+                try:
+                    length=int(self.headers.get('Content-Length','0'))
+                    if not 1<=length<=8192:raise ValueError()
+                    raw=self.rfile.read(length)
+                except ValueError:raise rankings.RequestError(400,'설정을 다시 확인해 주세요.')
+                origin=self.headers.get('Origin')
+                if self.headers.get('X-Local-Admin')!='1' or self.headers.get('Sec-Fetch-Site')=='cross-site' or (origin and origin not in ['http://'+self.headers.get('Host','')]):
+                    raise rankings.RequestError(403,'로컬 관리자 화면에서 설정해 주세요.')
+                if not self.headers.get('Content-Type','').startswith('application/json'):
+                    raise rankings.RequestError(415,'설정을 다시 확인해 주세요.')
+                try:
+                    data=gameplay_settings.validate(json.loads(raw))
+                except (ValueError,TypeError,UnicodeError) as error:raise rankings.RequestError(400,str(error) or '설정을 다시 확인해 주세요.')
+                with SETTINGS_LOCK:
+                    if data['version']!=read_settings()['version']:raise rankings.RequestError(409,'다른 설정이 먼저 저장됐어요. 최신 설정을 다시 불러와 주세요.')
+                    data['version']+=1;SETTINGS_FILE.parent.mkdir(parents=True,exist_ok=True)
+                    temporary=SETTINGS_FILE.with_suffix('.tmp');temporary.write_text(json.dumps(data));temporary.chmod(0o600);temporary.replace(SETTINGS_FILE)
+            else:
+                with SETTINGS_LOCK:data=read_settings()
+            result=rankings.response(200,{'settings':data,**({'pokemonNames':gameplay_settings.NAMES} if self.path.startswith('/api/admin/') else {})})
+        except rankings.RequestError as error:result=rankings.response(error.status,{'error':error.message})
+        except (ValueError,OSError):result=rankings.response(503,{'error':'설정을 읽지 못했어요. 다시 확인해 주세요.'})
+        self.send_response(result['statusCode'])
+        for key,value in result['headers'].items():self.send_header(key,value)
+        self.end_headers();self.wfile.write(result['body'].encode())
     def do_GET(self):
         path=urlsplit(self.path).path
+        if path in ['/api/game-settings','/api/admin/game-settings']:self.settings_response();return
         if path=='/api/rankings':self.ranking_response();return
         if path=='/api/access/config':
             self.send_response(200);self.send_header('Content-Type','application/json');self.send_header('Cache-Control','no-store');self.end_headers()
-            self.wfile.write(json.dumps({'enabled':False,'admin':{'clientId':''}}).encode());return
+            self.wfile.write(json.dumps({'enabled':False,'localPreview':True,'admin':{'clientId':''}}).encode());return
         if path in ['/admin','/admin/']:self.path='/admin.html'
         super().do_GET()
     def do_POST(self):
         if urlsplit(self.path).path=='/api/scores':self.ranking_response();return
+        self.send_error(404)
+    def do_PUT(self):
+        if urlsplit(self.path).path=='/api/admin/game-settings':self.settings_response();return
         self.send_error(404)
 
 

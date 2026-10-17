@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
-MODES = ('time-easy', 'time', 'time-hard', 'easy', 'normal', 'hard')
+MODES = ('time-easy', 'time', 'time-hard', 'easy', 'normal', 'hard', 'memory-easy', 'memory-normal', 'memory-hard')
 LIMIT = 20
 BONUS_DURATION = 20000
 _TABLE = None
@@ -69,6 +69,17 @@ def parse_submission(event):
     name = unicodedata.normalize('NFKC', name).strip()
     if len(name) > 12 or any(unicodedata.category(char).startswith('C') for char in name):
         raise RequestError(400, '이름을 12자 안으로 적어줘.')
+    if mode.startswith('memory-'):
+        duration, moves = data.get('durationMs'), data.get('moves')
+        pairs = {'memory-easy':8,'memory-normal':12,'memory-hard':16}[mode]
+        if type(data.get('pairs')) is not int or data.get('pairs') != pairs or type(duration) is not int or not 1 <= duration <= 86400000 or type(moves) is not int or not pairs <= moves <= 10000:
+            raise RequestError(400, '모든 카드의 짝을 맞힌 뒤 기록을 남겨줘.')
+        record = {'id':record_id,'name':name,'mode':mode,'durationMs':duration,'moves':moves,'pairs':pairs,'score':0,'correct':pairs,'total':pairs}
+        partner = data.get('partnerId')
+        if partner is not None and (type(partner) is not int or not 1 <= partner <= len(NAMES)):
+            raise RequestError(400, '파트너 포켓몬을 다시 골라줘.')
+        if 'partnerId' in data:record['partnerId']=partner
+        return record
     results = data.get('results')
     timed = mode.startswith('time')
     if not isinstance(results, list) or any(type(value) is not bool for value in results):
@@ -109,7 +120,11 @@ def parse_submission(event):
 
 def board(storage, mode):
     item = storage.get_item(Key={'mode': mode}, ConsistentRead=True).get('Item')
-    return item, best_entries(item.get('entries', [])) if item else []
+    entries = item.get('entries', []) if item else []
+    if mode.startswith('memory-'):
+        pairs = {'memory-easy':8,'memory-normal':12,'memory-hard':16}[mode]
+        entries = [row for row in entries if row.get('pairs') == pairs]
+    return item, best_entries(entries)
 
 
 def trainer_key(record):
@@ -138,7 +153,12 @@ def public_result(data):
 
 
 def sort_key(record):
-    return (-record['score'], -datetime.fromisoformat(record['date'].replace('Z', '+00:00')).timestamp(), record['id'])
+    value = record['durationMs'] if record['mode'].startswith('memory-') else -record['score']
+    return (value, -datetime.fromisoformat(record['date'].replace('Z', '+00:00')).timestamp(), record['id'])
+
+
+def performance_value(record):
+    return -record['durationMs'] if record['mode'].startswith('memory-') else record['score']
 
 
 def history_key(mode, record_id):
@@ -151,6 +171,7 @@ def archived_record(storage, mode, record_id):
 
 def validate_retry(existing, submitted):
     fields = ['score', 'correct', 'total', 'mode'] + (['name'] if submitted.get('name') else [])
+    if submitted['mode'].startswith('memory-'):fields += ['durationMs','moves','pairs']
     if any(existing[field] != submitted[field] for field in fields) or any(existing.get(field, 0) != submitted.get(field, 0) for field in ['hintsUsed', 'timeBonus']):
         raise RequestError(409, '이 기록은 이미 저장됐어. 랭킹에서 확인해봐.')
     if 'partnerId' in submitted and existing.get('partnerId') != submitted['partnerId']:
@@ -201,7 +222,7 @@ def save(storage, submitted):
                 record = archive_record(storage, record)
             archived = True
         previous = next((entry for entry in entries if trainer_key(entry) == trainer_key(record)), None)
-        if previous and (previous['score'] > record['score'] or previous['score'] == record['score'] and retry_record and sort_key(previous) <= sort_key(record)):
+        if previous and (performance_value(previous) > performance_value(record) or performance_value(previous) == performance_value(record) and retry_record and sort_key(previous) <= sort_key(record)):
             return winner_result(entries, previous, record)
         others = [entry for entry in entries if trainer_key(entry) != trainer_key(record)]
         updated = sorted([*others, record], key=sort_key)[:LIMIT]
@@ -246,11 +267,14 @@ def handle(event, context=None, storage=None, access_storage=None):
             except access.AccessError as error:
                 return response(error.status, {'error': error.message, 'reason': error.reason}, access.clear_cookies() if error.reason == 'invalid_device' else None)
         device = None
-        if path in ['/api/rankings', '/api/scores'] and os.environ.get('AUTH_REQUIRED') == '1':
+        if path in ['/api/rankings', '/api/scores', '/api/game-settings'] and os.environ.get('AUTH_REQUIRED') == '1':
             import access
             try: device = access.require_device(headers.get('x-device-key'), access_storage)
             except access.AccessError as error:
                 return response(error.status, {'error': error.message, 'reason': 'invalid_device'}, access.clear_cookies())
+        if method == 'GET' and path == '/api/game-settings':
+            import access, settings
+            return response(200, {'settings':settings.read(access_storage if access_storage is not None else access.store())})
         if method == 'GET' and path == '/api/rankings':
             mode = valid_mode((event.get('queryStringParameters') or {}).get('mode'))
             _, entries = board(storage if storage is not None else table(), mode)

@@ -40,3 +40,31 @@ class LocalPreview(unittest.TestCase):
                 before=preview.LOCAL_RANKINGS.items.copy();self.assertEqual(request('/api/scores',{**payload,'partnerId':1026})[0],400)
                 self.assertEqual(preview.LOCAL_RANKINGS.items,before);cloud.assert_not_called()
             finally:server.shutdown();server.server_close();thread.join(timeout=2)
+
+
+class LocalSettingsPreview(unittest.TestCase):
+    def test_settings_are_persistent_versioned_and_reject_cross_origin_writes(self):
+        import tempfile
+        class QuietServer(preview.LocalServer):
+            def log_message(self,*args):pass
+        with tempfile.TemporaryDirectory() as folder,patch.object(preview,'SETTINGS_FILE',Path(folder)/'settings.json'),patch.object(preview.rankings,'table',side_effect=AssertionError('must not use AWS')) as cloud:
+            server=ThreadingHTTPServer(('127.0.0.1',0),QuietServer);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+            try:
+                root=f'http://127.0.0.1:{server.server_address[1]}'
+                def request(path,data=None,extra=None):
+                    headers={'Content-Type':'application/json','X-Local-Admin':'1','Origin':root,**(extra or {})}
+                    req=Request(root+path,data=json.dumps(data).encode() if data else None,headers=headers,method='PUT' if data else 'GET')
+                    try:
+                        with urlopen(req,timeout=2) as response:return response.status,json.load(response)
+                    except HTTPError as error:
+                        with error:return error.code,json.load(error)
+                status,response=request('/api/admin/game-settings');self.assertEqual(status,200);self.assertEqual(len(response['pokemonNames']),1025)
+                settings=response['settings'];settings['timeFamiliarPercent']['normal']=70
+                self.assertEqual(request('/api/admin/game-settings',settings,{'Origin':'https://other.example'})[0],403)
+                self.assertEqual(request('/api/admin/game-settings',settings,{'X-Local-Admin':''})[0],403)
+                self.assertFalse(preview.SETTINGS_FILE.exists())
+                status,data=request('/api/admin/game-settings',settings);self.assertEqual(status,200);self.assertEqual(data['settings']['version'],1)
+                self.assertEqual(preview.read_settings()['timeFamiliarPercent']['normal'],70);self.assertEqual(request('/api/game-settings')[1]['settings']['version'],1)
+                self.assertEqual(request('/api/admin/game-settings',settings)[0],409);self.assertEqual(preview.read_settings()['version'],1)
+                self.assertFalse(request('/api/access/config')[1]['enabled']);self.assertTrue(request('/api/access/config')[1]['localPreview']);cloud.assert_not_called()
+            finally:server.shutdown();server.server_close();thread.join(timeout=2)

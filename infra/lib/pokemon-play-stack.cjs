@@ -39,8 +39,10 @@ class PokemonPlayStack extends cdk.Stack{
   const rankingIntegration=new integrations.HttpLambdaIntegration('RankingIntegration',rankingFunction);
   rankingApi.addRoutes({path:'/api/rankings',methods:[apigateway.HttpMethod.GET],integration:rankingIntegration});
   rankingApi.addRoutes({path:'/api/scores',methods:[apigateway.HttpMethod.POST],integration:rankingIntegration});
+  rankingApi.addRoutes({path:'/api/game-settings',methods:[apigateway.HttpMethod.GET],integration:rankingIntegration});
   for(const [url,methods] of [['/api/access/config',[apigateway.HttpMethod.GET]],['/api/access/claim',[apigateway.HttpMethod.POST]],['/api/access/validate',[apigateway.HttpMethod.POST]],['/api/access/profile',[apigateway.HttpMethod.POST]],['/api/access/logout',[apigateway.HttpMethod.POST]]])rankingApi.addRoutes({path:url,methods,integration:rankingIntegration});
   const adminAuthorizer=new authorizers.HttpJwtAuthorizer('AdminJwt',`https://cognito-idp.${config.region}.amazonaws.com/${adminPool.userPoolId}`,{jwtAudience:[adminClient.userPoolClientId]});
+  rankingApi.addRoutes({path:'/api/admin/game-settings',methods:[apigateway.HttpMethod.GET,apigateway.HttpMethod.PUT],integration:rankingIntegration,authorizer:adminAuthorizer,authorizationScopes:['openid']});
   for(const [url,methods] of [['/api/admin/shares',[apigateway.HttpMethod.GET,apigateway.HttpMethod.POST]],['/api/admin/devices',[apigateway.HttpMethod.GET]],['/api/admin/visits',[apigateway.HttpMethod.GET]],['/api/admin/devices/{id}',[apigateway.HttpMethod.PATCH,apigateway.HttpMethod.DELETE]],['/api/admin/shares/{id}',[apigateway.HttpMethod.PATCH,apigateway.HttpMethod.DELETE]]])rankingApi.addRoutes({path:url,methods,integration:rankingIntegration,authorizer:adminAuthorizer,authorizationScopes:['openid']});
   const rankingOrigin=new origins.HttpOrigin(`${rankingApi.apiId}.execute-api.${config.region}.amazonaws.com`,{protocolPolicy:cloudfront.OriginProtocolPolicy.HTTPS_ONLY});
   const rankingRequests=cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER;

@@ -60,6 +60,18 @@ class TransactionSdkTests(unittest.TestCase):
             self.assertTrue(all(r['FilterExpression']=='#device=:device' for r in requests));self.assertIn('ExclusiveStartKey',requests[1])
             stub.assert_no_pending_responses()
 
+    def test_game_settings_nested_version_is_serialized_with_conditional_write(self):
+        self.stub.deactivate();requests=[]
+        self.db.table.meta.client.meta.events.register('before-parameter-build.dynamodb.PutItem',lambda params,**_:requests.append(params.copy()))
+        row={'id':'settings#gameplay','settings':{'version':2,'timeFamiliarPercent':{'easy':90,'normal':50,'hard':50},'familiarIds':list(range(1,11))}}
+        with Stubber(self.db.table.meta.client) as stub:
+            stub.add_response('put_item',{})
+            self.db.save_settings(row,1);request=requests[0]
+            self.assertEqual(request['Item']['settings']['M']['version'],{'N':'2'})
+            self.assertEqual(request['ExpressionAttributeValues'],{':expected':{'N':'1'}})
+            self.assertEqual(request['ConditionExpression'],'#settings.#version=:expected')
+            self.assertEqual(row['settings']['version'],2);stub.assert_no_pending_responses()
+
 
 class RankingHistorySdkTests(unittest.TestCase):
     def setUp(self):
