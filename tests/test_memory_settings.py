@@ -34,7 +34,7 @@ class MemorySettingsTests(unittest.TestCase):
         self.assertEqual(record['durationMs'],12000);self.assertEqual(record['pairs'],8);self.assertEqual(record['score'],0);self.assertEqual(record['partnerId'],25)
         for fields in [{'durationMs':0},{'durationMs':1.5},{'durationMs':True},{'durationMs':86400001},{'moves':7},{'moves':True},{'pairs':6},{'pairs':8.0},{'partnerId':1026}]:
             with self.subTest(fields=fields),self.assertRaises(handler.RequestError):handler.parse_submission(self.event(**fields))
-        for mode,pairs in [('memory-normal',12),('memory-hard',16)]:self.assertEqual(handler.parse_submission(self.event(mode,pairs=pairs,moves=pairs))['pairs'],pairs)
+        for mode,pairs in [('memory-normal',12),('memory-hard',15)]:self.assertEqual(handler.parse_submission(self.event(mode,pairs=pairs,moves=pairs))['pairs'],pairs)
     def test_shortest_record_wins_and_all_originals_survive_with_private_device_context(self):
         storage=Table();original=handler.parse_submission(self.event());original.update(deviceId='device-id',userAgent='browser')
         with patch.object(handler,'timestamp',return_value='2026-10-12T01:00:00Z'):handler.save(storage,original)
@@ -90,3 +90,12 @@ class MemorySettingsTests(unittest.TestCase):
         record=handler.parse_submission(self.event(durationMs=12000))
         result=handler.save(storage,record);self.assertEqual(result['rank'],1);self.assertFalse(result.get('keptBest',False))
         self.assertEqual(result['record']['pairs'],8);self.assertEqual(handler.archived_record(storage,'memory-easy',original['id']),original)
+
+    def test_hard_15_pairs_validates_completion_and_preserves_previous_16_pair_records(self):
+        for values in [{'pairs':16,'moves':16},{'pairs':15,'moves':14}]:
+            with self.assertRaises(handler.RequestError):handler.parse_submission(self.event('memory-hard',**values))
+        storage=Table();original={'id':'old-hard-memory-0001','name':'지우','mode':'memory-hard','durationMs':1000,'moves':16,'pairs':16,'score':0,'correct':16,'total':16,'date':'2026-10-19T00:00:00Z','partnerId':25}
+        storage.items['memory-hard']={'mode':'memory-hard','version':1,'entries':[copy.deepcopy(original)]}
+        before=copy.deepcopy(storage.items);_,entries=handler.board(storage,'memory-hard');self.assertEqual(entries,[]);self.assertEqual(storage.items,before)
+        record=handler.parse_submission(self.event('memory-hard',pairs=15,moves=15));result=handler.save(storage,record)
+        self.assertEqual(result['rank'],1);self.assertEqual(result['record']['pairs'],15);self.assertEqual(handler.archived_record(storage,'memory-hard',original['id']),original)

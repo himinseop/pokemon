@@ -71,7 +71,7 @@ def parse_submission(event):
         raise RequestError(400, '이름을 12자 안으로 적어줘.')
     if mode.startswith('memory-'):
         duration, moves = data.get('durationMs'), data.get('moves')
-        pairs = {'memory-easy':8,'memory-normal':12,'memory-hard':16}[mode]
+        pairs = {'memory-easy':8,'memory-normal':12,'memory-hard':15}[mode]
         if type(data.get('pairs')) is not int or data.get('pairs') != pairs or type(duration) is not int or not 1 <= duration <= 86400000 or type(moves) is not int or not pairs <= moves <= 10000:
             raise RequestError(400, '모든 카드의 짝을 맞힌 뒤 기록을 남겨줘.')
         record = {'id':record_id,'name':name,'mode':mode,'durationMs':duration,'moves':moves,'pairs':pairs,'score':0,'correct':pairs,'total':pairs}
@@ -122,7 +122,7 @@ def board(storage, mode):
     item = storage.get_item(Key={'mode': mode}, ConsistentRead=True).get('Item')
     entries = item.get('entries', []) if item else []
     if mode.startswith('memory-'):
-        pairs = {'memory-easy':8,'memory-normal':12,'memory-hard':16}[mode]
+        pairs = {'memory-easy':8,'memory-normal':12,'memory-hard':15}[mode]
         entries = [row for row in entries if row.get('pairs') == pairs]
     return item, best_entries(entries)
 

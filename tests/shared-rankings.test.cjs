@@ -34,13 +34,22 @@ async function harness(shared,{trainer='지우',profiles=null,storageBroken=fals
  const $=selector=>w.document.querySelector(selector),click=selector=>{assert.ok($(selector),selector);$(selector).click();};
  return {w,$,click,close:()=>dom.window.close(),finish:async()=>{click('#start-game');await flush();const question=w.qa('game.question.id');click(`[data-answer="${question}"]`);w.qa('endGame()');await flush();},save:async name=>{$('#trainer-name').value=name;$('#save-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await flush();}};
 }
-test('ranking uses three mode tabs and three difficulties without showing old device records',async t=>{
+test('ranking shows time and memory tabs with three difficulties and hides master',async t=>{
  const shared=server(),h=await harness(shared);t.after(h.close);h.click('[data-nav="records"]');await flush();
- assert.equal(h.w.document.querySelectorAll('[data-ranking-mode]').length,3);assert.equal(h.w.document.querySelectorAll('[data-ranking-difficulty]').length,3);assert.ok(!h.$('#app').textContent.includes('개인기록'));
- for(const [kind,expected] of [['time',['time-easy','time','time-hard']],['write',['easy','normal','hard']]]){
+ assert.equal(h.w.document.querySelectorAll('[data-ranking-mode]').length,2);assert.equal(h.w.document.querySelectorAll('[data-ranking-difficulty]').length,3);assert.ok(!h.$('#app').textContent.includes('개인기록'));
+ for(const [kind,expected] of [['time',['time-easy','time','time-hard']],['memory',['memory-easy','memory-normal','memory-hard']]]){
   h.click(`[data-ranking-mode="${kind}"]`);
   for(const [i,level] of ['easy','normal','hard'].entries()){h.click(`[data-ranking-difficulty="${level}"]`);await flush();assert.equal(h.w.qa('recordTab'),expected[i]);assert.equal(h.$(`[data-ranking-difficulty="${level}"]`).getAttribute('aria-pressed'),'true');}
  }
+});
+test('opening an old master board selects time attack without changing its records',async t=>{
+ const shared=server(),row={id:'master-best',name:'지우',mode:'hard',score:300,correct:1,total:10,date:'2026-10-07T00:00:00Z'};
+ shared.boards.set('hard',[row]);const h=await harness(shared);t.after(h.close);
+ h.w.qa("recordTab='hard';view='records';render()");await flush();
+ assert.equal(h.w.qa('recordTab'),'time-hard');assert.equal(h.$('[data-ranking-mode="write"]'),null);
+ assert.equal(h.$('[data-ranking-mode="time"]').getAttribute('aria-pressed'),'true');
+ assert.equal(h.$('[data-ranking-difficulty="hard"]').getAttribute('aria-pressed'),'true');
+ assert.ok(!h.$('#app').textContent.includes('마스터'));assert.deepEqual(shared.boards.get('hard'),[row]);
 });
 test('equal scores show newer friends first even when older friends answered more questions',async t=>{
  const shared=server(),entry=(id,score,correct,date)=>({id,name:id,mode:'time-easy',score,correct,total:10,date});
@@ -92,11 +101,11 @@ test('ranking prefills the trainer name and permits a separate edited name befor
  assert.equal(h.$('.my-entry td:first-child .my-tag'),null);assert.equal(h.$('.my-entry td:nth-child(2) .my-tag').textContent,'나');assert.ok(!h.$('#save-message').textContent.includes('저장했어요'));
  h.click('#ranking-replay');assert.equal(h.w.qa('game'),null);assert.ok(h.$('#start-game'));assert.equal(h.w.qa('mode'),'time');assert.equal(h.w.qa('difficulty'),'easy');
 });
-test('quitting displays the end ranking and replay returns to the selected master difficulty',async t=>{
- const h=await harness(server());t.after(h.close);h.click('[data-mode="write"]');h.click('[data-difficulty="hard"]');h.click('#start-game');await flush();
+test('a retained master game can finish and replay returns to time attack at the same difficulty',async t=>{
+ const h=await harness(server());t.after(h.close);h.w.qa("mode='write';renderPlay()");h.click('[data-difficulty="hard"]');h.click('#start-game');await flush();
  h.$('#answer-input').value=h.w.qa('game.question.name');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));h.click('#quit-game');await flush();
  assert.equal(h.w.qa('game.status'),'ended');assert.equal(h.w.qa('game.quit'),true);assert.ok(h.$('#high-score').open);assert.equal(h.$('#save-message').textContent,'즐거운 도전이었어!');assert.equal(h.$('#trainer-name').value,'지우');
- h.click('#ranking-replay');await flush();assert.equal(h.w.qa('game'),null);assert.equal(h.w.qa('mode'),'write');assert.equal(h.w.qa('difficulty'),'hard');assert.equal(h.$('[data-mode="write"]').classList.contains('active'),true);assert.equal(h.$('[data-difficulty="hard"]').getAttribute('aria-pressed'),'true');assert.ok(h.$('#start-game'));
+ h.click('#ranking-replay');await flush();assert.equal(h.w.qa('game'),null);assert.equal(h.w.qa('mode'),'time');assert.equal(h.w.qa('difficulty'),'hard');assert.equal(h.$('[data-mode="time"]').classList.contains('active'),true);assert.equal(h.$('[data-mode="write"]'),null);assert.equal(h.$('[data-difficulty="hard"]').getAttribute('aria-pressed'),'true');assert.ok(h.$('#start-game'));
 });
 test('quitting with no answers still opens the leaderboard without offering a zero score save',async t=>{
  const h=await harness(server());t.after(h.close);h.click('#start-game');await flush();h.click('#quit-game');await flush();assert.ok(h.$('#high-score').open);assert.equal(h.$('#trainer-name'),null);assert.equal(h.$('#save-message').textContent,'즐거운 도전이었어!');h.click('#ranking-replay');assert.ok(h.$('#start-game'));
@@ -120,12 +129,12 @@ test('replay stays on the name entry when saving fails and retries without dupli
 });
 
 test('saving and replaying a hinted master score sends hint history and stores the reduced score',async t=>{
- const shared=server(),h=await harness(shared);t.after(h.close);h.click('[data-mode="write"]');h.click('[data-difficulty="hard"]');h.click('#start-game');await flush();h.click('#hint-question');h.$('#answer-input').value=h.w.qa('game.question.name');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.w.qa('game.score'),150);h.click('#quit-game');await flush();h.click('#ranking-replay');await flush();
+ const shared=server(),h=await harness(shared);t.after(h.close);h.w.qa("mode='write';renderPlay()");h.click('[data-difficulty="hard"]');h.click('#start-game');await flush();h.click('#hint-question');h.$('#answer-input').value=h.w.qa('game.question.name');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.w.qa('game.score'),150);h.click('#quit-game');await flush();h.click('#ranking-replay');await flush();
  assert.deepEqual(shared.submissions[0].hints,[true]);assert.equal(shared.boards.get('hard')[0].score,150);assert.equal(shared.boards.get('hard')[0].hintsUsed,1);assert.ok(h.$('#start-game'));assert.equal(h.w.qa('game'),null);
 });
 
 test('saving a master time bonus sends the measured duration and keeps the server-calculated score',async t=>{
- const shared=server(),h=await harness(shared);t.after(h.close);h.click('[data-mode="write"]');h.click('[data-difficulty="normal"]');h.click('#start-game');await flush();Object.defineProperty(h.w.performance,'now',{value:()=>10000});h.w.qa('game.questionStartedAt=0');h.$('#answer-input').value=h.w.qa('game.question.name');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.w.qa('game.score'),250);h.click('#quit-game');await flush();h.click('#ranking-replay');await flush();assert.deepEqual(shared.submissions[0].elapsedMs,[10000]);assert.deepEqual(shared.submissions[0].hints,[false]);assert.equal(shared.boards.get('normal')[0].score,250);assert.ok(h.$('#start-game'));
+ const shared=server(),h=await harness(shared);t.after(h.close);h.w.qa("mode='write';renderPlay()");h.click('[data-difficulty="normal"]');h.click('#start-game');await flush();Object.defineProperty(h.w.performance,'now',{value:()=>10000});h.w.qa('game.questionStartedAt=0');h.$('#answer-input').value=h.w.qa('game.question.name');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.w.qa('game.score'),250);h.click('#quit-game');await flush();h.click('#ranking-replay');await flush();assert.deepEqual(shared.submissions[0].elapsedMs,[10000]);assert.deepEqual(shared.submissions[0].hints,[false]);assert.equal(shared.boards.get('normal')[0].score,250);assert.ok(h.$('#start-game'));
 });
 
 test('siblings select saved trainers with independent partners and a legacy trainer is preserved',async t=>{
