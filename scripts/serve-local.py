@@ -60,9 +60,12 @@ class LocalServer(SimpleHTTPRequestHandler):
         try:
             with RANKING_LOCK:
                 if self.command=='GET':
-                    mode=rankings.valid_mode(parse_qs(urlsplit(self.path).query).get('mode',[''])[0])
-                    _,entries=rankings.board(LOCAL_RANKINGS,mode)
-                    result=rankings.response(200,rankings.public_result({'mode':mode,'entries':entries,'serverTime':rankings.timestamp()}))
+                    query=parse_qs(urlsplit(self.path).query,keep_blank_values=True)
+                    mode=rankings.valid_mode(query.get('mode',[''])[0])
+                    month=rankings.valid_month(query['month'][0]) if 'month' in query else None
+                    _,entries=rankings.board(LOCAL_RANKINGS,mode,month)
+                    personal={'personalBest':rankings.personal_best(LOCAL_RANKINGS,mode,query['trainer'][0])} if 'trainer' in query else {}
+                    result=rankings.response(200,rankings.public_result({'mode':mode,'entries':entries,'serverTime':rankings.timestamp(),**({'month':month} if month else {}),**personal}))
                 else:
                     if not self.headers.get('Content-Type','').lower().startswith('application/json'):
                         raise rankings.RequestError(415,'기록을 읽지 못했어. 다시 저장해줘.')
@@ -75,7 +78,9 @@ class LocalServer(SimpleHTTPRequestHandler):
                     device=self.headers.get('X-Preview-Device-Id','')
                     if re.fullmatch(r'[a-f0-9]{32}',device):submitted['deviceId']='local-'+device
                     submitted['userAgent']=self.headers.get('User-Agent','')[:240]
-                    result=rankings.response(200,rankings.public_result(rankings.save(LOCAL_RANKINGS,submitted)))
+                    query=parse_qs(urlsplit(self.path).query,keep_blank_values=True)
+                    if 'month' in query:rankings.valid_month(query['month'][0])
+                    result=rankings.response(200,rankings.public_result(rankings.save_with_monthly(LOCAL_RANKINGS,submitted,'month' in query)))
         except rankings.RequestError as error:result=rankings.response(error.status,{'error':error.message})
         self.send_response(result['statusCode'])
         for key,value in result['headers'].items():self.send_header(key,value)

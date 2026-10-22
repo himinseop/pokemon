@@ -35,6 +35,10 @@ class LocalPreview(unittest.TestCase):
                 self.assertEqual(request('/api/rankings?mode=time-easy')[1]['entries'],[])
                 payload={'id':'local-preview-record-001','name':'지우','mode':'time-easy','results':[True],'partnerId':25}
                 status,data=request('/api/scores',payload);self.assertEqual(status,200);self.assertEqual(data['record']['partnerId'],25)
+                month=preview.rankings.ranking_month(data['record']['date'])
+                self.assertEqual(request('/api/rankings?mode=time-easy&month='+month)[1]['entries'],[data['record']])
+                self.assertEqual(request('/api/rankings?mode=time-easy&month='+month)[1]['month'],month)
+                self.assertEqual(request('/api/rankings?mode=time-easy&month=2026-13')[0],400)
                 stored=preview.LOCAL_RANKINGS.items['time-easy']['entries'][0];self.assertEqual(stored['deviceId'],'local-'+'a'*32);self.assertEqual(stored['userAgent'],'Local test browser');self.assertNotIn('deviceId',data['record'])
                 self.assertEqual(request('/api/rankings?mode=time-easy')[1]['entries'][0]['partnerId'],25)
                 before=preview.LOCAL_RANKINGS.items.copy();self.assertEqual(request('/api/scores',{**payload,'partnerId':1026})[0],400)

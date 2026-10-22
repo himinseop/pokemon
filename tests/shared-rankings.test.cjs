@@ -1,6 +1,6 @@
 const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const {JSDOM}=require('jsdom');
 const root=path.resolve(__dirname,'../dist'),flush=()=>new Promise(r=>setImmediate(r));
-function server(){return {boards:new Map(),submissions:[],loseNextAck:false,deferMode:null,release:null};}
+function server(){return {boards:new Map(),monthlyBoards:new Map(),personalBests:new Map(),requests:[],submissions:[],loseNextAck:false,deferMode:null,release:null};}
 async function harness(shared,{trainer='지우',profiles=null,storageBroken=false}={}){
  const dom=new JSDOM(fs.readFileSync(path.join(root,'game.html'),'utf8'),{url:'https://pokemon.pir.kr/',runScripts:'outside-only'}),w=dom.window;
  if(trainer!==null)w.localStorage.setItem('pokemon-play-trainer-name',trainer);
@@ -14,25 +14,25 @@ async function harness(shared,{trainer='지우',profiles=null,storageBroken=fals
  const response=(data,ok=true)=>({ok,json:async()=>JSON.parse(JSON.stringify(data))});
  w.fetch=async(url,options={})=>{
   if(url.startsWith('/api/rankings')){
-   const mode=new URL(url,'https://pokemon.pir.kr').searchParams.get('mode');
+   const params=new URL(url,'https://pokemon.pir.kr').searchParams,mode=params.get('mode'),month=params.get('month');shared.requests.push({mode,month});
    if(mode===shared.deferMode)await new Promise(resolve=>shared.release=resolve);
-   return response({mode,entries:shared.boards.get(mode)||[],serverTime:'2026-10-06T16:00:00.000Z'});
+   return response({mode,month,personalBest:shared.personalBests.get(mode+':'+params.get('trainer'))||null,entries:shared.monthlyBoards.get(month+':'+mode)||shared.boards.get(mode)||[],serverTime:'2026-10-06T16:00:00.000Z'});
   }
-  if(url==='/api/scores'){
-   const payload=JSON.parse(options.body);shared.submissions.push(payload);assert.ok(!('score' in payload));assert.ok(!('date' in payload));
-   if(shared.keepBestOnSave){const best=shared.keepBestOnSave;shared.boards.set(payload.mode,[best]);return response({qualified:true,rank:1,record:best,entries:[best],keptBest:true});}
+  if(url.startsWith('/api/scores')){
+   const month=new URL(url,'https://pokemon.pir.kr').searchParams.get('month'),payload=JSON.parse(options.body);shared.submissions.push(payload);assert.ok(!('score' in payload));assert.ok(!('date' in payload));
+   if(shared.keepBestOnSave){const best=shared.keepBestOnSave;shared.boards.set(payload.mode,[best]);return response({month,qualified:true,rank:1,record:best,entries:[best],keptBest:true});}
    const list=shared.boards.get(payload.mode)||[];let record=list.find(r=>r.id===payload.id);
    if(!record){let score=0,streak=0;payload.results.forEach((correct,i)=>{if(!correct){streak=0;return;}streak++;score+=payload.mode.startsWith('time')?100+Math.min(streak-1,10)*10:({easy:100,normal:200,hard:300}[payload.mode]/(payload.hints?.[i]?2:1)+(payload.hints?.[i]?0:Math.ceil((20000-(payload.elapsedMs?.[i]??20000))*({easy:50,normal:100,hard:150}[payload.mode])/(20000*10))*10));});record={...('partnerId' in payload?{partnerId:payload.partnerId}:{}),id:payload.id,name:payload.name,mode:payload.mode,score,correct:payload.results.filter(Boolean).length,total:payload.results.length,hintsUsed:(payload.hints||[]).filter(Boolean).length,date:'2026-10-06T16:00:01.000Z'};list.push(record);shared.boards.set(payload.mode,list);}
    if(shared.loseNextAck){shared.loseNextAck=false;return response({error:'응답을 받지 못했어요. 다시 시도해 주세요.'},false);}
    const key=r=>r.name.normalize('NFKC').trim().toLocaleLowerCase('ko'),winner=list.filter(r=>key(r)===key(record)).sort((a,b)=>b.score-a.score||Date.parse(b.date)-Date.parse(a.date))[0];
    const entries=[...list.filter(r=>key(r)!==key(record)),winner].sort((a,b)=>b.score-a.score||Date.parse(b.date)-Date.parse(a.date));shared.boards.set(payload.mode,entries);
-   return response({qualified:true,rank:entries.indexOf(winner)+1,record:winner,entries,keptBest:winner.id!==payload.id});
+   return response({month,qualified:true,rank:entries.indexOf(winner)+1,record:winner,entries,keptBest:winner.id!==payload.id});
   }
   return response(JSON.parse(fs.readFileSync(path.join(root,url),'utf8')));
  };
  w.eval(fs.readFileSync(path.join(root,'app.js'),'utf8')+';window.qa=code=>eval(code);');await flush();
  const $=selector=>w.document.querySelector(selector),click=selector=>{assert.ok($(selector),selector);$(selector).click();};
- return {w,$,click,close:()=>dom.window.close(),finish:async()=>{click('#start-game');await flush();const question=w.qa('game.question.id');click(`[data-answer="${question}"]`);w.qa('endGame()');await flush();},save:async name=>{$('#trainer-name').value=name;$('#save-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await flush();}};
+ return {w,$,click,close:()=>dom.window.close(),finish:async({openRanking=true}={})=>{click('#start-game');await flush();const question=w.qa('game.question.id');click(`[data-answer="${question}"]`);w.qa('endGame()');await flush();if(openRanking&&$('#enter-ranking'))click('#enter-ranking');},save:async name=>{$('#trainer-name').value=name;$('#save-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await flush();}};
 }
 test('ranking shows time and memory tabs with three difficulties and hides master',async t=>{
  const shared=server(),h=await harness(shared);t.after(h.close);h.click('[data-nav="records"]');await flush();
@@ -104,17 +104,17 @@ test('ranking prefills the trainer name and permits a separate edited name befor
 test('a retained master game can finish and replay returns to time attack at the same difficulty',async t=>{
  const h=await harness(server());t.after(h.close);h.w.qa("mode='write';renderPlay()");h.click('[data-difficulty="hard"]');h.click('#start-game');await flush();
  h.$('#answer-input').value=h.w.qa('game.question.name');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));h.click('#quit-game');await flush();
- assert.equal(h.w.qa('game.status'),'ended');assert.equal(h.w.qa('game.quit'),true);assert.ok(h.$('#high-score').open);assert.equal(h.$('#save-message').textContent,'즐거운 도전이었어!');assert.equal(h.$('#trainer-name').value,'지우');
+ assert.equal(h.w.qa('game.status'),'ended');assert.equal(h.w.qa('game.quit'),true);assert.equal(h.$('#high-score').open,false);h.click('#enter-ranking');assert.equal(h.$('#save-message').textContent,'즐거운 도전이었어!');assert.equal(h.$('#trainer-name').value,'지우');
  h.click('#ranking-replay');await flush();assert.equal(h.w.qa('game'),null);assert.equal(h.w.qa('mode'),'time');assert.equal(h.w.qa('difficulty'),'hard');assert.equal(h.$('[data-mode="time"]').classList.contains('active'),true);assert.equal(h.$('[data-mode="write"]'),null);assert.equal(h.$('[data-difficulty="hard"]').getAttribute('aria-pressed'),'true');assert.ok(h.$('#start-game'));
 });
-test('quitting with no answers still opens the leaderboard without offering a zero score save',async t=>{
- const h=await harness(server());t.after(h.close);h.click('#start-game');await flush();h.click('#quit-game');await flush();assert.ok(h.$('#high-score').open);assert.equal(h.$('#trainer-name'),null);assert.equal(h.$('#save-message').textContent,'즐거운 도전이었어!');h.click('#ranking-replay');assert.ok(h.$('#start-game'));
+test('quitting with no answers keeps the score screen without opening a leaderboard',async t=>{
+ const h=await harness(server());t.after(h.close);h.click('#start-game');await flush();h.click('#quit-game');await flush();assert.equal(h.$('#high-score').open,false);assert.equal(h.$('#trainer-name'),null);assert.equal(h.$('.big-score').textContent,'0점');h.click('#result-replay');assert.ok(h.$('#start-game'));
 });
-test('ranking dates use Korean calendar days and completed weeks, months and years',async t=>{
+test('ranking dates show time today, relative days through day six, then month and day',async t=>{
  const h=await harness(server());t.after(h.close);
  const relative=date=>h.w.qa(`rankingDate('${date}',new Date('2026-10-07T05:00:00Z'))`);
- for(const [date,label] of [['2026-10-07T00:04:00Z','09:04'],['2026-10-06T16:05:00Z','01:05'],['2026-10-06T00:00:00Z','1일전'],['2026-10-01T00:00:00Z','6일전'],['2026-09-30T00:00:00Z','1주전'],['2026-09-23T00:00:00Z','2주전'],['2026-09-07T00:00:00Z','1개월전'],['2025-11-07T00:00:00Z','11개월전'],['2025-10-07T00:00:00Z','1년전'],['2024-10-07T00:00:00Z','2년전']])assert.equal(relative(date),label,date);
- assert.equal(h.w.qa("rankingDate('2026-01-31T05:00:00Z',new Date('2026-02-28T05:00:00Z'))"),'1개월전');
+ for(const [date,label] of [['2026-10-07T00:04:00Z','09:04'],['2026-10-06T16:05:00Z','01:05'],['2026-10-06T00:00:00Z','1일전'],['2026-10-01T00:00:00Z','6일전'],['2026-09-30T00:00:00Z','9월30일'],['2026-09-23T00:00:00Z','9월23일'],['2026-09-07T00:00:00Z','9월7일'],['2025-11-07T00:00:00Z','11월7일'],['2025-10-07T00:00:00Z','10월7일'],['2024-10-07T00:00:00Z','10월7일']])assert.equal(relative(date),label,date);
+ assert.equal(h.w.qa("rankingDate('2026-01-31T05:00:00Z',new Date('2026-02-28T05:00:00Z'))"),'1월31일');
 });
 
 test('replay saves the entered ranking name before returning to the selected lobby',async t=>{
@@ -129,12 +129,12 @@ test('replay stays on the name entry when saving fails and retries without dupli
 });
 
 test('saving and replaying a hinted master score sends hint history and stores the reduced score',async t=>{
- const shared=server(),h=await harness(shared);t.after(h.close);h.w.qa("mode='write';renderPlay()");h.click('[data-difficulty="hard"]');h.click('#start-game');await flush();h.click('#hint-question');h.$('#answer-input').value=h.w.qa('game.question.name');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.w.qa('game.score'),150);h.click('#quit-game');await flush();h.click('#ranking-replay');await flush();
+ const shared=server(),h=await harness(shared);t.after(h.close);h.w.qa("mode='write';renderPlay()");h.click('[data-difficulty="hard"]');h.click('#start-game');await flush();h.click('#hint-question');h.$('#answer-input').value=h.w.qa('game.question.name');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.w.qa('game.score'),150);h.click('#quit-game');await flush();h.click('#enter-ranking');h.click('#ranking-replay');await flush();
  assert.deepEqual(shared.submissions[0].hints,[true]);assert.equal(shared.boards.get('hard')[0].score,150);assert.equal(shared.boards.get('hard')[0].hintsUsed,1);assert.ok(h.$('#start-game'));assert.equal(h.w.qa('game'),null);
 });
 
 test('saving a master time bonus sends the measured duration and keeps the server-calculated score',async t=>{
- const shared=server(),h=await harness(shared);t.after(h.close);h.w.qa("mode='write';renderPlay()");h.click('[data-difficulty="normal"]');h.click('#start-game');await flush();Object.defineProperty(h.w.performance,'now',{value:()=>10000});h.w.qa('game.questionStartedAt=0');h.$('#answer-input').value=h.w.qa('game.question.name');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.w.qa('game.score'),250);h.click('#quit-game');await flush();h.click('#ranking-replay');await flush();assert.deepEqual(shared.submissions[0].elapsedMs,[10000]);assert.deepEqual(shared.submissions[0].hints,[false]);assert.equal(shared.boards.get('normal')[0].score,250);assert.ok(h.$('#start-game'));
+ const shared=server(),h=await harness(shared);t.after(h.close);h.w.qa("mode='write';renderPlay()");h.click('[data-difficulty="normal"]');h.click('#start-game');await flush();Object.defineProperty(h.w.performance,'now',{value:()=>10000});h.w.qa('game.questionStartedAt=0');h.$('#answer-input').value=h.w.qa('game.question.name');h.$('#answer-form').dispatchEvent(new h.w.Event('submit',{bubbles:true,cancelable:true}));assert.equal(h.w.qa('game.score'),250);h.click('#quit-game');await flush();h.click('#enter-ranking');h.click('#ranking-replay');await flush();assert.deepEqual(shared.submissions[0].elapsedMs,[10000]);assert.deepEqual(shared.submissions[0].hints,[false]);assert.equal(shared.boards.get('normal')[0].score,250);assert.ok(h.$('#start-game'));
 });
 
 test('siblings select saved trainers with independent partners and a legacy trainer is preserved',async t=>{
@@ -220,10 +220,67 @@ test('legacy repeated names show only their highest recent record on the full ra
 
 test('a lower attempt shows the previous best, keeps actual game points, and replay returns home',async t=>{
  const shared=server(),best={id:'my-previous-best01',name:'지우',mode:'time-easy',score:1500,correct:10,total:10,date:'2026-10-12T00:00:00Z',partnerId:25};shared.boards.set('time-easy',[best]);const h=await harness(shared);t.after(h.close);await h.finish();
- assert.equal(h.w.qa('game.score'),100);assert.equal(h.w.qa('game.keptBest'),true);assert.equal(h.w.qa('game.record.id'),best.id);assert.equal(h.$('#trainer-name'),null);assert.equal(h.w.document.querySelectorAll('.entry-ranking tbody tr').length,1);assert.equal(shared.submissions.length,0);h.click('#ranking-replay');assert.ok(h.$('#start-game'));assert.equal(shared.boards.get('time-easy')[0].score,1500);
+ assert.equal(h.w.qa('game.score'),100);assert.equal(h.w.qa('game.keptBest'),true);assert.equal(h.w.qa('game.record.id'),best.id);assert.equal(h.$('#trainer-name'),null);assert.equal(h.$('#high-score').open,false);assert.ok(h.$('.result'));assert.equal(shared.submissions.length,0);h.click('#result-replay');assert.ok(h.$('#start-game'));assert.equal(shared.boards.get('time-easy')[0].score,1500);
 });
 
 test('a higher concurrent submission during name entry keeps the best acknowledgement and permits replay',async t=>{
  const shared=server(),h=await harness(shared);t.after(h.close);await h.finish();shared.keepBestOnSave={id:'racing-high-score01',name:'지우',mode:'time-easy',score:2000,correct:15,total:15,date:'2026-10-12T01:00:00Z',partnerId:133};await h.save('지우');
  assert.equal(h.w.qa('game.saved'),true);assert.equal(h.w.qa('game.keptBest'),true);assert.equal(h.w.qa('game.score'),100);assert.equal(h.w.qa('game.record.id'),'racing-high-score01');assert.equal(h.w.document.querySelectorAll('.entry-ranking tbody tr').length,1);h.click('#ranking-replay');assert.ok(h.$('#start-game'));
+});
+
+
+test('monthly ranking starts this month, browses the previous month, and preserves mode and difficulty',async t=>{
+ const shared=server(),h=await harness(shared);t.after(h.close);
+ const month=h.w.qa('currentRankingMonth()'),past=h.w.qa(`shiftedRankingMonth('${month}',-1)`);
+ shared.monthlyBoards.set(month+':memory-hard',[{id:'this-month-memory',name:'이번달친구',mode:'memory-hard',score:0,correct:15,total:15,pairs:15,moves:15,durationMs:3000,date:month+'-02T00:00:00Z'}]);
+ shared.monthlyBoards.set(past+':memory-hard',[{id:'past-month-memory',name:'지난달친구',mode:'memory-hard',score:0,correct:15,total:15,pairs:15,moves:15,durationMs:1000,date:past+'-02T00:00:00Z'}]);
+ h.click('[data-nav="records"]');await flush();assert.equal(h.$('.ranking-current-month strong').textContent,'이번달 랭킹');
+ assert.equal(h.$('.month-next').disabled,true);h.click('[data-ranking-mode="memory"]');h.click('[data-ranking-difficulty="hard"]');await flush();
+ assert.ok(h.$('.ranking').textContent.includes('이번달친구'));
+ h.click(`[data-ranking-month="${past}"]`);await flush();assert.ok(h.$('.ranking').textContent.includes('지난달친구'));assert.ok(!h.$('.ranking').textContent.includes('이번달친구'));
+ assert.equal(h.w.qa('recordTab'),'memory-hard');assert.equal(h.$('[data-ranking-difficulty="hard"]').getAttribute('aria-pressed'),'true');
+ h.click('[data-ranking-month="current"]');await flush();assert.ok(h.$('.ranking').textContent.includes('이번달친구'));assert.equal(h.w.qa('selectedRankingMonth'),null);
+});
+test('a late response for the previous month cannot replace the selected current-month board',async t=>{
+ const shared=server(),h=await harness(shared);t.after(h.close);h.click('[data-nav="records"]');await flush();
+ const current=h.w.qa('currentRankingMonth()'),past=h.w.qa(`shiftedRankingMonth('${current}',-1)`);shared.deferMode='time-easy';
+ h.click(`[data-ranking-month="${past}"]`);assert.ok(h.$('.ranking-status'));h.click('[data-ranking-month="current"]');assert.equal(h.w.qa('selectedRankingMonth'),null);
+ shared.release();await flush();assert.equal(h.$('.ranking-current-month strong').textContent,'이번달 랭킹');assert.equal(h.$('.ranking-status'),null);
+});
+test('Korean month and displayed dates cross midnight and year boundaries correctly',async t=>{
+ const h=await harness(server());t.after(h.close);
+ assert.equal(h.w.qa("currentRankingMonth('2026-09-30T14:59:59Z')"),'2026-09');assert.equal(h.w.qa("currentRankingMonth('2026-09-30T15:00:00Z')"),'2026-10');
+ assert.equal(h.w.qa("shiftedRankingMonth('2026-01',-1)"),'2025-12');assert.equal(h.w.qa("shiftedRankingMonth('2025-12',1)"),'2026-01');
+ assert.equal(h.w.qa("rankingDate('2026-10-29T01:00:00Z',new Date('2026-11-05T01:00:00Z'))"),'10월29일');
+ assert.equal(h.w.qa("rankingDate('2026-10-29T01:00:00Z',new Date('2026-11-04T01:00:00Z'))"),'6일전');
+});
+
+
+test('finishing keeps the score screen visible until the player explicitly opens name registration',async t=>{
+ const h=await harness(server());t.after(h.close);await h.finish({openRanking:false});
+ assert.equal(h.$('#high-score').open,false);assert.equal(h.$('.big-score').textContent,'100점');assert.ok(h.$('.personal-result'));assert.equal(h.$('.ranking-controls'),null);
+ h.w.qa('renderGameBody()');assert.equal(h.$('#high-score').open,false);h.click('#enter-ranking');assert.equal(h.$('#high-score').open,true);
+});
+for(const [score,outcome,label] of [[50,'improved','이전 최고기록'],[1500,'below','나의 최고기록'],[100,'equal','나의 최고기록']]){
+ test(`score feedback compares the personal best independently of monthly rank: ${outcome}`,async t=>{
+  const shared=server();shared.personalBests.set('time-easy:지우',{id:'lifetime-best-score1',name:'지우',mode:'time-easy',score,correct:1,total:1,date:'2026-09-01T00:00:00Z'});
+  const h=await harness(shared);t.after(h.close);await h.finish({openRanking:false});
+  assert.equal(h.w.qa('game.personalOutcome'),outcome);assert.equal(h.$('.big-score').textContent,'100점');assert.ok(h.$('.personal-result p').textContent.includes(label));assert.ok(h.$('.personal-result b').textContent.includes(score.toLocaleString()));
+  if(outcome==='improved')assert.equal(h.$('.personal-result>strong').textContent,'축하해. 너의 최고기록을 경신했어.');
+  assert.equal(h.$('#high-score').open,false);
+ });
+}
+test('encouragement rotates between attempts and stays stable while the result rerenders',async t=>{
+ const shared=server();shared.personalBests.set('time-easy:지우',{id:'lifetime-best-score1',name:'지우',mode:'time-easy',score:1500,correct:5,total:5,date:'2026-09-01T00:00:00Z'});
+ const h=await harness(shared);t.after(h.close);const messages=[];
+ for(let i=0;i<4;i++){await h.finish({openRanking:false});const message=h.$('.personal-result>strong').textContent;messages.push(message);h.w.qa('renderGameBody()');assert.equal(h.$('.personal-result>strong').textContent,message);h.click('#result-replay');}
+ assert.equal(new Set(messages.slice(0,3)).size,3);assert.equal(messages[0],messages[3]);
+});
+test('first-record feedback and personal scores survive local storage failure without blocking replay',async t=>{
+ const h=await harness(server(),{storageBroken:true});t.after(h.close);await h.finish({openRanking:false});assert.equal(h.w.qa('game.personalOutcome'),'first');assert.ok(h.$('.personal-result'));h.click('#result-replay');assert.ok(h.$('#start-game'));
+});
+test('month navigation sits above the list and a difficulty change returns to this month',async t=>{
+ const h=await harness(server());t.after(h.close);h.click('[data-nav="records"]');await flush();
+ assert.equal(h.$('.ranking-months').previousElementSibling.className,'ranking-controls');assert.equal(h.$('.ranking-months').nextElementSibling.className,'shared-ranking-board');assert.equal(h.$('.ranking-current-month>span'),null);
+ const past=h.w.qa("shiftedRankingMonth(currentRankingMonth(),-1)");h.click(`[data-ranking-month="${past}"]`);await flush();h.click('[data-ranking-difficulty="hard"]');await flush();assert.equal(h.w.qa('selectedRankingMonth'),null);assert.equal(h.$('.ranking-current-month strong').textContent,'이번달 랭킹');assert.equal(h.w.qa('recordTab'),'time-hard');
 });

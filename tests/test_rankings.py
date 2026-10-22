@@ -18,6 +18,7 @@ class Conflict(Exception):
 class Table:
     def __init__(self):
         self.items, self.writes, self.archive_writes, self.conflict = {}, 0, 0, None
+        self.monthly_writes = 0
     def get_item(self, Key, ConsistentRead):
         assert ConsistentRead
         return {'Item': copy.deepcopy(self.items[Key['mode']])} if Key['mode'] in self.items else {}
@@ -35,7 +36,9 @@ class Table:
             raise Conflict()
         if not current and kwargs['ConditionExpression'] != 'attribute_not_exists(#mode)':
             raise Conflict()
-        self.items[key] = copy.deepcopy(item); self.writes += 1
+        self.items[key] = copy.deepcopy(item)
+        if key.startswith(('month#','personal#')):self.monthly_writes += 1
+        else:self.writes += 1
 
 
 def event(method='GET', path='/api/rankings', payload=None, mode='time-easy'):
@@ -73,7 +76,10 @@ class Rankings(unittest.TestCase):
         self.table.items['time-easy']['entries'].append(old);snapshot=copy.deepcopy(self.table.items)
         self.request();self.assertEqual(self.table.items,snapshot)
         status,result=self.submit(id=old['id'],name=old['name'],partnerId=None)
-        self.assertEqual(status,200);self.assertEqual(result['record'],old);self.assertNotIn('partnerId',result['record']);self.assertEqual(self.table.items,snapshot)
+        self.assertEqual(status,200);self.assertEqual(result['record'],old);self.assertNotIn('partnerId',result['record'])
+        for key,row in snapshot.items():
+            if not key.startswith(('month#','personal#')):self.assertEqual(self.table.items[key],row)
+        self.assertEqual(handler.archived_record(self.table,'time-easy',old['id']),old)
 
     def test_each_name_keeps_one_highest_record_and_equal_scores_use_the_new_attempt(self):
         first=self.submit(id='best-record-first-001',name='지우',results=[True]*3)[1]['record']

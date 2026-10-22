@@ -1,17 +1,19 @@
 """Anonymous shared TOP 20 boards, stored atomically in DynamoDB."""
 import base64
+import hashlib
 import json
 import os
 import random
 import re
 import unicodedata
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from pathlib import Path
 
 MODES = ('time-easy', 'time', 'time-hard', 'easy', 'normal', 'hard', 'memory-easy', 'memory-normal', 'memory-hard')
 LIMIT = 20
 BONUS_DURATION = 20000
+KST = timezone(timedelta(hours=9))
 _TABLE = None
 NAMES = json.loads((Path(__file__).parent / 'pokemon-names.json').read_text(encoding='utf-8'))
 
@@ -23,6 +25,21 @@ class RequestError(Exception):
 
 def timestamp():
     return datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+
+
+def ranking_month(date=None):
+    moment = datetime.fromisoformat(date.replace('Z', '+00:00')) if date else datetime.now(timezone.utc)
+    return moment.astimezone(KST).strftime('%Y-%m')
+
+
+def valid_month(value):
+    if not isinstance(value, str) or not re.fullmatch(r'[1-9][0-9]{3}-(0[1-9]|1[0-2])', value):
+        raise RequestError(400, '랭킹을 보고 싶은 달을 다시 골라줘.')
+    return value
+
+
+def monthly_key(mode, month):
+    return f'month#{valid_month(month)}#{mode}'
 
 
 def response(status, payload, cookies=None):
@@ -118,13 +135,18 @@ def parse_submission(event):
     return record
 
 
-def board(storage, mode):
-    item = storage.get_item(Key={'mode': mode}, ConsistentRead=True).get('Item')
+def board(storage, mode, month=None):
+    item = storage.get_item(Key={'mode': monthly_key(mode, month) if month else mode}, ConsistentRead=True).get('Item')
     entries = item.get('entries', []) if item else []
+    if month:
+        # Existing boards remain untouched; migration can add archived originals later.
+        legacy = storage.get_item(Key={'mode': mode}, ConsistentRead=True).get('Item', {})
+        entries = list({row['id']:row for row in [*legacy.get('entries', []), *entries]
+                        if row.get('mode') == mode and ranking_month(row['date']) == month}.values())
     if mode.startswith('memory-'):
         pairs = {'memory-easy':8,'memory-normal':12,'memory-hard':15}[mode]
         entries = [row for row in entries if row.get('pairs') == pairs]
-    return item, best_entries(entries)
+    return item, best_entries(entries)[:LIMIT] if month else best_entries(entries)
 
 
 def trainer_key(record):
@@ -149,6 +171,7 @@ def public_result(data):
     result = dict(data)
     if 'entries' in result: result['entries'] = [public_record(row) for row in result['entries']]
     if 'record' in result: result['record'] = public_record(result['record'])
+    if result.get('personalBest'): result['personalBest'] = public_record(result['personalBest'])
     return result
 
 
@@ -250,6 +273,80 @@ def save(storage, submitted):
     raise RequestError(409, '친구의 기록이 먼저 도착했네! 한 번 더 저장해줘.')
 
 
+def save_monthly_record(storage, record):
+    """Merge one immutable original without altering lifetime boards or other months."""
+    month = ranking_month(record['date'])
+    key = monthly_key(record['mode'], month)
+    for _ in range(8):
+        item, entries = board(storage, record['mode'], month)
+        updated = best_entries(list({row['id']:row for row in [record, *entries]}.values()))[:LIMIT]
+        winner = next((row for row in updated if trainer_key(row) == trainer_key(record)), None)
+        result = winner_result(updated, winner, record) if winner else {'qualified':False, 'rank':None, 'entries':updated}
+        result['month'] = month
+        if item and item.get('entries') == updated:
+            return result
+        kwargs = {'Item': {**(item or {}), 'mode':key, 'boardMode':record['mode'], 'month':month,
+                           'version':int((item or {}).get('version', 0)) + 1, 'entries':updated}}
+        if item:
+            kwargs.update(ConditionExpression='#version = :expected', ExpressionAttributeNames={'#version':'version'},
+                          ExpressionAttributeValues={':expected':int(item.get('version', 0))})
+        else:
+            kwargs.update(ConditionExpression='attribute_not_exists(#mode)', ExpressionAttributeNames={'#mode':'mode'})
+        try:
+            storage.put_item(**kwargs)
+            return result
+        except Exception as error:
+            if getattr(error, 'response', {}).get('Error', {}).get('Code') != 'ConditionalCheckFailedException':
+                raise
+    raise RequestError(409, '친구의 기록이 먼저 도착했네! 한 번 더 저장해줘.')
+
+
+def save_with_monthly(storage, submitted, monthly=False):
+    lifetime = save(storage, submitted)
+    original = archived_record(storage, submitted['mode'], submitted['id'])
+    if original is None:
+        # Legacy retries can still live only in the original board.
+        item = storage.get_item(Key={'mode':submitted['mode']}, ConsistentRead=True).get('Item', {})
+        original = next(row for row in item.get('entries', []) if row['id'] == submitted['id'])
+        original = archive_record(storage, original)
+    result = save_monthly_record(storage, original)
+    save_personal_best(storage, original)
+    return result if monthly else lifetime
+
+
+def personal_key(mode, name, pairs=None):
+    digest = hashlib.sha256(unicodedata.normalize('NFKC', name).strip().lower().encode()).hexdigest()
+    return f'personal#{mode}#{str(pairs)+"#" if pairs is not None else ""}{digest}'
+
+
+def personal_best(storage, mode, name):
+    if not isinstance(name, str) or len(name) > 12 or any(unicodedata.category(c).startswith('C') for c in name):
+        raise RequestError(400, '트레이너 이름을 다시 확인해줘.')
+    pairs = {'memory-easy':8,'memory-normal':12,'memory-hard':15}.get(mode)
+    row = storage.get_item(Key={'mode':personal_key(mode, name, pairs)}, ConsistentRead=True).get('Item', {})
+    _, legacy = board(storage, mode)
+    candidates = [r for r in [*legacy, *([row['record']] if row.get('record') else [])]
+                  if trainer_key(r) == trainer_key({'name':name,'id':''})]
+    return min(candidates, key=sort_key) if candidates else None
+
+
+def save_personal_best(storage, record):
+    key = personal_key(record['mode'], record['name'], record.get('pairs'))
+    for _ in range(8):
+        item = storage.get_item(Key={'mode':key}, ConsistentRead=True).get('Item')
+        if item and sort_key(item['record']) <= sort_key(record):return item['record']
+        kwargs = {'Item':{**(item or {}),'mode':key,'boardMode':record['mode'],'version':int((item or {}).get('version',0))+1,'record':record}}
+        if item:
+            kwargs.update(ConditionExpression='#version = :expected',ExpressionAttributeNames={'#version':'version'},ExpressionAttributeValues={':expected':int(item.get('version',0))})
+        else:
+            kwargs.update(ConditionExpression='attribute_not_exists(#mode)',ExpressionAttributeNames={'#mode':'mode'})
+        try:
+            storage.put_item(**kwargs);return record
+        except Exception as error:
+            if getattr(error,'response',{}).get('Error',{}).get('Code') != 'ConditionalCheckFailedException':raise
+    raise RequestError(409, '최고기록을 다시 확인하고 있어. 한 번 더 저장해줘.')
+
+
 def handle(event, context=None, storage=None, access_storage=None):
     try:
         headers = {key.lower(): value for key, value in (event.get('headers') or {}).items()}
@@ -276,16 +373,22 @@ def handle(event, context=None, storage=None, access_storage=None):
             import access, settings
             return response(200, {'settings':settings.read(access_storage if access_storage is not None else access.store())})
         if method == 'GET' and path == '/api/rankings':
-            mode = valid_mode((event.get('queryStringParameters') or {}).get('mode'))
-            _, entries = board(storage if storage is not None else table(), mode)
-            return response(200, public_result({'mode': mode, 'entries': entries, 'serverTime': timestamp()}))
+            query = event.get('queryStringParameters') or {}
+            mode = valid_mode(query.get('mode'))
+            month = valid_month(query['month']) if 'month' in query else None
+            target = storage if storage is not None else table()
+            _, entries = board(target, mode, month)
+            personal = {'personalBest':personal_best(target,mode,query['trainer'])} if 'trainer' in query else {}
+            return response(200, public_result({'mode': mode, 'entries': entries, 'serverTime': timestamp(), **({'month':month} if month else {}), **personal}))
         if method == 'POST' and path == '/api/scores':
             if not headers.get('content-type', '').lower().startswith('application/json'):
                 raise RequestError(415, '기록을 읽지 못했어. 다시 저장해줘.')
+            query = event.get('queryStringParameters') or {}
+            if 'month' in query: valid_month(query['month'])
             submitted = parse_submission(event)
             if device: submitted['deviceId'] = device['deviceId']
             submitted['userAgent'] = str(headers.get('user-agent') or event.get('requestContext', {}).get('http', {}).get('userAgent') or '')[:240]
-            return response(200, public_result(save(storage if storage is not None else table(), submitted)))
+            return response(200, public_result(save_with_monthly(storage if storage is not None else table(), submitted, 'month' in query)))
         raise RequestError(404, '여기는 찾지 못했어. 게임 화면으로 돌아가볼까?')
     except RequestError as error:
         return response(error.status, {'error': error.message})
