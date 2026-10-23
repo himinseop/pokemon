@@ -34,7 +34,7 @@ def ranking_month(date=None):
 
 def valid_month(value):
     if not isinstance(value, str) or not re.fullmatch(r'[1-9][0-9]{3}-(0[1-9]|1[0-2])', value):
-        raise RequestError(400, '랭킹을 보고 싶은 달을 다시 골라줘.')
+        raise RequestError(400, '순위를 보고 싶은 달을 다시 골라줘.')
     return value
 
 
@@ -111,7 +111,7 @@ def parse_submission(event):
         raise RequestError(400, '보너스 시간을 확인하지 못했어. 다시 저장해줘.')
     correct = sum(results)
     if not correct:
-        raise RequestError(400, '한 문제라도 맞히면 랭킹에 이름을 남길 수 있어!')
+        raise RequestError(400, '한 문제라도 맞히면 순위에 이름을 남길 수 있어!')
     score, streak, time_bonus = 0, 0, 0
     for answered, hinted, duration in zip(results, hints, elapsed):
         if not answered:
@@ -196,9 +196,9 @@ def validate_retry(existing, submitted):
     fields = ['score', 'correct', 'total', 'mode'] + (['name'] if submitted.get('name') else [])
     if submitted['mode'].startswith('memory-'):fields += ['durationMs','moves','pairs']
     if any(existing[field] != submitted[field] for field in fields) or any(existing.get(field, 0) != submitted.get(field, 0) for field in ['hintsUsed', 'timeBonus']):
-        raise RequestError(409, '이 기록은 이미 저장됐어. 랭킹에서 확인해봐.')
+        raise RequestError(409, '이 기록은 이미 저장됐어. 순위에서 확인해봐.')
     if 'partnerId' in submitted and existing.get('partnerId') != submitted['partnerId']:
-        raise RequestError(409, '이 기록은 이미 저장됐어. 랭킹에서 확인해봐.')
+        raise RequestError(409, '이 기록은 이미 저장됐어. 순위에서 확인해봐.')
 
 
 def archive_record(storage, record):
@@ -281,7 +281,7 @@ def save_monthly_record(storage, record):
         item, entries = board(storage, record['mode'], month)
         updated = best_entries(list({row['id']:row for row in [record, *entries]}.values()))[:LIMIT]
         winner = next((row for row in updated if trainer_key(row) == trainer_key(record)), None)
-        result = winner_result(updated, winner, record) if winner else {'qualified':False, 'rank':None, 'entries':updated}
+        result = winner_result(updated, winner, record) if winner else {'qualified':False, 'rank':None, 'record':record, 'entries':updated}
         result['month'] = month
         if item and item.get('entries') == updated:
             return result
@@ -394,4 +394,4 @@ def handle(event, context=None, storage=None, access_storage=None):
         return response(error.status, {'error': error.message})
     except Exception as error:
         print(json.dumps({'error': type(error).__name__}))
-        return response(503, {'error': '랭킹에 연결하지 못했어. 잠깐 뒤에 다시 눌러줘.'})
+        return response(503, {'error': '순위에 연결하지 못했어. 잠깐 뒤에 다시 눌러줘.'})
